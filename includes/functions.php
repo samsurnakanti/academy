@@ -328,18 +328,32 @@ function issue_certificate_for_enrollment(array $row): ?string
     $templateData = base64_encode((string) file_get_contents($templatePath));
     $completionDate = date('F j Y');
     $name = svg_escape((string) $row['name']);
-    $title = svg_escape((string) $row['title']);
+    $title = trim((string) $row['title']);
     $certificateCodeSvg = svg_escape($certificateCode);
+    $safeTitle = svg_escape($title);
+    $descriptionLines = [
+        'has successfully completed the',
+        $safeTitle,
+        'demonstrating proficiency in Data Analysis,',
+        'Data Interpretation, Data Visualization, and Business Insights.',
+    ];
+    $descriptionSvg = '';
+    $lineY = 756;
+    foreach ($descriptionLines as $index => $line) {
+        $fontWeight = $index === 1 ? '700' : '400';
+        $fontSize = $index === 1 ? 34 : 30;
+        $descriptionSvg .= '<text x="1000" y="' . $lineY . '" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="' . $fontSize . '" font-weight="' . $fontWeight . '">' . $line . '</text>';
+        $lineY += 42;
+    }
 
     $svg = <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1414" viewBox="0 0 2000 1414">
   <image href="data:image/png;base64,{$templateData}" width="2000" height="1414"/>
-  <text x="1000" y="650" text-anchor="middle" fill="#071a55" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="700">{$name}</text>
-  <text x="1000" y="770" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="34">
-    has successfully completed the {$title}
-  </text>
-  <text x="618" y="944" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="28" font-weight="700">Completion Date : {$completionDate}</text>
-  <text x="1228" y="944" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="28" font-weight="700">Certificate ID: {$certificateCodeSvg}</text>
+  <text x="1000" y="625" text-anchor="middle" fill="#071a55" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700" letter-spacing="1">{$name}</text>
+  <line x1="378" y1="658" x2="1622" y2="658" stroke="#d8b16a" stroke-width="4"/>
+  {$descriptionSvg}
+  <text x="650" y="950" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="27" font-weight="700">Completion Date : {$completionDate}</text>
+  <text x="1315" y="950" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="27" font-weight="700">Certificate ID: {$certificateCodeSvg}</text>
 </svg>
 SVG;
 
