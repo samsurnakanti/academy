@@ -23,9 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'delete' && $id > 0) {
-        $stmt = db()->prepare('DELETE FROM courses WHERE id = ?');
-        $stmt->execute([$id]);
-        flash('success', 'Program deleted permanently.');
+        try {
+            $stmt = db()->prepare('DELETE FROM courses WHERE id = ?');
+            $stmt->execute([$id]);
+
+            if ($stmt->rowCount() > 0) {
+                flash('success', 'Program deleted permanently.');
+            } else {
+                flash('error', 'Program was not deleted. It may already be missing.');
+            }
+        } catch (PDOException $e) {
+            flash('error', 'Program could not be deleted. Check whether production database foreign keys allow cascading deletes.');
+        }
         redirect('courses.php');
     }
 

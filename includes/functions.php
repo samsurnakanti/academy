@@ -344,7 +344,7 @@ function issue_certificate_for_enrollment(array $row): ?string
 SVG;
 
     file_put_contents($absolutePath, $svg);
-    $certificateUrl = public_url('assets/certificates/issued/' . $fileName);
+    $certificateUrl = public_url('download_certificate.php?enrollment_id=' . (int) $row['enrollment_id']);
 
     $stmt = db()->prepare(
         "UPDATE certificate_requests
@@ -375,7 +375,13 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
         return $certificate ?: null;
     }
 
-    if ($certificate['status'] !== 'issued' || empty($certificate['certificate_url'])) {
+    $expectedIssuedPath = __DIR__ . '/../assets/certificates/issued/certificate-' . $enrollmentId . '.svg';
+
+    if (
+        $certificate['status'] !== 'issued'
+        || empty($certificate['certificate_url'])
+        || !is_file($expectedIssuedPath)
+    ) {
         issue_certificate_for_enrollment($certificate);
         $stmt->execute([$enrollmentId]);
         $certificate = $stmt->fetch();
