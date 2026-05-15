@@ -29,6 +29,8 @@ $materials = db()->prepare('SELECT * FROM materials WHERE course_id = ? ORDER BY
 $materials->execute([(int) $course['id']]);
 $materialRows = $materials->fetchAll();
 $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'video'));
+$resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
+$liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
 $isFreeProgram = ((float) $course['fee']) <= 0;
 
 $title = $course['title'] . ' | Elldy Academy';
@@ -95,6 +97,28 @@ require __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php endif; ?>
+        <?php if ($resourceRows || $liveSessionRows): ?>
+            <div class="info-block">
+                <h2>Program Materials</h2>
+                <p>These learning items are included in the program and become available inside the learning workspace after enrollment.</p>
+                <div class="material-outline">
+                    <?php foreach ($resourceRows as $resource): ?>
+                        <article>
+                            <span>Material</span>
+                            <strong><?= e($resource['title']) ?></strong>
+                            <small><?= e($resource['description'] ?: 'Supporting learning material') ?></small>
+                        </article>
+                    <?php endforeach; ?>
+                    <?php foreach ($liveSessionRows as $session): ?>
+                        <article>
+                            <span>Live Session</span>
+                            <strong><?= e($session['title']) ?></strong>
+                            <small><?= e($session['description'] ?: 'Scheduled live session') ?></small>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
     <aside class="detail-aside">
         <h2>Platform Support</h2>
@@ -106,18 +130,10 @@ require __DIR__ . '/includes/header.php';
             <strong>BI delivery mindset</strong>
             <p>Learn how dashboards, KPIs, and insight summaries support business decisions.</p>
         </div>
-        <?php foreach ($materialRows as $material): ?>
-            <div class="material-item">
-                <strong><?= e($material['title']) ?></strong>
-                <p><?= e($material['description']) ?></p>
-                <?php if ($material['file_url']): ?>
-                    <a href="<?= e($material['file_url']) ?>" target="_blank" rel="noopener">Open material</a>
-                <?php endif; ?>
-            </div>
-        <?php endforeach; ?>
-        <?php if (!$materialRows): ?>
-            <p class="empty">Materials will be updated soon.</p>
-        <?php endif; ?>
+        <div class="material-item">
+            <strong>Enrolled learner access</strong>
+            <p>Video links, live-session links, and downloadable resources are opened from the protected learning workspace after enrollment.</p>
+        </div>
     </aside>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

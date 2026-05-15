@@ -36,7 +36,7 @@ if (!$certificate) {
     $certificate = $existingStmt->fetch();
 }
 
-if (in_array($enrollment['status'], ['paid', 'completed'], true)) {
+if ($certificateAmount <= 0 && in_array($enrollment['status'], ['paid', 'completed'], true)) {
     $certificate = ensure_instant_certificate_for_enrollment($enrollmentId) ?? $certificate;
 }
 
@@ -56,7 +56,7 @@ $certificatePaymentUrl = 'pay_redirect.php?type=certificate&id=' . (int) $enroll
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
         <?php elseif ($certificateAmount > 0): ?>
             <a class="button primary" href="<?= e($certificatePaymentUrl) ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
-            <p><small>Certificate Payment ID: <?= e($certificateAppId) ?> | Secure payment powered by Razorpay via Elldy.</small></p>
+            <p><small>Certificate Payment ID: <?= e($certificateAppId) ?> | Secure payment powered by Razorpay.</small></p>
         <?php else: ?>
             <p>Your certificate charge is included. Once your program payment status is paid, the certificate becomes available automatically.</p>
         <?php endif; ?>

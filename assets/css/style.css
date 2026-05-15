@@ -1007,6 +1007,34 @@ tbody tr:hover {
     display: block;
 }
 
+.material-outline {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.material-outline article {
+    display: grid;
+    gap: 5px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.material-outline span {
+    color: var(--brand-dark);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.material-outline strong,
+.material-outline small {
+    display: block;
+}
+
 .empty-state {
     padding: 34px;
 }
@@ -1188,6 +1216,41 @@ tbody tr:hover {
 
     .enroll-intro {
         position: static;
+    }
+
+    .enroll-layout {
+        gap: 20px;
+    }
+
+    .enroll-intro,
+    .form-card {
+        width: 100%;
+        padding: 22px;
+    }
+
+    .enroll-intro h1 {
+        font-size: clamp(28px, 8vw, 38px);
+    }
+
+    .enroll-intro > p {
+        font-size: 16px;
+        line-height: 1.7;
+    }
+
+    .enroll-layout .stats-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin: 20px 0;
+    }
+
+    .enroll-layout .stats-row span {
+        min-width: 0;
+    }
+
+    .registration-preview,
+    .expert-card.compact {
+        padding: 18px;
     }
 
     .certificate-preview {

@@ -25,6 +25,7 @@ $admin = require_admin();
         <a href="materials.php">Materials</a>
         <a href="enrollments.php">Enrollments</a>
         <a href="certificates.php">Certificates</a>
+        <a href="razorpay.php">Razorpay</a>
         <a href="whatsapp.php">WhatsApp</a>
         <a href="../index.php">Website</a>
         <a href="logout.php">Logout</a>

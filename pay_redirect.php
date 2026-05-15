@@ -21,10 +21,7 @@ if ($type === 'program') {
         exit('Payment not found.');
     }
 
-    $update = db()->prepare('UPDATE enrollments SET status = ?, payment_requested_at = NOW() WHERE id = ? AND status != ?');
-    $update->execute(['payment_pending', (int) $row['id'], 'paid']);
-
-    redirect(elldy_payment_url('EA-PROGRAM-' . (int) $row['id'], $row['fee']));
+    redirect('razorpay_checkout.php?type=program&id=' . (int) $row['id']);
 }
 
 if ($type === 'certificate') {
@@ -54,7 +51,7 @@ if ($type === 'certificate') {
         ((float) $row['certification_fee']) > 0 ? 'payment_pending' : 'requested',
     ]);
 
-    redirect(elldy_payment_url('EA-CERT-' . (int) $row['id'], $row['certification_fee']));
+    redirect('razorpay_checkout.php?type=certificate&id=' . (int) $row['id']);
 }
 
 http_response_code(404);

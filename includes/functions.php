@@ -47,9 +47,100 @@ function site_url(string $path = ''): string
     return $scheme . '://' . $host . public_url($path);
 }
 
-function payment_callback_secret(): string
+function ensure_razorpay_settings_table(): void
 {
-    return (string) getenv('ELLDY_PAYMENT_CALLBACK_SECRET');
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS razorpay_settings (
+            id TINYINT UNSIGNED PRIMARY KEY,
+            key_id VARCHAR(120) NULL,
+            key_secret TEXT NULL,
+            currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )"
+    );
+
+    $stmt = db()->prepare(
+        "INSERT INTO razorpay_settings (id, key_id, key_secret, currency)
+         VALUES (1, '', '', 'INR')
+         ON DUPLICATE KEY UPDATE id = id"
+    );
+    $stmt->execute();
+}
+
+function razorpay_settings(): array
+{
+    ensure_razorpay_settings_table();
+    $settings = db()->query('SELECT * FROM razorpay_settings WHERE id = 1')->fetch() ?: [];
+
+    return [
+        'key_id' => trim((string) ($settings['key_id'] ?? '')),
+        'key_secret' => trim((string) ($settings['key_secret'] ?? '')),
+        'currency' => trim((string) ($settings['currency'] ?? 'INR')) ?: 'INR',
+    ];
+}
+
+function save_razorpay_settings(array $data): void
+{
+    ensure_razorpay_settings_table();
+    $stmt = db()->prepare(
+        "UPDATE razorpay_settings
+         SET key_id = ?, key_secret = ?, currency = ?
+         WHERE id = 1"
+    );
+    $stmt->execute([
+        trim((string) ($data['key_id'] ?? '')),
+        trim((string) ($data['key_secret'] ?? '')),
+        trim((string) ($data['currency'] ?? 'INR')) ?: 'INR',
+    ]);
+}
+
+function create_razorpay_order(int $amountRupees, string $receipt): array
+{
+    $settings = razorpay_settings();
+
+    if ($settings['key_id'] === '' || $settings['key_secret'] === '') {
+        throw new RuntimeException('Razorpay keys are not configured.');
+    }
+
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('PHP cURL extension is not enabled on the server.');
+    }
+
+    $payload = json_encode([
+        'amount' => $amountRupees * 100,
+        'currency' => $settings['currency'],
+        'receipt' => $receipt,
+    ]);
+
+    $ch = curl_init('https://api.razorpay.com/v1/orders');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_USERPWD => $settings['key_id'] . ':' . $settings['key_secret'],
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_TIMEOUT => 20,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    $decoded = json_decode((string) $response, true);
+    if ($status < 200 || $status >= 300 || empty($decoded['id'])) {
+        throw new RuntimeException($decoded['error']['description'] ?? $error ?: 'Unable to create Razorpay order.');
+    }
+
+    return $decoded;
+}
+
+function verify_razorpay_signature(string $orderId, string $paymentId, string $signature): bool
+{
+    $settings = razorpay_settings();
+    $generated = hash_hmac('sha256', $orderId . '|' . $paymentId, $settings['key_secret']);
+
+    return hash_equals($generated, $signature);
 }
 
 function slugify(string $value): string
@@ -280,7 +371,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
     $stmt->execute([$enrollmentId]);
     $certificate = $stmt->fetch();
 
-    if (!$certificate || !in_array($certificate['enrollment_status'], ['paid', 'completed'], true)) {
+    if (!$certificate) {
         return $certificate ?: null;
     }
 
@@ -296,13 +387,6 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
 function money(float|int|string $value): string
 {
     return '₹' . number_format((float) $value, 2);
-}
-
-function elldy_payment_url(string $appId, float|int|string $amount): string
-{
-    $integerAmount = (int) $amount;
-
-    return 'https://elldy.com/pay/internship/?app_id=' . rawurlencode($appId) . '&amount=' . rawurlencode((string) $integerAmount);
 }
 
 function csrf_token(): string
