@@ -6,10 +6,31 @@ ensure_course_detail_columns();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    $action = $_POST['action'] ?? 'update';
+
+    if ($action === 'send_reminder') {
+        $stmt = db()->prepare(
+            "SELECT e.id, u.name, u.phone, c.title
+             FROM enrollments e
+             JOIN users u ON u.id = e.user_id
+             JOIN courses c ON c.id = e.course_id
+             WHERE e.id = ? AND e.status != 'cancelled'"
+        );
+        $stmt->execute([(int) $_POST['id']]);
+        $reminderRow = $stmt->fetch();
+
+        if ($reminderRow && send_class_reminder_whatsapp($reminderRow)) {
+            flash('success', 'Today class reminder sent.');
+        } else {
+            flash('error', $_SESSION['whatsapp_send_error'] ?? 'Unable to send class reminder.');
+        }
+
+        redirect('enrollments.php');
+    }
+
     $status = $_POST['status'] ?? 'free_access';
-    $dailyRemindersEnabled = isset($_POST['daily_reminders_enabled']) && $status !== 'completed' ? 1 : 0;
-    $stmt = db()->prepare('UPDATE enrollments SET status = ?, daily_reminders_enabled = ? WHERE id = ?');
-    $stmt->execute([$status, $dailyRemindersEnabled, (int) $_POST['id']]);
+    $stmt = db()->prepare('UPDATE enrollments SET status = ? WHERE id = ?');
+    $stmt->execute([$status, (int) $_POST['id']]);
 
     if (in_array($status, ['paid', 'completed'], true)) {
         $request = db()->prepare(
@@ -28,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $rows = db()->query(
-    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.learning_plan, c.completion_benefits
+    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee
      FROM enrollments e
      JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
@@ -43,29 +64,21 @@ $rows = db()->query(
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Trainee</th><th>Program</th><th>BI Learning Plan</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Daily Alerts</th><th>Action</th></tr>
+                <tr><th>Trainee</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($rows as $row): ?>
                     <tr>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
-                        <td class="detail-cell">
-                            <strong>Trainee details</strong>
-                            <p><?= nl2br(e($row['student_background'] ?: '-')) ?></p>
-                            <strong>What they will learn</strong>
-                            <?= detail_points($row['learning_plan']) ?>
-                            <strong>After completion</strong>
-                            <?= detail_points($row['completion_benefits']) ?>
-                        </td>
                         <td><?= money($row['fee']) ?></td>
                         <td><?= e($row['payment_note'] ?: '-') ?></td>
                         <td><?= e(enrollment_badge($row['status'])) ?></td>
-                        <td><?= $row['daily_reminders_enabled'] ? 'On' : 'Off' ?></td>
                         <td>
                             <form method="post" class="inline-form">
                                 <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                 <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                <input type="hidden" name="action" value="update">
                                 <select name="status">
                                     <?php foreach (['free_access', 'payment_pending', 'paid', 'completed', 'cancelled'] as $status): ?>
                                         <option value="<?= e($status) ?>" <?= $row['status'] === $status ? 'selected' : '' ?>>
@@ -73,12 +86,16 @@ $rows = db()->query(
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <label class="check compact-check">
-                                    <input type="checkbox" name="daily_reminders_enabled" <?= $row['daily_reminders_enabled'] ? 'checked' : '' ?>>
-                                    Daily alerts
-                                </label>
                                 <button class="button tiny" type="submit">Save</button>
                             </form>
+                            <?php if ($row['status'] !== 'cancelled' && $row['status'] !== 'completed'): ?>
+                                <form method="post" class="inline-action-form">
+                                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                                    <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                    <input type="hidden" name="action" value="send_reminder">
+                                    <button class="button tiny" type="submit">Send Today Reminder</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
