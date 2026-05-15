@@ -375,6 +375,13 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
         return $certificate ?: null;
     }
 
+    $downloadUrl = public_url('download_certificate.php?enrollment_id=' . $enrollmentId);
+    if (($certificate['status'] ?? '') === 'issued' && ($certificate['certificate_url'] ?? '') !== $downloadUrl) {
+        $urlUpdate = db()->prepare('UPDATE certificate_requests SET certificate_url = ? WHERE enrollment_id = ?');
+        $urlUpdate->execute([$downloadUrl, $enrollmentId]);
+        $certificate['certificate_url'] = $downloadUrl;
+    }
+
     $expectedIssuedPath = __DIR__ . '/../assets/certificates/issued/certificate-' . $enrollmentId . '.svg';
 
     if (
@@ -985,6 +992,12 @@ function ensure_course_detail_columns(): void
             'https://meet.google.com/business-cases-demo',
         ],
     ];
+
+    $courseCount = (int) db()->query('SELECT COUNT(*) FROM courses')->fetchColumn();
+
+    if ($courseCount > 0) {
+        return;
+    }
 
     $update = db()->prepare(
         "UPDATE courses

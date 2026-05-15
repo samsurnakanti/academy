@@ -16,6 +16,15 @@ $stmt->execute([$user['id']]);
 $enrollments = $stmt->fetchAll();
 
 foreach ($enrollments as &$enrollmentRow) {
+    if (($enrollmentRow['certificate_status'] ?? '') === 'issued') {
+        $downloadUrl = public_url('download_certificate.php?enrollment_id=' . (int) $enrollmentRow['id']);
+        if (($enrollmentRow['certificate_url'] ?? '') !== $downloadUrl) {
+            $urlUpdate = db()->prepare('UPDATE certificate_requests SET certificate_url = ? WHERE enrollment_id = ?');
+            $urlUpdate->execute([$downloadUrl, (int) $enrollmentRow['id']]);
+            $enrollmentRow['certificate_url'] = $downloadUrl;
+        }
+    }
+
     if (in_array($enrollmentRow['status'], ['paid', 'completed'], true)) {
         if (!$enrollmentRow['certificate_status']) {
             $request = db()->prepare(
