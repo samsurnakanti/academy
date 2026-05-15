@@ -1,0 +1,14 @@
+RewriteEngine On
+
+# Keep real files and folders working normally.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Public SEO-friendly routes.
+RewriteRule ^programs/?$ courses.php [L,QSA]
+RewriteRule ^program/([a-z0-9-]+)/?$ course.php?slug=$1 [L,QSA]
+RewriteRule ^certification/?$ certification.php [L,QSA]
+RewriteRule ^about/?$ about.php [L,QSA]
+RewriteRule ^contact/?$ contact.php [L,QSA]
+RewriteRule ^terms/?$ terms.php [L,QSA]
+RewriteRule ^privacy/?$ privacy.php [L,QSA]
