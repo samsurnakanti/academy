@@ -39,6 +39,15 @@ function public_url(string $path = ''): string
     return ($base === '' ? '' : $base) . '/' . $path;
 }
 
+function asset_url(string $path): string
+{
+    $fullPath = __DIR__ . '/../' . ltrim($path, '/');
+    $version = is_file($fullPath) ? (string) filemtime($fullPath) : '';
+    $url = public_url($path);
+
+    return $version !== '' ? $url . '?v=' . rawurlencode($version) : $url;
+}
+
 function site_url(string $path = ''): string
 {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
@@ -65,6 +74,248 @@ function ensure_razorpay_settings_table(): void
          ON DUPLICATE KEY UPDATE id = id"
     );
     $stmt->execute();
+}
+
+function ensure_s3_settings_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS s3_settings (
+            id TINYINT UNSIGNED PRIMARY KEY,
+            access_key_id VARCHAR(160) NULL,
+            secret_access_key TEXT NULL,
+            region VARCHAR(80) NOT NULL DEFAULT 'ap-south-1',
+            bucket_name VARCHAR(190) NULL,
+            upload_prefix VARCHAR(190) NOT NULL DEFAULT 'course-videos',
+            public_base_url VARCHAR(255) NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )"
+    );
+
+    $stmt = db()->prepare(
+        "INSERT INTO s3_settings (id, access_key_id, secret_access_key, region, bucket_name, upload_prefix, public_base_url)
+         VALUES (1, '', '', 'ap-south-1', '', 'course-videos', '')
+         ON DUPLICATE KEY UPDATE id = id"
+    );
+    $stmt->execute();
+}
+
+function s3_settings(): array
+{
+    ensure_s3_settings_table();
+    $settings = db()->query('SELECT * FROM s3_settings WHERE id = 1')->fetch() ?: [];
+
+    return [
+        'access_key_id' => trim((string) ($settings['access_key_id'] ?? '')),
+        'secret_access_key' => trim((string) ($settings['secret_access_key'] ?? '')),
+        'region' => trim((string) ($settings['region'] ?? 'ap-south-1')) ?: 'ap-south-1',
+        'bucket_name' => trim((string) ($settings['bucket_name'] ?? '')),
+        'upload_prefix' => trim((string) ($settings['upload_prefix'] ?? 'course-videos')) ?: 'course-videos',
+        'public_base_url' => rtrim(trim((string) ($settings['public_base_url'] ?? '')), '/'),
+    ];
+}
+
+function save_s3_settings(array $data): void
+{
+    ensure_s3_settings_table();
+    $stmt = db()->prepare(
+        "UPDATE s3_settings
+         SET access_key_id = ?, secret_access_key = ?, region = ?, bucket_name = ?, upload_prefix = ?, public_base_url = ?
+         WHERE id = 1"
+    );
+    $stmt->execute([
+        trim((string) ($data['access_key_id'] ?? '')),
+        trim((string) ($data['secret_access_key'] ?? '')),
+        trim((string) ($data['region'] ?? 'ap-south-1')) ?: 'ap-south-1',
+        trim((string) ($data['bucket_name'] ?? '')),
+        trim((string) ($data['upload_prefix'] ?? 'course-videos')) ?: 'course-videos',
+        rtrim(trim((string) ($data['public_base_url'] ?? '')), '/'),
+    ]);
+}
+
+function s3_hmac(string $key, string $data): string
+{
+    return hash_hmac('sha256', $data, $key, true);
+}
+
+function s3_signing_key(string $secret, string $date, string $region, string $service): string
+{
+    $dateKey = s3_hmac('AWS4' . $secret, $date);
+    $regionKey = s3_hmac($dateKey, $region);
+    $serviceKey = s3_hmac($regionKey, $service);
+
+    return s3_hmac($serviceKey, 'aws4_request');
+}
+
+function s3_object_url(array $settings, string $objectKey): string
+{
+    if ($settings['public_base_url'] !== '') {
+        return $settings['public_base_url'] . '/' . implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+    }
+
+    return 'https://' . rawurlencode($settings['bucket_name']) . '.s3.' . rawurlencode($settings['region']) . '.amazonaws.com/' .
+        implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+}
+
+function s3_object_key_from_url(string $url): ?string
+{
+    $settings = s3_settings();
+    $parts = parse_url($url);
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    $path = ltrim((string) ($parts['path'] ?? ''), '/');
+    $expectedHost = strtolower($settings['bucket_name'] . '.s3.' . $settings['region'] . '.amazonaws.com');
+
+    if ($path === '' || $host !== $expectedHost) {
+        return null;
+    }
+
+    return rawurldecode($path);
+}
+
+function s3_presigned_get_url(string $objectKey, int $expires = 3600): string
+{
+    $settings = s3_settings();
+
+    if ($settings['access_key_id'] === '' || $settings['secret_access_key'] === '' || $settings['bucket_name'] === '') {
+        return s3_object_url($settings, $objectKey);
+    }
+
+    $amzDate = gmdate('Ymd\THis\Z');
+    $shortDate = gmdate('Ymd');
+    $host = $settings['bucket_name'] . '.s3.' . $settings['region'] . '.amazonaws.com';
+    $canonicalUri = '/' . implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+    $credentialScope = $shortDate . '/' . $settings['region'] . '/s3/aws4_request';
+    $query = [
+        'X-Amz-Algorithm' => 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential' => $settings['access_key_id'] . '/' . $credentialScope,
+        'X-Amz-Date' => $amzDate,
+        'X-Amz-Expires' => (string) max(60, min($expires, 604800)),
+        'X-Amz-SignedHeaders' => 'host',
+    ];
+    ksort($query);
+    $canonicalQuery = http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+    $canonicalRequest = "GET\n{$canonicalUri}\n{$canonicalQuery}\nhost:{$host}\n\nhost\nUNSIGNED-PAYLOAD";
+    $stringToSign = "AWS4-HMAC-SHA256\n{$amzDate}\n{$credentialScope}\n" . hash('sha256', $canonicalRequest);
+    $signature = hash_hmac('sha256', $stringToSign, s3_signing_key($settings['secret_access_key'], $shortDate, $settings['region'], 's3'));
+
+    return 'https://' . $host . $canonicalUri . '?' . $canonicalQuery . '&X-Amz-Signature=' . $signature;
+}
+
+function s3_new_video_object_key(string $originalName): string
+{
+    $settings = s3_settings();
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    $safeExtension = preg_match('/^[a-z0-9]{2,8}$/', $extension) ? '.' . $extension : '';
+
+    return trim($settings['upload_prefix'], '/') . '/' . date('Y/m') . '/' . bin2hex(random_bytes(12)) . $safeExtension;
+}
+
+function s3_presigned_put_url(string $objectKey, string $contentType, int $expires = 3600): string
+{
+    $settings = s3_settings();
+    $amzDate = gmdate('Ymd\THis\Z');
+    $shortDate = gmdate('Ymd');
+    $host = $settings['bucket_name'] . '.s3.' . $settings['region'] . '.amazonaws.com';
+    $canonicalUri = '/' . implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+    $credentialScope = $shortDate . '/' . $settings['region'] . '/s3/aws4_request';
+    $query = [
+        'X-Amz-Algorithm' => 'AWS4-HMAC-SHA256',
+        'X-Amz-Credential' => $settings['access_key_id'] . '/' . $credentialScope,
+        'X-Amz-Date' => $amzDate,
+        'X-Amz-Expires' => (string) max(60, min($expires, 604800)),
+        'X-Amz-SignedHeaders' => 'content-type;host',
+    ];
+    ksort($query);
+    $canonicalQuery = http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+    $canonicalHeaders = 'content-type:' . $contentType . "\n" . 'host:' . $host . "\n";
+    $canonicalRequest = "PUT\n{$canonicalUri}\n{$canonicalQuery}\n{$canonicalHeaders}\ncontent-type;host\nUNSIGNED-PAYLOAD";
+    $stringToSign = "AWS4-HMAC-SHA256\n{$amzDate}\n{$credentialScope}\n" . hash('sha256', $canonicalRequest);
+    $signature = hash_hmac('sha256', $stringToSign, s3_signing_key($settings['secret_access_key'], $shortDate, $settings['region'], 's3'));
+
+    return 'https://' . $host . $canonicalUri . '?' . $canonicalQuery . '&X-Amz-Signature=' . $signature;
+}
+
+function playback_video_url(string $url): string
+{
+    $objectKey = s3_object_key_from_url($url);
+
+    return $objectKey !== null ? s3_presigned_get_url($objectKey) : $url;
+}
+
+function upload_video_to_s3(array $file): string
+{
+    $settings = s3_settings();
+
+    if ($settings['access_key_id'] === '' || $settings['secret_access_key'] === '' || $settings['bucket_name'] === '') {
+        throw new RuntimeException('S3 settings are incomplete. Add AWS credentials, region, and bucket first.');
+    }
+
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('PHP cURL extension is not enabled on the server.');
+    }
+
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Video upload failed before reaching S3.');
+    }
+
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+    if (!is_uploaded_file($tmpName)) {
+        throw new RuntimeException('Uploaded video could not be verified.');
+    }
+
+    $mime = mime_content_type($tmpName) ?: '';
+    if (!str_starts_with($mime, 'video/')) {
+        throw new RuntimeException('Please upload a valid video file.');
+    }
+
+    $objectKey = s3_new_video_object_key((string) ($file['name'] ?? 'video'));
+    $payloadHash = 'UNSIGNED-PAYLOAD';
+    $amzDate = gmdate('Ymd\THis\Z');
+    $shortDate = gmdate('Ymd');
+    $host = $settings['bucket_name'] . '.s3.' . $settings['region'] . '.amazonaws.com';
+    $canonicalUri = '/' . implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+    $canonicalHeaders = 'content-type:' . $mime . "\n" .
+        'host:' . $host . "\n" .
+        'x-amz-content-sha256:' . $payloadHash . "\n" .
+        'x-amz-date:' . $amzDate . "\n";
+    $signedHeaders = 'content-type;host;x-amz-content-sha256;x-amz-date';
+    $canonicalRequest = "PUT\n{$canonicalUri}\n\n{$canonicalHeaders}\n{$signedHeaders}\n{$payloadHash}";
+    $credentialScope = $shortDate . '/' . $settings['region'] . '/s3/aws4_request';
+    $stringToSign = "AWS4-HMAC-SHA256\n{$amzDate}\n{$credentialScope}\n" . hash('sha256', $canonicalRequest);
+    $signature = hash_hmac('sha256', $stringToSign, s3_signing_key($settings['secret_access_key'], $shortDate, $settings['region'], 's3'));
+    $authorization = 'AWS4-HMAC-SHA256 Credential=' . $settings['access_key_id'] . '/' . $credentialScope .
+        ', SignedHeaders=' . $signedHeaders . ', Signature=' . $signature;
+
+    $stream = fopen($tmpName, 'rb');
+    if ($stream === false) {
+        throw new RuntimeException('Uploaded video could not be opened for transfer.');
+    }
+
+    $ch = curl_init('https://' . $host . $canonicalUri);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST => 'PUT',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: ' . $authorization,
+            'Content-Type: ' . $mime,
+            'x-amz-content-sha256: ' . $payloadHash,
+            'x-amz-date: ' . $amzDate,
+        ],
+        CURLOPT_UPLOAD => true,
+        CURLOPT_INFILE => $stream,
+        CURLOPT_INFILESIZE => (int) ($file['size'] ?? filesize($tmpName)),
+        CURLOPT_TIMEOUT => 300,
+    ]);
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    fclose($stream);
+
+    if ($status < 200 || $status >= 300) {
+        throw new RuntimeException('S3 upload failed: ' . ($error ?: strip_tags((string) $response) ?: 'unknown AWS error'));
+    }
+
+    return s3_object_url($settings, $objectKey);
 }
 
 function razorpay_settings(): array
@@ -209,6 +460,32 @@ function video_embed_url(string $url): string
     }
 
     return $url;
+}
+
+function is_direct_video_url(string $url): bool
+{
+    $path = strtolower((string) (parse_url($url, PHP_URL_PATH) ?? ''));
+    return (bool) preg_match('/\.(mp4|webm|ogg|mov|m4v)$/', $path);
+}
+
+function is_embed_video_provider_url(string $url): bool
+{
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    return str_contains($host, 'youtube.com') ||
+        str_contains($host, 'youtu.be') ||
+        str_contains($host, 'vimeo.com') ||
+        str_contains($host, 'drive.google.com');
+}
+
+function should_use_native_video_player(string $url): bool
+{
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    return is_direct_video_url($url) ||
+        str_contains($host, '.s3.') ||
+        str_ends_with($host, '.amazonaws.com') ||
+        (!is_embed_video_provider_url($url) && $url !== '');
 }
 
 function ensure_material_columns(): void

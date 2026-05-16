@@ -58,3 +58,44 @@ if (siteHeader && menuToggle && mainNav) {
         });
     });
 }
+
+document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
+    const video = frame.querySelector('.academy-video');
+    const toggle = frame.querySelector('.video-toggle');
+
+    if (!video || !toggle) {
+        return;
+    }
+
+    const syncVideoState = () => {
+        const isPlaying = !video.paused && !video.ended;
+        frame.classList.toggle('is-playing', isPlaying);
+        toggle.setAttribute('aria-label', isPlaying ? 'Pause video' : 'Play video');
+        const icon = toggle.querySelector('.video-toggle-icon');
+        if (icon) {
+            icon.classList.toggle('play', !isPlaying);
+            icon.classList.toggle('pause', isPlaying);
+        }
+    };
+
+    toggle.addEventListener('click', () => {
+        if (video.paused || video.ended) {
+            video.play();
+        } else {
+            video.pause();
+        }
+    });
+
+    video.addEventListener('click', () => {
+        if (video.paused || video.ended) {
+            video.play();
+        } else {
+            video.pause();
+        }
+    });
+
+    video.addEventListener('play', syncVideoState);
+    video.addEventListener('pause', syncVideoState);
+    video.addEventListener('ended', syncVideoState);
+    syncVideoState();
+});

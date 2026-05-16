@@ -12,7 +12,7 @@ $admin = current_admin();
         <link rel="canonical" href="<?= e($canonicalUrl) ?>">
     <?php endif; ?>
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
 <body>
 <header class="site-header">

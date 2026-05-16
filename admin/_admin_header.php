@@ -9,7 +9,7 @@ $admin = require_admin();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Admin') ?> | Elldy Academy</title>
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
 <body>
 <header class="site-header admin-header">
@@ -25,6 +25,7 @@ $admin = require_admin();
         <a href="materials.php">Materials</a>
         <a href="enrollments.php">Enrollments</a>
         <a href="certificates.php">Certificates</a>
+        <a href="s3.php">S3</a>
         <a href="razorpay.php">Razorpay</a>
         <a href="whatsapp.php">WhatsApp</a>
         <a href="../index.php">Website</a>

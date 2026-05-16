@@ -22,6 +22,6 @@
             <p><span>Email</span><a href="mailto:Info@arklytics.in">Info@arklytics.in</a></p>
         </div>
     </footer>
-    <script src="<?= e(public_url('assets/js/app.js')) ?>"></script>
+    <script src="<?= e(asset_url('assets/js/app.js')) ?>"></script>
 </body>
 </html>

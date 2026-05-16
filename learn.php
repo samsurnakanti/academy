@@ -79,12 +79,23 @@ require __DIR__ . '/includes/header.php';
                 <a class="button primary" href="payment.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Continue Payment</a>
             </div>
         <?php elseif ($activeMaterial && !empty($activeMaterial['file_url'])): ?>
+            <?php $playbackUrl = playback_video_url($activeMaterial['file_url']); ?>
             <p class="eyebrow">Now viewing</p>
             <h2><?= e($activeMaterial['title']) ?></h2>
             <p><?= e($activeMaterial['description']) ?></p>
             <?php if (($activeMaterial['material_type'] ?? 'video') === 'video'): ?>
-                <div class="video-frame">
-                    <iframe src="<?= e(video_embed_url($activeMaterial['file_url'])) ?>" allowfullscreen loading="lazy"></iframe>
+                <div class="video-frame <?= should_use_native_video_player($activeMaterial['file_url']) ? 'native-player' : '' ?>">
+                    <?php if (should_use_native_video_player($activeMaterial['file_url'])): ?>
+                        <video class="academy-video" controls controlsList="nodownload noremoteplayback" disablePictureInPicture preload="metadata" playsinline oncontextmenu="return false;">
+                            <source src="<?= e($playbackUrl) ?>">
+                            Your browser does not support embedded video playback.
+                        </video>
+                        <button class="video-toggle" type="button" aria-label="Play video">
+                            <span class="video-toggle-icon play"></span>
+                        </button>
+                    <?php else: ?>
+                        <iframe src="<?= e(video_embed_url($activeMaterial['file_url'])) ?>" allowfullscreen loading="lazy"></iframe>
+                    <?php endif; ?>
                 </div>
             <?php else: ?>
                 <div class="empty-state">
@@ -92,7 +103,9 @@ require __DIR__ . '/includes/header.php';
                     <p>Open this link in a new tab when you are ready.</p>
                 </div>
             <?php endif; ?>
-            <a class="button small" href="<?= e($activeMaterial['file_url']) ?>" target="_blank" rel="noopener">Open original link</a>
+            <?php if (!should_use_native_video_player($activeMaterial['file_url'])): ?>
+                <a class="button small" href="<?= e($activeMaterial['file_url']) ?>" target="_blank" rel="noopener">Open original link</a>
+            <?php endif; ?>
         <?php else: ?>
             <div class="empty-state">
                 <h2>No video selected</h2>

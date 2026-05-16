@@ -102,6 +102,17 @@ CREATE TABLE IF NOT EXISTS razorpay_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS s3_settings (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    access_key_id VARCHAR(160) NULL,
+    secret_access_key TEXT NULL,
+    region VARCHAR(80) NOT NULL DEFAULT 'ap-south-1',
+    bucket_name VARCHAR(190) NULL,
+    upload_prefix VARCHAR(190) NOT NULL DEFAULT 'course-videos',
+    public_base_url VARCHAR(255) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS certificate_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     enrollment_id INT UNSIGNED NOT NULL,
