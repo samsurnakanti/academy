@@ -304,6 +304,89 @@ function svg_escape(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_XML1, 'UTF-8');
 }
 
+function pdf_escape(string $value): string
+{
+    return str_replace(['\\', '(', ')'], ['\\\\', '\(', '\)'], $value);
+}
+
+function pdf_text(float $x, float $y, string $text, int $size, string $font = 'F1'): string
+{
+    return "BT /{$font} {$size} Tf {$x} {$y} Td (" . pdf_escape($text) . ") Tj ET\n";
+}
+
+function centered_pdf_text(float $centerX, float $y, string $text, int $size, string $font = 'F1'): string
+{
+    $estimatedWidth = strlen($text) * $size * 0.48;
+    return pdf_text(round($centerX - ($estimatedWidth / 2), 2), $y, $text, $size, $font);
+}
+
+function build_certificate_pdf(array $row, string $certificateCode): string
+{
+    $name = trim((string) $row['name']);
+    $title = trim((string) $row['title']);
+    $completionDate = date('F j, Y');
+    $safeTitle = strlen($title) > 58 ? substr($title, 0, 55) . '...' : $title;
+
+    $content = '';
+    $content .= "q\n";
+    $content .= "0.97 0.98 1 rg 0 0 842 595 re f\n";
+    $content .= "0.04 0.16 0.34 RG 4 w 24 24 794 547 re S\n";
+    $content .= "0.81 0.65 0.34 RG 1.5 w 38 38 766 519 re S\n";
+    $content .= "0.04 0.16 0.34 rg 56 506 730 1 re f\n";
+    $content .= "0.81 0.65 0.34 rg 56 495 730 3 re f\n";
+    $content .= "0.04 0.16 0.34 rg\n";
+    $content .= centered_pdf_text(421, 525, 'ELLDY ACADEMY', 18, 'F2');
+    $content .= centered_pdf_text(421, 489, 'CERTIFICATE OF COMPLETION', 28, 'F2');
+    $content .= "0.38 0.42 0.5 rg\n";
+    $content .= centered_pdf_text(421, 458, 'Issued by Arklytics Solutions and Innovations | Elldy Platform', 12);
+    $content .= "0.15 0.18 0.24 rg\n";
+    $content .= centered_pdf_text(421, 404, 'This certificate is proudly presented to', 15);
+    $content .= "0.04 0.16 0.34 rg\n";
+    $content .= centered_pdf_text(421, 360, $name, 30, 'F2');
+    $content .= "0.81 0.65 0.34 RG 1.2 w 180 346 m 662 346 l S\n";
+    $content .= "0.15 0.18 0.24 rg\n";
+    $content .= centered_pdf_text(421, 312, 'for successfully completing the program', 15);
+    $content .= centered_pdf_text(421, 279, $safeTitle, 21, 'F2');
+    $content .= "0.38 0.42 0.5 rg\n";
+    $content .= centered_pdf_text(421, 243, 'with demonstrated learning in analytics, dashboards, reporting, and business intelligence.', 13);
+    $content .= "0.04 0.16 0.34 rg\n";
+    $content .= pdf_text(72, 126, 'Completion Date', 11, 'F2');
+    $content .= pdf_text(72, 105, $completionDate, 14);
+    $content .= pdf_text(326, 126, 'Certificate ID', 11, 'F2');
+    $content .= pdf_text(326, 105, $certificateCode, 14);
+    $content .= pdf_text(612, 126, 'Authorized Credential', 11, 'F2');
+    $content .= pdf_text(612, 105, 'Arklytics + Elldy', 14);
+    $content .= "0.81 0.65 0.34 rg 649 173 62 62 re f\n";
+    $content .= "1 1 1 rg\n";
+    $content .= centered_pdf_text(680, 203, 'BI', 20, 'F2');
+    $content .= "Q\n";
+
+    $objects = [];
+    $objects[] = '<< /Type /Catalog /Pages 2 0 R >>';
+    $objects[] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+    $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>';
+    $objects[] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
+    $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    foreach ($objects as $index => $object) {
+        $offsets[] = strlen($pdf);
+        $objectNumber = $index + 1;
+        $pdf .= "{$objectNumber} 0 obj\n{$object}\nendobj\n";
+    }
+    $xrefOffset = strlen($pdf);
+    $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+    $pdf .= "0000000000 65535 f \n";
+    foreach (array_slice($offsets, 1) as $offset) {
+        $pdf .= str_pad((string) $offset, 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+    }
+    $pdf .= "trailer\n<< /Size " . (count($objects) + 1) . " /Root 1 0 R >>\nstartxref\n{$xrefOffset}\n%%EOF";
+
+    return $pdf;
+}
+
 function issue_certificate_for_enrollment(array $row): ?string
 {
     ensure_certificate_requests_table();
@@ -313,51 +396,14 @@ function issue_certificate_for_enrollment(array $row): ?string
         $certificateCode = certificate_code_for_enrollment((int) $row['enrollment_id']);
     }
 
-    $templatePath = __DIR__ . '/../assets/certificates/certificate-template.png';
-    if (!is_file($templatePath)) {
-        return null;
-    }
-
     $issuedDir = __DIR__ . '/../assets/certificates/issued';
     if (!is_dir($issuedDir)) {
         mkdir($issuedDir, 0775, true);
     }
 
-    $fileName = 'certificate-' . (int) $row['enrollment_id'] . '.svg';
+    $fileName = 'certificate-' . (int) $row['enrollment_id'] . '.pdf';
     $absolutePath = $issuedDir . '/' . $fileName;
-    $templateData = base64_encode((string) file_get_contents($templatePath));
-    $completionDate = date('F j Y');
-    $name = svg_escape((string) $row['name']);
-    $title = trim((string) $row['title']);
-    $certificateCodeSvg = svg_escape($certificateCode);
-    $safeTitle = svg_escape($title);
-    $descriptionLines = [
-        'has successfully completed the',
-        $safeTitle,
-        'demonstrating proficiency in Data Analysis,',
-        'Data Interpretation, Data Visualization, and Business Insights.',
-    ];
-    $descriptionSvg = '';
-    $lineY = 756;
-    foreach ($descriptionLines as $index => $line) {
-        $fontWeight = $index === 1 ? '700' : '400';
-        $fontSize = $index === 1 ? 34 : 30;
-        $descriptionSvg .= '<text x="1000" y="' . $lineY . '" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="' . $fontSize . '" font-weight="' . $fontWeight . '">' . $line . '</text>';
-        $lineY += 42;
-    }
-
-    $svg = <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1414" viewBox="0 0 2000 1414">
-  <image href="data:image/png;base64,{$templateData}" width="2000" height="1414"/>
-  <text x="1000" y="625" text-anchor="middle" fill="#071a55" font-family="Georgia, 'Times New Roman', serif" font-size="76" font-weight="700" letter-spacing="1">{$name}</text>
-  <line x1="378" y1="658" x2="1622" y2="658" stroke="#d8b16a" stroke-width="4"/>
-  {$descriptionSvg}
-  <text x="650" y="950" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="27" font-weight="700">Completion Date : {$completionDate}</text>
-  <text x="1315" y="950" text-anchor="middle" fill="#071a55" font-family="Arial, sans-serif" font-size="27" font-weight="700">Certificate ID: {$certificateCodeSvg}</text>
-</svg>
-SVG;
-
-    file_put_contents($absolutePath, $svg);
+    file_put_contents($absolutePath, build_certificate_pdf($row, $certificateCode));
     $certificateUrl = public_url('download_certificate.php?enrollment_id=' . (int) $row['enrollment_id']);
 
     $stmt = db()->prepare(
@@ -396,7 +442,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
         $certificate['certificate_url'] = $downloadUrl;
     }
 
-    $expectedIssuedPath = __DIR__ . '/../assets/certificates/issued/certificate-' . $enrollmentId . '.svg';
+    $expectedIssuedPath = __DIR__ . '/../assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
 
     if (
         $certificate['status'] !== 'issued'

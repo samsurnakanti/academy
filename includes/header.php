@@ -16,13 +16,18 @@ $admin = current_admin();
 </head>
 <body>
 <header class="site-header">
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
     <a class="brand" href="<?= e(public_url()) ?>">
         <span class="brand-lockup">
             <img class="brand-logo" src="<?= e(public_url('assets/elldy-logo.png')) ?>" alt="Elldy">
             <span class="brand-label">Academy</span>
         </span>
     </a>
-    <nav class="main-nav">
+    <nav class="main-nav" id="main-navigation">
         <a href="<?= e(public_url()) ?>">Home</a>
         <a href="<?= e(public_url('programs')) ?>">Programs</a>
         <a href="<?= e(public_url('certification')) ?>">Certification</a>

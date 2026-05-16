@@ -20,7 +20,7 @@ if (!$certificate) {
     exit('Certificate not found.');
 }
 
-$expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.svg';
+$expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
 if (!is_file($expectedPath)) {
     issue_certificate_for_enrollment($certificate);
 }
@@ -30,7 +30,7 @@ if (!is_file($expectedPath)) {
     exit('Certificate file not found.');
 }
 
-header('Content-Type: image/svg+xml');
-header('Content-Disposition: attachment; filename="certificate-' . $enrollmentId . '.svg"');
+header('Content-Type: application/pdf');
+header('Content-Disposition: attachment; filename="certificate-' . $enrollmentId . '.pdf"');
 readfile($expectedPath);
 exit;

@@ -21,6 +21,7 @@ if (!$enrollment) {
 $existingStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
+$certificateAmount = (float) $enrollment['certification_fee'];
 
 if (!$certificate) {
     $insert = db()->prepare(
@@ -43,7 +44,6 @@ if ($certificateAmount <= 0 && in_array($enrollment['status'], ['paid', 'complet
 $title = 'Apply Certificate | Elldy Academy';
 require __DIR__ . '/includes/header.php';
 $certificateAppId = 'EA-CERT-' . (int) $enrollment['id'];
-$certificateAmount = (float) $enrollment['certification_fee'];
 $certificatePaymentUrl = 'pay_redirect.php?type=certificate&id=' . (int) $enrollment['id'];
 ?>
 <section class="auth-box">
@@ -51,7 +51,7 @@ $certificatePaymentUrl = 'pay_redirect.php?type=certificate&id=' . (int) $enroll
         <p class="eyebrow">Certification</p>
         <h1><?= e($enrollment['title']) ?></h1>
         <p class="price-line"><?= ((float) $enrollment['certification_fee']) > 0 ? money($enrollment['certification_fee']) : 'Included' ?></p>
-        <p>Once your payment is confirmed, your official certificate from Arklytics Solutions and Innovations and Elldy Platform is generated instantly for download.</p>
+        <p>Once your payment is confirmed, your official certificate from Arklytics Solutions and Innovations and Elldy Platform is generated instantly as a downloadable PDF.</p>
         <?php if ($certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
         <?php elseif ($certificateAmount > 0): ?>

@@ -110,6 +110,39 @@ main {
     backdrop-filter: blur(16px);
 }
 
+.menu-toggle {
+    display: none;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.menu-toggle span {
+    display: block;
+    width: 17px;
+    height: 2px;
+    margin: 4px auto;
+    border-radius: 999px;
+    background: var(--ink);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.site-header.menu-open .menu-toggle span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+}
+
+.site-header.menu-open .menu-toggle span:nth-child(2) {
+    opacity: 0;
+}
+
+.site-header.menu-open .menu-toggle span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+}
+
 .brand {
     display: inline-flex;
     align-items: center;
@@ -122,53 +155,39 @@ main {
 
 .brand-lockup {
     display: inline-flex;
-    align-items: stretch;
+    align-items: center;
+    gap: 10px;
     flex: 0 0 auto;
-    overflow: hidden;
-    border: 1px solid rgba(15, 79, 156, 0.12);
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
 
 .brand-logo {
     display: block;
-    width: 88px;
-    height: 38px;
-    border-radius: 11px 0 0 11px;
+    width: 70px;
+    height: 30px;
+    border-radius: 6px;
     object-fit: cover;
 }
 
 .brand-label {
-    display: inline-flex;
-    align-items: center;
-    min-height: 38px;
-    min-width: 188px;
-    padding: 0 14px;
-    border-left: 1px solid rgba(11, 107, 203, 0.24);
+    display: inline-block;
+    min-width: 176px;
     color: #0f4f9c;
-    font-family: Urbanist, "Segoe UI Variable", "Segoe UI", sans-serif;
-    font-size: 15px;
+    font-family: Sora, Urbanist, "Segoe UI Variable", "Segoe UI", sans-serif;
+    font-size: 13px;
     font-weight: 800;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.16em;
     line-height: 1;
     text-transform: uppercase;
+    white-space: nowrap;
+    transition: opacity 0.28s ease, transform 0.28s ease, filter 0.28s ease;
 }
 
-.brand-label.is-typing::after {
-    content: "";
-    width: 1px;
-    height: 15px;
-    margin-left: 5px;
-    background: currentColor;
-    animation: caret-blink 0.8s step-end infinite;
+.brand-label.is-changing {
+    opacity: 0;
+    transform: translateY(5px);
+    filter: blur(3px);
 }
 
-@keyframes caret-blink {
-    50% {
-        opacity: 0;
-    }
-}
 
 .main-nav {
     display: flex;
@@ -483,6 +502,7 @@ main {
 }
 
 .course-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -495,10 +515,34 @@ main {
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
+.course-card.is-free {
+    border: 1px solid rgba(6, 118, 71, 0.34);
+    background: #ffffff;
+    box-shadow:
+        inset 0 4px 0 #12b76a,
+        var(--shadow-soft);
+}
+
+.course-card.is-paid {
+    border: 1px solid rgba(8, 77, 148, 0.38);
+    background:
+        linear-gradient(180deg, rgba(239, 246, 255, 0.82), #ffffff 42%);
+    box-shadow:
+        inset 0 4px 0 var(--brand-dark),
+        0 12px 28px rgba(8, 77, 148, 0.1);
+}
+
 .course-card:hover {
     transform: translateY(-3px);
-    border-color: rgba(11, 107, 203, 0.35);
     box-shadow: var(--shadow);
+}
+
+.course-card.is-free:hover {
+    border-color: rgba(6, 118, 71, 0.5);
+}
+
+.course-card.is-paid:hover {
+    border-color: rgba(8, 77, 148, 0.58);
 }
 
 .course-card p {
@@ -517,6 +561,53 @@ main {
 .course-topline {
     justify-content: space-between;
     color: var(--muted);
+}
+
+.course-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 24px;
+}
+
+.course-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-family: Sora, Urbanist, "Segoe UI", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.course-badge svg {
+    width: 13px;
+    height: 13px;
+    fill: currentColor;
+    flex: 0 0 auto;
+}
+
+.course-badge.free {
+    border: 1px solid rgba(6, 118, 71, 0.18);
+    background: #ecfdf3;
+    color: #067647;
+}
+
+.course-badge.certificate {
+    border: 1px solid rgba(29, 78, 216, 0.16);
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.course-badge.premium {
+    border: 1px solid rgba(146, 64, 14, 0.16);
+    background: #fffbeb;
+    color: #92400e;
 }
 
 .split,
@@ -1169,27 +1260,41 @@ tbody tr:hover {
 }
 
 @media (max-width: 820px) {
+    .site-header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 14px;
+        align-items: center;
+        padding-top: 13px;
+        padding-bottom: 13px;
+    }
+
+    .menu-toggle {
+        display: block;
+        grid-column: 1;
+        grid-row: 1;
+    }
+
     .brand {
-        width: 100%;
+        grid-column: 2;
+        grid-row: 1;
+        width: auto;
         gap: 10px;
         font-size: 17px;
-        flex-wrap: wrap;
+        min-width: 0;
     }
 
     .brand-logo {
-        width: 76px;
-        height: 32px;
+        width: 64px;
+        height: 27px;
     }
 
     .brand-label {
-        min-height: 32px;
         min-width: 152px;
-        padding: 0 11px;
-        font-size: 12px;
-        letter-spacing: 0.18em;
+        font-size: 11px;
+        letter-spacing: 0.14em;
     }
 
-    .site-header,
     .site-footer,
     .section-heading {
         align-items: flex-start;
@@ -1272,7 +1377,26 @@ tbody tr:hover {
     }
 
     .main-nav {
+        display: none;
+        grid-column: 1 / -1;
         width: 100%;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        gap: 8px;
+    }
+
+    .site-header.menu-open .main-nav {
+        display: grid;
+    }
+
+    .main-nav a {
+        width: 100%;
+        padding: 10px 0;
+    }
+
+    .main-nav .nav-cta {
+        margin-top: 4px;
+        padding: 11px 16px;
     }
 
     .hero h1 {
@@ -1294,5 +1418,11 @@ tbody tr:hover {
     .expert-card,
     .expert-card.compact {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .brand-label {
+        transition: none;
     }
 }
