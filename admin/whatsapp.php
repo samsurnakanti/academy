@@ -64,6 +64,10 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
             <p><?= e($maskedToken) ?></p>
         </div>
         <div class="material-item">
+            <strong>Phone Number ID</strong>
+            <p><?= e($settings['phone_number_id'] ?: 'Not configured') ?></p>
+        </div>
+        <div class="material-item">
             <strong>Template</strong>
             <p><?= e($settings['template_name'] ?: 'Plain text fallback / not recommended for production') ?> / <?= e($settings['template_language']) ?></p>
         </div>
@@ -74,6 +78,14 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
         <div class="material-item">
             <strong>Important</strong>
             <p>For production, use approved Meta WhatsApp templates. Enrollment and reminder templates should accept 3 body values in this order: trainee name, program title, login URL.</p>
+        </div>
+        <div class="material-item">
+            <strong>Enrollment template</strong>
+            <p><?= $settings['enrollment_template_name'] !== '' ? 'Configured: ' . e($settings['enrollment_template_name']) : 'Not configured. Enrollment WhatsApp messages will not send until this approved template name is saved.' ?></p>
+        </div>
+        <div class="material-item">
+            <strong>Reminder template</strong>
+            <p><?= $settings['reminder_template_name'] !== '' ? 'Configured: ' . e($settings['reminder_template_name']) : 'Not configured. Daily reminder messages will not send until this approved template name is saved.' ?></p>
         </div>
     </aside>
 </section>

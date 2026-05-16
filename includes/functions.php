@@ -651,8 +651,18 @@ function send_whatsapp_template_message(string $phone, string $templateName, arr
     $settings = whatsapp_settings();
     unset($_SESSION['whatsapp_send_error']);
 
-    if ($settings['access_token'] === '' || $settings['phone_number_id'] === '' || $templateName === '') {
-        $_SESSION['whatsapp_send_error'] = 'WhatsApp template messaging is not fully configured.';
+    if ($settings['access_token'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'WhatsApp access token is missing. Save it in Admin > WhatsApp.';
+        return false;
+    }
+
+    if ($settings['phone_number_id'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'WhatsApp Phone Number ID is missing. Save it in Admin > WhatsApp.';
+        return false;
+    }
+
+    if ($templateName === '') {
+        $_SESSION['whatsapp_send_error'] = 'WhatsApp template name is missing.';
         return false;
     }
 
@@ -717,6 +727,11 @@ function send_enrollment_whatsapp(array $user, array $course): bool
 {
     $settings = whatsapp_settings();
 
+    if ($settings['enrollment_template_name'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'Enrollment WhatsApp template name is missing. Save the approved Meta template name in Admin > WhatsApp.';
+        return false;
+    }
+
     return send_whatsapp_template_message(
         (string) $user['phone'],
         $settings['enrollment_template_name'],
@@ -727,6 +742,11 @@ function send_enrollment_whatsapp(array $user, array $course): bool
 function send_class_reminder_whatsapp(array $row): bool
 {
     $settings = whatsapp_settings();
+
+    if ($settings['reminder_template_name'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'Reminder WhatsApp template name is missing. Save the approved Meta template name in Admin > WhatsApp.';
+        return false;
+    }
 
     return send_whatsapp_template_message(
         (string) $row['phone'],

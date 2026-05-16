@@ -63,7 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $enrolledUser = ['name' => $name, 'phone' => $phone];
-        send_enrollment_whatsapp($enrolledUser, $course);
+        if (!send_enrollment_whatsapp($enrolledUser, $course)) {
+            flash('error', $_SESSION['whatsapp_send_error'] ?? 'Enrollment saved, but WhatsApp confirmation could not be sent.');
+        }
 
         if ($user && (int) $user['id'] === $userId) {
             redirect('dashboard.php');
