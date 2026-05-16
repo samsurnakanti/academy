@@ -1048,6 +1048,16 @@ tbody tr:hover {
     color: #ffffff;
 }
 
+.lesson-item.locked {
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.lesson-item.locked > span {
+    background: #eef2f6;
+    color: #98a2b3;
+}
+
 .lesson-item small {
     display: block;
     margin-top: 4px;

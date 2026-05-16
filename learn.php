@@ -7,7 +7,7 @@ $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.first_class_link
+    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.delivery_type
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -20,23 +20,42 @@ if (!$enrollment) {
     exit('Learning access not found.');
 }
 
-$canWatchPaidVideos = $enrollment['status'] === 'paid' || (float) $enrollment['fee'] <= 0;
+$hasFullAccess = in_array($enrollment['status'], ['paid', 'completed'], true) || (float) $enrollment['fee'] <= 0;
 $materialsStmt = db()->prepare(
     "SELECT *
      FROM materials
      WHERE course_id = ?
-     ORDER BY FIELD(material_type, 'video', 'live_session', 'material'), created_at ASC, id ASC"
+     ORDER BY created_at ASC, id ASC"
 );
 $materialsStmt->execute([(int) $enrollment['course_id']]);
 $materials = $materialsStmt->fetchAll();
-$activeMaterial = $materials[0] ?? null;
+$primaryType = ($enrollment['delivery_type'] ?? 'video') === 'live_session' ? 'live_session' : 'video';
+$firstPrimaryItemId = null;
+foreach ($materials as $material) {
+    if (($material['material_type'] ?? 'video') === $primaryType) {
+        $firstPrimaryItemId = (int) $material['id'];
+        break;
+    }
+}
+
+$canAccessMaterial = static function (array $material) use ($hasFullAccess, $firstPrimaryItemId, $primaryType): bool {
+    return $hasFullAccess || (($material['material_type'] ?? 'video') === $primaryType && (int) $material['id'] === $firstPrimaryItemId);
+};
+
+$activeMaterial = null;
+foreach ($materials as $material) {
+    if ($canAccessMaterial($material)) {
+        $activeMaterial = $material;
+        break;
+    }
+}
 
 $certificateStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $certificateStmt->execute([(int) $enrollment['id']]);
 $certificate = $certificateStmt->fetch();
 
 foreach ($materials as $material) {
-    if ((int) $material['id'] === $materialId) {
+    if ((int) $material['id'] === $materialId && $canAccessMaterial($material)) {
         $activeMaterial = $material;
         break;
     }
@@ -48,15 +67,15 @@ require __DIR__ . '/includes/header.php';
 <section class="page-title">
     <p class="eyebrow">Learning workspace</p>
     <h1><?= e($enrollment['title']) ?></h1>
-    <p>Watch course videos one by one, join live sessions, and open supporting materials after enrollment.</p>
+    <p><?= $primaryType === 'live_session' ? 'Join live sessions one by one and open supporting materials after enrollment.' : 'Watch course videos one by one and open supporting materials after enrollment.' ?></p>
 </section>
 
 <section class="learning-layout">
     <div class="video-panel">
-        <?php if (!$canWatchPaidVideos): ?>
+        <?php if (!$activeMaterial): ?>
             <div class="empty-state">
-                <h2>Course videos are locked</h2>
-                <p>This is a paid program. After your free session, complete payment to unlock all course videos on the website.</p>
+                <h2>Learning items are locked</h2>
+                <p>This is a paid program. The first <?= $primaryType === 'live_session' ? 'live session' : 'video' ?> is available free; complete payment to unlock the remaining sessions, videos, and materials.</p>
                 <a class="button primary" href="payment.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Continue Payment</a>
             </div>
         <?php elseif ($activeMaterial && !empty($activeMaterial['file_url'])): ?>
@@ -83,15 +102,20 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <aside class="lesson-list">
-        <h2>Course Videos</h2>
+        <h2>Program Learning Items</h2>
         <?php foreach ($materials as $index => $material): ?>
-            <a class="lesson-item <?= $activeMaterial && (int) $activeMaterial['id'] === (int) $material['id'] ? 'active' : '' ?>" href="learn.php?enrollment_id=<?= (int) $enrollment['id'] ?>&material_id=<?= (int) $material['id'] ?>">
-                <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
-                <div>
-                    <strong><?= e($material['title']) ?></strong>
-                    <small><?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?><?= $material['description'] ? ' - ' . e($material['description']) : '' ?></small>
-                </div>
-            </a>
+            <?php $isAccessible = $canAccessMaterial($material); ?>
+            <?php if ($isAccessible): ?>
+                <a class="lesson-item <?= $activeMaterial && (int) $activeMaterial['id'] === (int) $material['id'] ? 'active' : '' ?>" href="learn.php?enrollment_id=<?= (int) $enrollment['id'] ?>&material_id=<?= (int) $material['id'] ?>">
+            <?php else: ?>
+                <div class="lesson-item locked">
+            <?php endif; ?>
+                    <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
+                    <div>
+                        <strong><?= e($material['title']) ?></strong>
+                        <small><?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?><?= $material['description'] ? ' - ' . e($material['description']) : '' ?><?= !$isAccessible ? ' - Locked until payment' : '' ?></small>
+                    </div>
+            <?= $isAccessible ? '</a>' : '</div>' ?>
         <?php endforeach; ?>
         <?php if (!$materials): ?>
             <p class="empty">No session videos or materials published yet.</p>

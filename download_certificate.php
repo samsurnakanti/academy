@@ -5,7 +5,7 @@ ensure_certificate_requests_table();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name, c.title
+    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name, c.title, c.certificate_title, c.certificate_details
      FROM certificate_requests cr
      JOIN enrollments e ON e.id = cr.enrollment_id
      JOIN users u ON u.id = e.user_id
@@ -21,9 +21,7 @@ if (!$certificate) {
 }
 
 $expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
-if (!is_file($expectedPath)) {
-    issue_certificate_for_enrollment($certificate);
-}
+issue_certificate_for_enrollment($certificate);
 
 if (!is_file($expectedPath)) {
     http_response_code(404);

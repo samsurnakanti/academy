@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS courses (
     duration VARCHAR(80) NOT NULL,
     fee DECIMAL(10,2) NOT NULL DEFAULT 0,
     certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
+    delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video',
+    certificate_details TEXT NULL,
+    certificate_title VARCHAR(220) NULL,
     first_class_link VARCHAR(255) NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

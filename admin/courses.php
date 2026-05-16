@@ -51,6 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         trim($_POST['duration'] ?? ''),
         (float) ($_POST['fee'] ?? 0),
         (float) ($_POST['certification_fee'] ?? 0),
+        in_array(($_POST['delivery_type'] ?? 'video'), ['video', 'live_session'], true) ? $_POST['delivery_type'] : 'video',
+        trim($_POST['certificate_details'] ?? ''),
+        trim($_POST['certificate_title'] ?? ''),
         trim($_POST['first_class_link'] ?? ''),
         isset($_POST['is_active']) ? 1 : 0,
     ];
@@ -59,14 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Program title and duration are required.');
     } elseif ($id > 0) {
         $stmt = db()->prepare(
-            'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, duration=?, fee=?, certification_fee=?, first_class_link=?, is_active=? WHERE id=?'
+            'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, duration=?, fee=?, certification_fee=?, delivery_type=?, certificate_details=?, certificate_title=?, first_class_link=?, is_active=? WHERE id=?'
         );
         $stmt->execute([...$data, $id]);
         flash('success', 'Program updated.');
         redirect('courses.php');
     } else {
         $stmt = db()->prepare(
-            'INSERT INTO courses (title, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, duration, fee, certification_fee, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO courses (title, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, duration, fee, certification_fee, delivery_type, certificate_details, certificate_title, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute($data);
         flash('success', 'Program added.');
@@ -117,7 +120,18 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
             <label>Duration <input name="duration" value="<?= e($edit['duration'] ?? '') ?>" placeholder="6 weeks" required></label>
             <label>Program video/course fee <input type="number" step="0.01" name="fee" value="<?= e((string) ($edit['fee'] ?? '0')) ?>"></label>
             <label>Certification charge <input type="number" step="0.01" name="certification_fee" value="<?= e((string) ($edit['certification_fee'] ?? '0')) ?>"></label>
-            <label>Live session / meeting link <input name="first_class_link" value="<?= e($edit['first_class_link'] ?? '') ?>" placeholder="https://meet.google.com/..."></label>
+            <label>Program type
+                <select name="delivery_type" required>
+                    <option value="video" <?= ($edit['delivery_type'] ?? 'video') === 'video' ? 'selected' : '' ?>>Video course</option>
+                    <option value="live_session" <?= ($edit['delivery_type'] ?? '') === 'live_session' ? 'selected' : '' ?>>Live session course</option>
+                </select>
+            </label>
+            <label>Certificate skill details
+                <textarea name="certificate_details" rows="4" placeholder="Example: Data preparation&#10;Dashboard building&#10;Forecasting&#10;Business intelligence"><?= e($edit['certificate_details'] ?? '') ?></textarea>
+            </label>
+            <label>Certificate title
+                <input name="certificate_title" value="<?= e($edit['certificate_title'] ?? '') ?>" placeholder="Example: Elldy Data Intelligence Platform">
+            </label>
             <label class="check"><input type="checkbox" name="is_active" <?= !isset($edit['is_active']) || $edit['is_active'] ? 'checked' : '' ?>> Active</label>
         </fieldset>
         <button class="button primary" type="submit"><?= $edit ? 'Update Program' : 'Add Program' ?></button>
@@ -125,11 +139,12 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
 
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Program</th><th>Duration</th><th>Fee</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Program</th><th>Type</th><th>Duration</th><th>Fee</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
                 <?php foreach ($courses as $course): ?>
                     <tr>
                         <td><?= e($course['title']) ?></td>
+                        <td><?= ($course['delivery_type'] ?? 'video') === 'live_session' ? 'Live Session' : 'Video' ?></td>
                         <td><?= e($course['duration']) ?></td>
                         <td><?= money($course['fee']) ?></td>
                         <td><?= $course['is_active'] ? 'Active' : 'Inactive' ?></td>

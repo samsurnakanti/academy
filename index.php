@@ -4,15 +4,6 @@ require_once __DIR__ . '/includes/functions.php';
 $title = 'Elldy Academy | Data Analytics & BI Training';
 $canonicalUrl = public_url();
 $courses = active_courses(6);
-$latest = db()->query(
-    "SELECT e.created_at, u.name, c.title, e.status
-     FROM enrollments e
-     JOIN users u ON u.id = e.user_id
-     JOIN courses c ON c.id = e.course_id
-     ORDER BY e.created_at DESC
-     LIMIT 8"
-)->fetchAll();
-
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="hero">
@@ -135,18 +126,24 @@ require __DIR__ . '/includes/header.php';
         </div>
     </div>
     <div class="activity-list">
-        <?php foreach ($latest as $row): ?>
-            <div class="activity-item">
-                <div>
-                    <strong><?= e($row['name']) ?></strong>
-                    <span><?= e($row['title']) ?></span>
-                </div>
-                <em><?= e(enrollment_badge($row['status'])) ?></em>
+        <div class="activity-item">
+            <div>
+                <strong>Case-led learning</strong>
+                <span>Programs are built around realistic sales, finance, marketing, and operations scenarios.</span>
             </div>
-        <?php endforeach; ?>
-        <?php if (!$latest): ?>
-            <p class="empty">No enrollments yet.</p>
-        <?php endif; ?>
+        </div>
+        <div class="activity-item">
+            <div>
+                <strong>Dashboard practice</strong>
+                <span>Learners move from raw data to KPIs, reports, and presentation-ready BI outputs.</span>
+            </div>
+        </div>
+        <div class="activity-item">
+            <div>
+                <strong>Career-focused outcomes</strong>
+                <span>Each track is designed to strengthen portfolio work, reporting confidence, and analytics thinking.</span>
+            </div>
+        </div>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

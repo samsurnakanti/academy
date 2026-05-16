@@ -320,54 +320,115 @@ function centered_pdf_text(float $centerX, float $y, string $text, int $size, st
     return pdf_text(round($centerX - ($estimatedWidth / 2), 2), $y, $text, $size, $font);
 }
 
+function certificate_jpeg_asset(string $path): ?array
+{
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $size = getimagesize($path);
+    if (!$size || ($size['mime'] ?? '') !== 'image/jpeg') {
+        return null;
+    }
+
+    return [
+        'width' => (int) $size[0],
+        'height' => (int) $size[1],
+        'data' => (string) file_get_contents($path),
+    ];
+}
+
 function build_certificate_pdf(array $row, string $certificateCode): string
 {
     $name = trim((string) $row['name']);
-    $title = trim((string) $row['title']);
+    $title = trim((string) (($row['certificate_title'] ?? '') !== '' ? $row['certificate_title'] : $row['title']));
+    $certificateDetails = trim((string) ($row['certificate_details'] ?? ''));
     $completionDate = date('F j, Y');
     $safeTitle = strlen($title) > 58 ? substr($title, 0, 55) . '...' : $title;
+    $brandingDir = __DIR__ . '/../assets/certificates/branding';
+    $elldyLogo = certificate_jpeg_asset($brandingDir . '/elldy-logo.jpg');
+    $arklyticsLogo = certificate_jpeg_asset($brandingDir . '/arklytics-logo.jpg');
+    $signature = certificate_jpeg_asset($brandingDir . '/signature.jpeg');
+    $medalBadge = certificate_jpeg_asset($brandingDir . '/medal-badge.jpg');
 
     $content = '';
     $content .= "q\n";
-    $content .= "0.97 0.98 1 rg 0 0 842 595 re f\n";
-    $content .= "0.04 0.16 0.34 RG 4 w 24 24 794 547 re S\n";
-    $content .= "0.81 0.65 0.34 RG 1.5 w 38 38 766 519 re S\n";
-    $content .= "0.04 0.16 0.34 rg 56 506 730 1 re f\n";
-    $content .= "0.81 0.65 0.34 rg 56 495 730 3 re f\n";
+    $content .= "0.985 0.99 1 rg 0 0 842 595 re f\n";
+    $content .= "0.04 0.16 0.34 RG 3.2 w 24 24 794 547 re S\n";
+    $content .= "0.81 0.65 0.34 RG 1.2 w 38 38 766 519 re S\n";
+    $content .= "0.04 0.16 0.34 rg 78 490 686 1 re f\n";
+    $content .= "0.81 0.65 0.34 rg 78 484 686 2 re f\n";
+    if ($elldyLogo) {
+        $content .= "0.95 0.97 1 rg 70 516 70 28 re f\n";
+        $content .= "0.82 0.87 0.94 RG 0.8 w 70 516 70 28 re S\n";
+        $content .= "q 58 0 0 22 76 519 cm /Im1 Do Q\n";
+    }
+    if ($arklyticsLogo) {
+        $content .= "1 1 1 rg 148 516 92 28 re f\n";
+        $content .= "0.82 0.87 0.94 RG 0.8 w 148 516 92 28 re S\n";
+        $content .= "q 76 0 0 19 156 521 cm /Im2 Do Q\n";
+    }
     $content .= "0.04 0.16 0.34 rg\n";
-    $content .= centered_pdf_text(421, 525, 'ELLDY ACADEMY', 18, 'F2');
-    $content .= centered_pdf_text(421, 489, 'CERTIFICATE OF COMPLETION', 28, 'F2');
+    $content .= centered_pdf_text(421, 453, 'CERTIFICATE OF COMPLETION', 27, 'F2');
     $content .= "0.38 0.42 0.5 rg\n";
-    $content .= centered_pdf_text(421, 458, 'Issued by Arklytics Solutions and Innovations | Elldy Platform', 12);
+    $content .= centered_pdf_text(421, 425, 'Issued under the Elldy Data Intelligence Platform learning ecosystem', 11);
     $content .= "0.15 0.18 0.24 rg\n";
-    $content .= centered_pdf_text(421, 404, 'This certificate is proudly presented to', 15);
+    $content .= centered_pdf_text(421, 381, 'This certificate is proudly presented to', 14);
     $content .= "0.04 0.16 0.34 rg\n";
-    $content .= centered_pdf_text(421, 360, $name, 30, 'F2');
-    $content .= "0.81 0.65 0.34 RG 1.2 w 180 346 m 662 346 l S\n";
+    $content .= centered_pdf_text(421, 341, $name, 30, 'F2');
+    $content .= "0.81 0.65 0.34 RG 1.5 w 244 326 m 598 326 l S\n";
+    if ($medalBadge) {
+        $content .= "q 96 0 0 96 604 300 cm /Im4 Do Q\n";
+        $content .= "0.63 0.43 0.11 rg\n";
+        $content .= centered_pdf_text(652, 348, 'VERIFIED', 9, 'F2');
+    }
     $content .= "0.15 0.18 0.24 rg\n";
-    $content .= centered_pdf_text(421, 312, 'for successfully completing the program', 15);
-    $content .= centered_pdf_text(421, 279, $safeTitle, 21, 'F2');
+    $content .= centered_pdf_text(421, 292, 'for successfully completing the program', 14);
+    $content .= centered_pdf_text(421, 257, $safeTitle, 20, 'F2');
+    $content .= "0.81 0.65 0.34 RG 1 w 170 242 m 672 242 l S\n";
     $content .= "0.38 0.42 0.5 rg\n";
-    $content .= centered_pdf_text(421, 243, 'with demonstrated learning in analytics, dashboards, reporting, and business intelligence.', 13);
+    if ($certificateDetails === '') {
+        $certificateDetails = "Data preparation\nDashboard building\nForecasting\nBusiness intelligence";
+    }
+    $detailParts = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|\|/', $certificateDetails) ?: [])));
+    $detailLine = implode('  •  ', array_slice($detailParts, 0, 4));
+    $content .= centered_pdf_text(421, 216, 'successfully demonstrating capability in', 12);
+    $content .= centered_pdf_text(421, 194, $detailLine, 12, 'F2');
     $content .= "0.04 0.16 0.34 rg\n";
-    $content .= pdf_text(72, 126, 'Completion Date', 11, 'F2');
-    $content .= pdf_text(72, 105, $completionDate, 14);
-    $content .= pdf_text(326, 126, 'Certificate ID', 11, 'F2');
-    $content .= pdf_text(326, 105, $certificateCode, 14);
-    $content .= pdf_text(612, 126, 'Authorized Credential', 11, 'F2');
-    $content .= pdf_text(612, 105, 'Arklytics + Elldy', 14);
-    $content .= "0.81 0.65 0.34 rg 649 173 62 62 re f\n";
-    $content .= "1 1 1 rg\n";
-    $content .= centered_pdf_text(680, 203, 'BI', 20, 'F2');
+    $content .= pdf_text(72, 120, 'Completion Date', 10, 'F2');
+    $content .= "0.81 0.65 0.34 RG 0.8 w 72 114 m 192 114 l S\n";
+    $content .= pdf_text(72, 94, $completionDate, 13);
+    $content .= pdf_text(311, 120, 'Certificate ID', 10, 'F2');
+    $content .= "0.81 0.65 0.34 RG 0.8 w 311 114 m 468 114 l S\n";
+    $content .= pdf_text(311, 94, $certificateCode, 13);
+    $content .= pdf_text(610, 120, 'Authorized Signatory', 10, 'F2');
+    $content .= "0.81 0.65 0.34 RG 0.8 w 610 114 m 742 114 l S\n";
+    $content .= pdf_text(632, 94, 'Elldy Academy', 13);
+    if ($signature) {
+        $content .= "q 116 0 0 28 618 137 cm /Im3 Do Q\n";
+        $content .= "0.04 0.16 0.34 RG 0.8 w 610 132 m 742 132 l S\n";
+    }
     $content .= "Q\n";
 
     $objects = [];
     $objects[] = '<< /Type /Catalog /Pages 2 0 R >>';
     $objects[] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
-    $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>';
+    $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Im1 7 0 R /Im2 8 0 R /Im3 9 0 R /Im4 10 0 R >> >> /Contents 4 0 R >>';
     $objects[] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
     $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
     $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+    $objects[] = $elldyLogo
+        ? "<< /Type /XObject /Subtype /Image /Width {$elldyLogo['width']} /Height {$elldyLogo['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($elldyLogo['data']) . " >>\nstream\n{$elldyLogo['data']}\nendstream"
+        : '<< >>';
+    $objects[] = $arklyticsLogo
+        ? "<< /Type /XObject /Subtype /Image /Width {$arklyticsLogo['width']} /Height {$arklyticsLogo['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($arklyticsLogo['data']) . " >>\nstream\n{$arklyticsLogo['data']}\nendstream"
+        : '<< >>';
+    $objects[] = $signature
+        ? "<< /Type /XObject /Subtype /Image /Width {$signature['width']} /Height {$signature['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($signature['data']) . " >>\nstream\n{$signature['data']}\nendstream"
+        : '<< >>';
+    $objects[] = $medalBadge
+        ? "<< /Type /XObject /Subtype /Image /Width {$medalBadge['width']} /Height {$medalBadge['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($medalBadge['data']) . " >>\nstream\n{$medalBadge['data']}\nendstream"
+        : '<< >>';
 
     $pdf = "%PDF-1.4\n";
     $offsets = [0];
@@ -421,7 +482,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
     ensure_certificate_requests_table();
 
     $stmt = db()->prepare(
-        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name, c.title
+        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name, c.title, c.certificate_title, c.certificate_details
          FROM certificate_requests cr
          JOIN enrollments e ON e.id = cr.enrollment_id
          JOIN users u ON u.id = cr.user_id
@@ -990,6 +1051,9 @@ function ensure_course_detail_columns(): void
         'expert_bio' => 'ADD COLUMN expert_bio TEXT NULL AFTER expert_title',
         'expert_photo' => 'ADD COLUMN expert_photo VARCHAR(255) NULL AFTER expert_bio',
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
+        'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certification_fee",
+        'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
+        'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
     ];
 
     foreach ($missing as $column => $definition) {

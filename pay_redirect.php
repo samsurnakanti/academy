@@ -21,6 +21,10 @@ if ($type === 'program') {
         exit('Payment not found.');
     }
 
+    if ((float) $row['fee'] <= 0) {
+        redirect('dashboard.php');
+    }
+
     redirect('razorpay_checkout.php?type=program&id=' . (int) $row['id']);
 }
 

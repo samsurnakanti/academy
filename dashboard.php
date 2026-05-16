@@ -4,7 +4,7 @@ $user = require_user();
 ensure_certificate_requests_table();
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.first_class_link,
+    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.delivery_type,
             cr.status AS certificate_status, cr.certificate_url
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
@@ -67,7 +67,6 @@ require __DIR__ . '/includes/header.php';
                     <th>Fee</th>
                     <th>Certification</th>
                     <th>Status</th>
-                    <th>Access</th>
                     <th>Learn</th>
                     <th>Certificate</th>
                     <th>Payment</th>
@@ -80,17 +79,20 @@ require __DIR__ . '/includes/header.php';
                         <td><?= e($row['duration']) ?></td>
                         <td><?= money($row['fee']) ?></td>
                         <td><?= ((float) ($row['certification_fee'] ?? 0)) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
-                        <td><span class="status"><?= e(enrollment_badge($row['status'])) ?></span></td>
                         <td>
-                            <?php if ($row['first_class_link'] && $row['status'] !== 'cancelled'): ?>
-                                <a href="<?= e($row['first_class_link']) ?>" target="_blank" rel="noopener">Join first session</a>
-                            <?php else: ?>
-                                -
-                            <?php endif; ?>
+                            <span class="status">
+                                <?php if ($row['status'] === 'free_access'): ?>
+                                    <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'First Session Free' : 'First Video Free' ?>
+                                <?php else: ?>
+                                    <?= e(enrollment_badge($row['status'])) ?>
+                                <?php endif; ?>
+                            </span>
                         </td>
                         <td>
                             <?php if ($row['status'] !== 'cancelled'): ?>
-                                <a class="button tiny" href="learn.php?enrollment_id=<?= (int) $row['id'] ?>">Watch Videos</a>
+                                <a class="button tiny" href="learn.php?enrollment_id=<?= (int) $row['id'] ?>">
+                                    <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'Join Live Sessions' : 'Watch Videos' ?>
+                                </a>
                             <?php else: ?>
                                 -
                             <?php endif; ?>
@@ -98,6 +100,8 @@ require __DIR__ . '/includes/header.php';
                         <td>
                             <?php if ($row['certificate_url'] && $row['certificate_status'] === 'issued'): ?>
                                 <a class="button tiny" href="<?= e($row['certificate_url']) ?>" target="_blank" rel="noopener">Download</a>
+                            <?php elseif (($row['certificate_status'] ?? '') === 'payment_pending'): ?>
+                                <a class="button tiny" href="pay_redirect.php?type=certificate&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Certificate Fee</a>
                             <?php elseif ($row['certificate_status']): ?>
                                 <?= e(certificate_badge($row['certificate_status'])) ?>
                             <?php elseif ($row['status'] !== 'cancelled'): ?>
@@ -107,10 +111,16 @@ require __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($row['status'] === 'paid'): ?>
+                            <?php if ((float) $row['fee'] <= 0): ?>
+                                Included
+                            <?php elseif (in_array($row['status'], ['paid', 'completed'], true)): ?>
                                 Paid
-                            <?php elseif ($row['status'] !== 'cancelled'): ?>
+                            <?php elseif ($row['status'] === 'payment_pending'): ?>
                                 <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+                            <?php elseif ($row['status'] === 'free_access'): ?>
+                                <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'Due after first session' : 'Due after first video' ?>
+                            <?php elseif ($row['status'] !== 'cancelled'): ?>
+                                -
                             <?php else: ?>
                                 Cancelled
                             <?php endif; ?>
@@ -118,7 +128,7 @@ require __DIR__ . '/includes/header.php';
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$enrollments): ?>
-                    <tr><td colspan="9">No enrollments yet. <a href="<?= e(public_url('programs')) ?>">Choose an analytics program</a>.</td></tr>
+                    <tr><td colspan="8">No enrollments yet. <a href="<?= e(public_url('programs')) ?>">Choose an analytics program</a>.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

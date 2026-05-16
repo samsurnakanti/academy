@@ -28,6 +28,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('enrollments.php');
     }
 
+    if ($action === 'mark_first_session_completed') {
+        $stmt = db()->prepare(
+            "UPDATE enrollments
+             SET status = 'payment_pending'
+             WHERE id = ? AND status = 'free_access'"
+        );
+        $stmt->execute([(int) $_POST['id']]);
+
+        flash('success', 'First session completed. Enrollment moved to payment pending.');
+        redirect('enrollments.php');
+    }
+
     $status = $_POST['status'] ?? 'free_access';
     $stmt = db()->prepare('UPDATE enrollments SET status = ? WHERE id = ?');
     $stmt->execute([$status, (int) $_POST['id']]);
@@ -94,6 +106,14 @@ $rows = db()->query(
                                     <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
                                     <input type="hidden" name="action" value="send_reminder">
                                     <button class="button tiny" type="submit">Send Today Reminder</button>
+                                </form>
+                            <?php endif; ?>
+                            <?php if ($row['status'] === 'free_access' && (float) $row['fee'] > 0): ?>
+                                <form method="post" class="inline-action-form">
+                                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                                    <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                                    <input type="hidden" name="action" value="mark_first_session_completed">
+                                    <button class="button tiny" type="submit">Mark First Session Completed</button>
                                 </form>
                             <?php endif; ?>
                         </td>
