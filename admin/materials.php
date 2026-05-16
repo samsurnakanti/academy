@@ -1,10 +1,8 @@
 <?php
-$title = 'Materials';
-require __DIR__ . '/_admin_header.php';
-ensure_material_columns();
-ensure_s3_settings_table();
+require_once __DIR__ . '/../includes/functions.php';
 
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
+    require_admin();
     header('Content-Type: application/json');
     verify_csrf();
 
@@ -31,6 +29,11 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
     ]);
     exit;
 }
+
+$title = 'Materials';
+require __DIR__ . '/_admin_header.php';
+ensure_material_columns();
+ensure_s3_settings_table();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -244,7 +247,7 @@ if (isset($_GET['edit'])) {
                         reject(new Error('S3 upload failed with status ' + request.status + '.'));
                     }
                 });
-                request.addEventListener('error', () => reject(new Error('Network error during S3 upload.')));
+                request.addEventListener('error', () => reject(new Error('Browser could not reach S3. Most often this means S3 CORS is missing for PUT uploads from this site.')));
                 request.send(file);
             });
 
