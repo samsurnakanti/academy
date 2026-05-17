@@ -76,11 +76,12 @@ $rows = db()->query(
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Trainee</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
+                <tr><th>S.No</th><th>Trainee</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
-                <?php foreach ($rows as $row): ?>
+                <?php foreach ($rows as $index => $row): ?>
                     <tr>
+                        <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
                         <td><?= money($row['fee']) ?></td>

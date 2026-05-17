@@ -104,10 +104,11 @@ if (isset($_GET['edit'])) {
 <section class="materials-layout">
     <div class="table-wrap materials-table">
         <table>
-            <thead><tr><th>Program</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
+            <thead><tr><th>S.No</th><th>Program</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
             <tbody>
-                <?php foreach ($materials as $material): ?>
+                <?php foreach ($materials as $index => $material): ?>
                     <tr>
+                        <td><?= $index + 1 ?></td>
                         <td><?= e($material['course_title']) ?></td>
                         <td><?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?></td>
                         <td><?= e($material['title']) ?><br><small><?= e($material['description']) ?></small></td>

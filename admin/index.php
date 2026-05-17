@@ -38,10 +38,11 @@ $latest = db()->query(
     </div>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Trainee</th><th>Program</th><th>Status</th><th>Date</th></tr></thead>
+            <thead><tr><th>S.No</th><th>Trainee</th><th>Program</th><th>Status</th><th>Date</th></tr></thead>
             <tbody>
-                <?php foreach ($latest as $row): ?>
+                <?php foreach ($latest as $index => $row): ?>
                     <tr>
+                        <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
                         <td><?= e(enrollment_badge($row['status'])) ?></td>

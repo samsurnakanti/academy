@@ -139,10 +139,11 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
 
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Program</th><th>Type</th><th>Duration</th><th>Fee</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>S.No</th><th>Program</th><th>Type</th><th>Duration</th><th>Fee</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
-                <?php foreach ($courses as $course): ?>
+                <?php foreach ($courses as $index => $course): ?>
                     <tr>
+                        <td><?= $index + 1 ?></td>
                         <td><?= e($course['title']) ?></td>
                         <td><?= ($course['delivery_type'] ?? 'video') === 'live_session' ? 'Live Session' : 'Video' ?></td>
                         <td><?= e($course['duration']) ?></td>

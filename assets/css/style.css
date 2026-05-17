@@ -1188,6 +1188,34 @@ tbody tr:hover {
     pointer-events: auto;
 }
 
+.elldy-promo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 20px;
+    padding: 22px;
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 8px;
+    background:
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 34%),
+        linear-gradient(135deg, #eff6ff, #ffffff 62%);
+}
+
+.elldy-promo h3 {
+    margin: 4px 0 8px;
+    font-size: clamp(20px, 2vw, 26px);
+}
+
+.elldy-promo p:last-child {
+    margin-bottom: 0;
+    color: var(--muted);
+}
+
+.elldy-promo .button {
+    flex: 0 0 auto;
+}
+
 .lesson-list {
     padding: 22px;
 }
@@ -1246,6 +1274,13 @@ tbody tr:hover {
 
 .certificate-action h2 {
     font-size: 22px;
+}
+
+@media (max-width: 720px) {
+    .elldy-promo {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
 
 .video-outline {

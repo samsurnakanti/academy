@@ -22,11 +22,12 @@ $rows = db()->query(
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>Trainee</th><th>Program</th><th>Certificate Fee</th><th>Program Payment</th><th>Certificate Payment</th><th>Certificate</th><th>Status</th></tr>
+                <tr><th>S.No</th><th>Trainee</th><th>Program</th><th>Certificate Fee</th><th>Program Payment</th><th>Certificate Payment</th><th>Certificate</th><th>Status</th></tr>
             </thead>
             <tbody>
-                <?php foreach ($rows as $row): ?>
+                <?php foreach ($rows as $index => $row): ?>
                     <tr>
+                        <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
                         <td><?= ((float) $row['certification_fee']) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
@@ -43,7 +44,7 @@ $rows = db()->query(
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="7">No certificate requests yet.</td></tr>
+                    <tr><td colspan="8">No certificate requests yet.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

@@ -97,6 +97,14 @@ require __DIR__ . '/includes/header.php';
                         <iframe src="<?= e(video_embed_url($activeMaterial['file_url'])) ?>" allowfullscreen loading="lazy"></iframe>
                     <?php endif; ?>
                 </div>
+                <aside class="elldy-promo" aria-label="Elldy Data Intelligence">
+                    <div>
+                        <p class="eyebrow">Start analysis and build dashboards</p>
+                        <h3>Elldy Data Intelligence</h3>
+                        <p>Turn what you learn into live analysis, dashboards, and sharper business decisions.</p>
+                    </div>
+                    <a class="button primary" href="https://elldy.com" target="_blank" rel="noopener">Get Free Access to Elldy</a>
+                </aside>
             <?php else: ?>
                 <div class="empty-state">
                     <h2><?= ($activeMaterial['material_type'] ?? '') === 'live_session' ? 'Live session link' : 'Learning material' ?></h2>
