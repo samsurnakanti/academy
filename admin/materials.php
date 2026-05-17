@@ -16,13 +16,13 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
         exit;
     }
 
-    if ($fileName === '' || !str_starts_with($contentType, 'video/')) {
+    if ($fileName === '' || !is_allowed_material_mime($contentType)) {
         http_response_code(422);
-        echo json_encode(['error' => 'Please select a valid video file.']);
+        echo json_encode(['error' => 'Please select a valid video, image, PDF, Word, PowerPoint, or Excel file.']);
         exit;
     }
 
-    $objectKey = s3_new_video_object_key($fileName);
+    $objectKey = s3_new_material_object_key($fileName);
     echo json_encode([
         'upload_url' => s3_presigned_put_url($objectKey, $contentType),
         'file_url' => s3_object_url($settings, $objectKey),
@@ -41,8 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $materialId = (int) ($_POST['material_id'] ?? 0);
 
     try {
-        if (!empty($_FILES['video_file']['name'])) {
-            $fileUrl = upload_video_to_s3($_FILES['video_file']);
+        if (!empty($_FILES['material_file']['name'])) {
+            $fileUrl = upload_material_to_s3($_FILES['material_file']);
         }
     } catch (RuntimeException $exception) {
         flash('error', $exception->getMessage());
@@ -146,11 +146,11 @@ if (isset($_GET['edit'])) {
             </label>
             <label>Title <input name="title" value="<?= e($editingMaterial['title'] ?? '') ?>" placeholder="Example: Video 1 - BI Foundations" required></label>
             <label>Description <textarea name="description" rows="4" placeholder="Short note for trainees"><?= e($editingMaterial['description'] ?? '') ?></textarea></label>
-            <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="YouTube, Vimeo, Google Drive, Meet, PDF, or other URL"></label>
-            <label>Or upload video directly to S3
-                <input type="file" name="video_file" id="material-video-file" accept="video/*">
+            <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="YouTube, Vimeo, Google Drive, Meet, PDF, image, or other URL"></label>
+            <label>Or upload a file directly to S3
+                <input type="file" name="material_file" id="material-file" accept="video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
             </label>
-            <small>Large videos upload directly from your browser to S3, so PHP timeouts do not interrupt them.</small>
+            <small>Upload videos, images, PDFs, Word, PowerPoint, or Excel files directly to S3.</small>
             <div class="upload-status" id="upload-status" hidden>
                 <div class="upload-status-row">
                     <strong id="upload-status-text">Preparing upload...</strong>
@@ -179,7 +179,7 @@ if (isset($_GET['edit'])) {
         </div>
         <div class="material-item">
             <strong>Large uploads</strong>
-            <p>Videos now upload directly to S3 in the background while you keep filling this form. For browser uploads, your bucket must allow CORS PUT requests from this site.</p>
+            <p>Course files now upload directly to S3 in the background while you keep filling this form. For browser uploads, your bucket must allow CORS PUT requests from this site.</p>
         </div>
         </div>
     </aside>
@@ -187,7 +187,7 @@ if (isset($_GET['edit'])) {
 <script>
 (() => {
     const form = document.getElementById('materials-form');
-    const fileInput = document.getElementById('material-video-file');
+    const fileInput = document.getElementById('material-file');
     const fileUrlInput = document.getElementById('material-file-url');
     const statusBox = document.getElementById('upload-status');
     const statusText = document.getElementById('upload-status-text');
@@ -211,8 +211,21 @@ if (isset($_GET['edit'])) {
         uploadComplete = false;
         if (!file) return;
 
-        if (!file.type.startsWith('video/')) {
-            setUploadState('Please choose a valid video file.', 0);
+        const allowedOfficeTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ];
+        const isAllowedFile = file.type.startsWith('video/')
+            || file.type.startsWith('image/')
+            || allowedOfficeTypes.includes(file.type);
+
+        if (!isAllowedFile) {
+            setUploadState('Please choose a valid video, image, PDF, Word, PowerPoint, or Excel file.', 0);
             return;
         }
 
@@ -273,7 +286,7 @@ if (isset($_GET['edit'])) {
 
         if (fileInput.files.length > 0 && !uploadComplete) {
             event.preventDefault();
-            setUploadState('The selected video has not finished uploading yet.', progress.value || 0);
+            setUploadState('The selected file has not finished uploading yet.', progress.value || 0);
         }
     });
 })();

@@ -80,10 +80,11 @@ require __DIR__ . '/includes/header.php';
             </div>
         <?php elseif ($activeMaterial && !empty($activeMaterial['file_url'])): ?>
             <?php $playbackUrl = playback_video_url($activeMaterial['file_url']); ?>
+            <?php $materialType = $activeMaterial['material_type'] ?? 'video'; ?>
             <p class="eyebrow">Now viewing</p>
             <h2><?= e($activeMaterial['title']) ?></h2>
-            <p><?= e($activeMaterial['description']) ?></p>
-            <?php if (($activeMaterial['material_type'] ?? 'video') === 'video'): ?>
+            <p><?= text_with_links($activeMaterial['description']) ?></p>
+            <?php if ($materialType === 'video'): ?>
                 <div class="video-frame <?= should_use_native_video_player($activeMaterial['file_url']) ? 'native-player' : '' ?>">
                     <?php if (should_use_native_video_player($activeMaterial['file_url'])): ?>
                         <video class="academy-video" controls controlsList="nodownload noremoteplayback" disablePictureInPicture preload="metadata" playsinline oncontextmenu="return false;">
@@ -105,14 +106,22 @@ require __DIR__ . '/includes/header.php';
                     </div>
                     <a class="button primary" href="https://elldy.com" target="_blank" rel="noopener">Get Free Access to Elldy</a>
                 </aside>
+            <?php elseif (is_image_material_url($activeMaterial['file_url'])): ?>
+                <figure class="material-preview image-preview">
+                    <img src="<?= e($playbackUrl) ?>" alt="<?= e($activeMaterial['title']) ?>" loading="lazy">
+                </figure>
+            <?php elseif (is_pdf_material_url($activeMaterial['file_url'])): ?>
+                <div class="material-preview pdf-preview">
+                    <iframe src="<?= e($playbackUrl) ?>" title="<?= e($activeMaterial['title']) ?>" loading="lazy"></iframe>
+                </div>
             <?php else: ?>
                 <div class="empty-state">
-                    <h2><?= ($activeMaterial['material_type'] ?? '') === 'live_session' ? 'Live session link' : 'Learning material' ?></h2>
-                    <p>Open this link in a new tab when you are ready.</p>
+                    <h2><?= $materialType === 'live_session' ? 'Live session link' : 'Learning material' ?></h2>
+                    <p><?= $materialType === 'live_session' ? 'Open this session link in a new tab when you are ready.' : 'This file type opens best in a new tab.' ?></p>
                 </div>
             <?php endif; ?>
-            <?php if (!should_use_native_video_player($activeMaterial['file_url'])): ?>
-                <a class="button small" href="<?= e($activeMaterial['file_url']) ?>" target="_blank" rel="noopener">Open original link</a>
+            <?php if ($materialType !== 'video' || !should_use_native_video_player($activeMaterial['file_url'])): ?>
+                <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
             <?php endif; ?>
         <?php else: ?>
             <div class="empty-state">

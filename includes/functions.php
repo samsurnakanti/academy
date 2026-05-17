@@ -200,13 +200,18 @@ function s3_presigned_get_url(string $objectKey, int $expires = 3600): string
     return 'https://' . $host . $canonicalUri . '?' . $canonicalQuery . '&X-Amz-Signature=' . $signature;
 }
 
-function s3_new_video_object_key(string $originalName): string
+function s3_new_material_object_key(string $originalName): string
 {
     $settings = s3_settings();
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
     $safeExtension = preg_match('/^[a-z0-9]{2,8}$/', $extension) ? '.' . $extension : '';
 
     return trim($settings['upload_prefix'], '/') . '/' . date('Y/m') . '/' . bin2hex(random_bytes(12)) . $safeExtension;
+}
+
+function s3_new_video_object_key(string $originalName): string
+{
+    return s3_new_material_object_key($originalName);
 }
 
 function s3_presigned_put_url(string $objectKey, string $contentType, int $expires = 3600): string
@@ -241,7 +246,39 @@ function playback_video_url(string $url): string
     return $objectKey !== null ? s3_presigned_get_url($objectKey) : $url;
 }
 
-function upload_video_to_s3(array $file): string
+function material_extension(string $url): string
+{
+    $path = (string) (parse_url($url, PHP_URL_PATH) ?? '');
+
+    return strtolower(pathinfo($path, PATHINFO_EXTENSION));
+}
+
+function is_image_material_url(string $url): bool
+{
+    return in_array(material_extension($url), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'], true);
+}
+
+function is_pdf_material_url(string $url): bool
+{
+    return material_extension($url) === 'pdf';
+}
+
+function is_allowed_material_mime(string $mime): bool
+{
+    return str_starts_with($mime, 'video/')
+        || str_starts_with($mime, 'image/')
+        || in_array($mime, [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ], true);
+}
+
+function upload_material_to_s3(array $file): string
 {
     $settings = s3_settings();
 
@@ -254,20 +291,20 @@ function upload_video_to_s3(array $file): string
     }
 
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-        throw new RuntimeException('Video upload failed before reaching S3.');
+        throw new RuntimeException('Material upload failed before reaching S3.');
     }
 
     $tmpName = (string) ($file['tmp_name'] ?? '');
     if (!is_uploaded_file($tmpName)) {
-        throw new RuntimeException('Uploaded video could not be verified.');
+        throw new RuntimeException('Uploaded material could not be verified.');
     }
 
     $mime = mime_content_type($tmpName) ?: '';
-    if (!str_starts_with($mime, 'video/')) {
-        throw new RuntimeException('Please upload a valid video file.');
+    if (!is_allowed_material_mime($mime)) {
+        throw new RuntimeException('Please upload a valid video, image, PDF, Word, PowerPoint, or Excel file.');
     }
 
-    $objectKey = s3_new_video_object_key((string) ($file['name'] ?? 'video'));
+    $objectKey = s3_new_material_object_key((string) ($file['name'] ?? 'material'));
     $payloadHash = 'UNSIGNED-PAYLOAD';
     $amzDate = gmdate('Ymd\THis\Z');
     $shortDate = gmdate('Ymd');
@@ -287,7 +324,7 @@ function upload_video_to_s3(array $file): string
 
     $stream = fopen($tmpName, 'rb');
     if ($stream === false) {
-        throw new RuntimeException('Uploaded video could not be opened for transfer.');
+        throw new RuntimeException('Uploaded material could not be opened for transfer.');
     }
 
     $ch = curl_init('https://' . $host . $canonicalUri);
@@ -316,6 +353,22 @@ function upload_video_to_s3(array $file): string
     }
 
     return s3_object_url($settings, $objectKey);
+}
+
+function upload_video_to_s3(array $file): string
+{
+    return upload_material_to_s3($file);
+}
+
+function text_with_links(?string $value): string
+{
+    $escaped = e($value);
+
+    return preg_replace_callback(
+        '~https?://[^\s<]+~i',
+        static fn (array $matches): string => '<a href="' . $matches[0] . '" target="_blank" rel="noopener">' . $matches[0] . '</a>',
+        $escaped
+    ) ?? $escaped;
 }
 
 function razorpay_settings(): array
