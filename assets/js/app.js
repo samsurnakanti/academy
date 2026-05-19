@@ -16,6 +16,20 @@ const brandPhrases = [
     'Business Intelligence (BI)',
     'Data Analytics',
 ];
+const appSplash = document.getElementById('app-splash');
+
+if (appSplash) {
+    const hideSplash = () => {
+        appSplash.classList.add('is-hidden');
+        window.setTimeout(() => appSplash.remove(), 460);
+    };
+
+    window.addEventListener('load', () => {
+        window.setTimeout(hideSplash, 850);
+    });
+
+    window.setTimeout(hideSplash, 2600);
+}
 
 if (siteHeader) {
     const syncHeaderState = () => {

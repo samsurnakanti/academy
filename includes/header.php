@@ -18,6 +18,23 @@ $admin = current_admin();
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
 <body data-service-worker-url="<?= e(public_url('service-worker.js')) ?>">
+<div class="app-splash" id="app-splash" role="status" aria-live="polite">
+    <div class="app-splash-card">
+        <div class="app-splash-icon">
+            <img src="<?= e(public_url('assets/favicon.svg')) ?>" alt="Elldy">
+        </div>
+        <div class="app-splash-visual" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        <p class="eyebrow">Elldy</p>
+        <h1>AI Powered Data Intelligence Platform</h1>
+        <p>Learn data analytics and business analytics. Become an advanced master analyst in data.</p>
+        <div class="app-splash-loader" aria-hidden="true"></div>
+    </div>
+</div>
 <header class="site-header">
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Open menu">
         <span></span>

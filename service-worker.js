@@ -1,4 +1,4 @@
-const CACHE_NAME = 'elldy-academy-v1';
+const CACHE_NAME = 'elldy-academy-v2';
 const STATIC_ASSETS = [
     './',
     './assets/css/style.css',
