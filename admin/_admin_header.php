@@ -29,6 +29,7 @@ $admin = require_admin();
         <span class="nav-dropdown">
             <button type="button">Settings</button>
             <span class="nav-dropdown-menu">
+                <a href="security.php">Security</a>
                 <a href="s3.php">S3</a>
                 <a href="razorpay.php">Razorpay</a>
                 <a href="whatsapp.php">WhatsApp</a>

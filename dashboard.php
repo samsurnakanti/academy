@@ -58,8 +58,19 @@ require __DIR__ . '/includes/header.php';
     <p>Track your live sessions, first session access, and payment status.</p>
     <a class="button small" href="profile.php">Update Profile</a>
 </section>
+<section class="section dashboard-install-section">
+    <div class="install-app-card">
+        <div>
+            <p class="eyebrow">Mobile access</p>
+            <h2>Add Elldy Academy to your phone</h2>
+            <p>Open your classes faster from your mobile home screen, like an app, without searching the website every time.</p>
+            <small class="ios-install-help">On iPhone, tap Share in Safari and choose Add to Home Screen.</small>
+        </div>
+        <button class="button primary" type="button" id="install-app-button" hidden>Add to Mobile</button>
+    </div>
+</section>
 <section class="section">
-    <div class="table-wrap">
+    <div class="table-wrap dashboard-courses">
         <table>
             <thead>
                 <tr>
@@ -75,12 +86,20 @@ require __DIR__ . '/includes/header.php';
             </thead>
             <tbody>
                 <?php foreach ($enrollments as $row): ?>
+                    <?php
+                    $isLiveSession = ($row['delivery_type'] ?? 'video') === 'live_session';
+                    $courseTypeLabel = $isLiveSession ? 'Live Sessions' : 'Videos';
+                    $courseTypeClass = $isLiveSession ? 'live-session' : 'video';
+                    ?>
                     <tr>
-                        <td><?= e($row['title']) ?></td>
-                        <td><?= e($row['duration']) ?></td>
-                        <td><?= money($row['fee']) ?></td>
-                        <td><?= ((float) ($row['certification_fee'] ?? 0)) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
-                        <td>
+                        <td data-label="Program">
+                            <?= e($row['title']) ?>
+                            <span class="type-badge <?= e($courseTypeClass) ?>"><?= e($courseTypeLabel) ?></span>
+                        </td>
+                        <td data-label="Duration"><?= e($row['duration']) ?></td>
+                        <td data-label="Fee"><?= money($row['fee']) ?></td>
+                        <td data-label="Certification"><?= ((float) ($row['certification_fee'] ?? 0)) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
+                        <td data-label="Status">
                             <span class="status">
                                 <?php if ($row['status'] === 'free_access'): ?>
                                     <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'First Session Free' : 'First Video Free' ?>
@@ -89,7 +108,7 @@ require __DIR__ . '/includes/header.php';
                                 <?php endif; ?>
                             </span>
                         </td>
-                        <td>
+                        <td data-label="Learn">
                             <?php if ($row['status'] !== 'cancelled'): ?>
                                 <a class="button tiny" href="learn.php?enrollment_id=<?= (int) $row['id'] ?>">
                                     <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'Join Live Sessions' : 'Watch Videos' ?>
@@ -98,7 +117,7 @@ require __DIR__ . '/includes/header.php';
                                 -
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Certificate">
                             <?php if ($row['certificate_url'] && $row['certificate_status'] === 'issued'): ?>
                                 <a class="button tiny" href="<?= e($row['certificate_url']) ?>" target="_blank" rel="noopener">Download</a>
                             <?php elseif (($row['certificate_status'] ?? '') === 'payment_pending'): ?>
@@ -111,7 +130,7 @@ require __DIR__ . '/includes/header.php';
                                 -
                             <?php endif; ?>
                         </td>
-                        <td>
+                        <td data-label="Payment">
                             <?php if ((float) $row['fee'] <= 0): ?>
                                 Included
                             <?php elseif (in_array($row['status'], ['paid', 'completed'], true)): ?>
@@ -129,10 +148,27 @@ require __DIR__ . '/includes/header.php';
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$enrollments): ?>
-                    <tr><td colspan="8">No enrollments yet. <a href="<?= e(public_url('programs')) ?>">Choose an analytics program</a>.</td></tr>
+                    <tr><td colspan="8" data-label="Enrollments">No enrollments yet. <a href="<?= e(public_url('programs')) ?>">Choose an analytics program</a>.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+</section>
+<section class="section faq-section">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Student help</p>
+            <h2>Frequently asked questions</h2>
+        </div>
+        <a href="<?= e(public_url('contact')) ?>">Contact support</a>
+    </div>
+    <div class="faq-grid">
+        <?php foreach (academy_faqs() as $faq): ?>
+            <details class="faq-item">
+                <summary><?= e($faq['question']) ?></summary>
+                <p><?= e($faq['answer']) ?></p>
+            </details>
+        <?php endforeach; ?>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

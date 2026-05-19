@@ -12,9 +12,12 @@ $admin = current_admin();
         <link rel="canonical" href="<?= e($canonicalUrl) ?>">
     <?php endif; ?>
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
+    <link rel="manifest" href="<?= e(public_url('manifest.webmanifest')) ?>">
+    <link rel="apple-touch-icon" href="<?= e(public_url('assets/icons/app-icon-192.png')) ?>">
+    <meta name="theme-color" content="#0b6bcb">
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
-<body>
+<body data-service-worker-url="<?= e(public_url('service-worker.js')) ?>">
 <header class="site-header">
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Open menu">
         <span></span>

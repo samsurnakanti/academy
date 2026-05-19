@@ -115,13 +115,19 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
             <label>Expert photo URL <input name="expert_photo" value="<?= e($edit['expert_photo'] ?? '') ?>" placeholder="https://..."></label>
         </fieldset>
 
+        <?php $selectedDeliveryType = $edit['delivery_type'] ?? 'video'; ?>
         <fieldset>
-            <legend>Schedule & Access</legend>
+            <legend class="legend-with-badge">
+                Schedule & Access
+                <span class="type-badge <?= $selectedDeliveryType === 'live_session' ? 'live-session' : 'video' ?>" id="course-type-legend">
+                    <?= $selectedDeliveryType === 'live_session' ? 'Live Sessions' : 'Videos' ?>
+                </span>
+            </legend>
             <label>Duration <input name="duration" value="<?= e($edit['duration'] ?? '') ?>" placeholder="6 weeks" required></label>
             <label>Program video/course fee <input type="number" step="0.01" name="fee" value="<?= e((string) ($edit['fee'] ?? '0')) ?>"></label>
             <label>Certification charge <input type="number" step="0.01" name="certification_fee" value="<?= e((string) ($edit['certification_fee'] ?? '0')) ?>"></label>
             <label>Program type
-                <select name="delivery_type" required>
+                <select name="delivery_type" id="course-delivery-type" required>
                     <option value="video" <?= ($edit['delivery_type'] ?? 'video') === 'video' ? 'selected' : '' ?>>Video course</option>
                     <option value="live_session" <?= ($edit['delivery_type'] ?? '') === 'live_session' ? 'selected' : '' ?>>Live session course</option>
                 </select>
@@ -145,7 +151,12 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
                     <tr>
                         <td><?= $index + 1 ?></td>
                         <td><?= e($course['title']) ?></td>
-                        <td><?= ($course['delivery_type'] ?? 'video') === 'live_session' ? 'Live Session' : 'Video' ?></td>
+                        <td>
+                            <?php $isLiveCourse = ($course['delivery_type'] ?? 'video') === 'live_session'; ?>
+                            <span class="type-badge <?= $isLiveCourse ? 'live-session' : 'video' ?>">
+                                <?= $isLiveCourse ? 'Live Sessions' : 'Videos' ?>
+                            </span>
+                        </td>
                         <td><?= e($course['duration']) ?></td>
                         <td><?= money($course['fee']) ?></td>
                         <td><?= $course['is_active'] ? 'Active' : 'Inactive' ?></td>
@@ -170,4 +181,24 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
         </table>
     </div>
 </section>
+<script>
+(() => {
+    const select = document.getElementById('course-delivery-type');
+    const badge = document.getElementById('course-type-legend');
+
+    if (!select || !badge) {
+        return;
+    }
+
+    const syncBadge = () => {
+        const isLive = select.value === 'live_session';
+        badge.textContent = isLive ? 'Live Sessions' : 'Videos';
+        badge.classList.toggle('live-session', isLive);
+        badge.classList.toggle('video', !isLive);
+    };
+
+    select.addEventListener('change', syncBadge);
+    syncBadge();
+})();
+</script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>

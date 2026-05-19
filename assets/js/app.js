@@ -59,6 +59,42 @@ if (siteHeader && menuToggle && mainNav) {
     });
 }
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        const serviceWorkerUrl = document.body.dataset.serviceWorkerUrl;
+
+        if (serviceWorkerUrl) {
+            navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
+        }
+    });
+}
+
+const installAppButton = document.getElementById('install-app-button');
+let installPromptEvent = null;
+
+window.addEventListener('beforeinstallprompt', (event) => {
+    if (!installAppButton) {
+        return;
+    }
+
+    event.preventDefault();
+    installPromptEvent = event;
+    installAppButton.hidden = false;
+});
+
+if (installAppButton) {
+    installAppButton.addEventListener('click', async () => {
+        if (!installPromptEvent) {
+            return;
+        }
+
+        installPromptEvent.prompt();
+        await installPromptEvent.userChoice.catch(() => null);
+        installPromptEvent = null;
+        installAppButton.hidden = true;
+    });
+}
+
 document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const video = frame.querySelector('.academy-video');
     const toggle = frame.querySelector('.video-toggle');

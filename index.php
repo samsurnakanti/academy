@@ -1,18 +1,18 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 
-$title = 'Elldy Academy | Data Analytics & BI Training';
+$title = 'Elldy Academy | Official BI Platform Learning';
 $canonicalUrl = public_url();
 $courses = active_courses(6);
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="hero">
     <div class="hero-copy">
-        <p class="eyebrow">Elevate with Elldy</p>
+        <p class="eyebrow">Official learning initiative of Elldy BI</p>
         <h1>Elldy Academy</h1>
-        <p>Learn data analytics and business intelligence through Elldy-style business cases, dashboards, data storytelling, and decision-ready reporting.</p>
+        <p>Elldy Academy is the official learning initiative of the Elldy Business Intelligence platform, created to help students, analysts, business leaders, and teams build practical data expertise through analytics, dashboards, and real business-case learning.</p>
         <div class="hero-actions">
-            <a class="button primary" href="<?= e(public_url('programs')) ?>">Start Free Analytics Session</a>
+            <a class="button primary" href="<?= e(public_url('programs')) ?>">Start Learning with Elldy</a>
             <a class="button secondary" href="<?= e(public_url('certification')) ?>">View Certification</a>
         </div>
     </div>
@@ -22,11 +22,11 @@ require __DIR__ . '/includes/header.php';
             <strong>Free</strong>
         </div>
         <div>
-            <span>Business cases</span>
-            <strong>Live Data</strong>
+            <span>Business teams</span>
+            <strong>BI Skills</strong>
         </div>
         <div>
-            <span>Elldy outcome</span>
+            <span>Platform outcome</span>
             <strong>Dashboards</strong>
         </div>
     </div>
@@ -35,8 +35,8 @@ require __DIR__ . '/includes/header.php';
 <section class="section certificate-band">
     <div>
         <p class="eyebrow">Official certification</p>
-        <h2>Earn a BI platform certificate for your bright career</h2>
-        <p>Elldy Academy provides certification from Arklytics Solutions and Innovations and Elldy Platform, showing your analytics learning is connected to a real BI platform ecosystem.</p>
+        <h2>Learn analytics from the official academy of a BI platform</h2>
+        <p>Elldy Academy provides certification from Arklytics Solutions and Innovations and Elldy Platform, showing that your learning is connected to a real data intelligence and business intelligence ecosystem.</p>
     </div>
     <div class="certificate-mini">
         <span>Issued by</span>
@@ -49,21 +49,21 @@ require __DIR__ . '/includes/header.php';
 
 <section class="section intelligence-strip">
     <div>
-        <p class="eyebrow">Learning arm of Elldy</p>
-        <h2>Learn analytics for the fast-growing world of business intelligence</h2>
+        <p class="eyebrow">Education for the Elldy ecosystem</p>
+        <h2>Build the data skills needed by modern businesses</h2>
     </div>
     <div class="capability-grid">
         <article>
             <strong>Data Expertise</strong>
-            <p>Understand datasets, clean inputs, frame KPIs, and convert raw numbers into reliable business insights.</p>
+            <p>Understand datasets, clean inputs, frame KPIs, and convert raw numbers into reliable business insights for teams and leaders.</p>
         </article>
         <article>
-            <strong>BI Delivery</strong>
-            <p>Create dashboards, executive reports, and visual narratives inspired by how BI platforms support businesses.</p>
+            <strong>BI Platform Thinking</strong>
+            <p>Learn how BI platforms such as Elldy help companies monitor performance, create dashboards, and act on data.</p>
         </article>
         <article>
             <strong>Business Cases</strong>
-            <p>Work on real-time business scenarios, diagnose problems, and recommend actions from data.</p>
+            <p>Practice analytics through sales, marketing, finance, operations, and leadership scenarios that businesses face every day.</p>
         </article>
     </div>
 </section>
@@ -71,8 +71,8 @@ require __DIR__ . '/includes/header.php';
 <section class="section">
     <div class="section-heading">
         <div>
-            <p class="eyebrow">Advanced analytics programs</p>
-            <h2>BI and Data Analytics Learning Tracks</h2>
+            <p class="eyebrow">Platform-led analytics programs</p>
+            <h2>Learn data analytics, business analytics, and BI workflows</h2>
         </div>
         <a href="<?= e(public_url('programs')) ?>">View all</a>
     </div>
@@ -113,35 +113,53 @@ require __DIR__ . '/includes/header.php';
     </div>
 </section>
 
+<section class="section faq-section">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Common questions</p>
+            <h2>Before you start learning</h2>
+        </div>
+        <a href="<?= e(public_url('contact')) ?>">Need help?</a>
+    </div>
+    <div class="faq-grid">
+        <?php foreach (academy_faqs() as $faq): ?>
+            <details class="faq-item">
+                <summary><?= e($faq['question']) ?></summary>
+                <p><?= e($faq['answer']) ?></p>
+            </details>
+        <?php endforeach; ?>
+    </div>
+</section>
+
 <section class="section split">
     <div>
-        <p class="eyebrow">Production workflow</p>
-        <h2>From data confusion to business clarity</h2>
-        <p>Elldy Academy teaches the workflow behind modern BI platforms: identify the business problem, prepare data, build BI views, and communicate decisions.</p>
+        <p class="eyebrow">For learners and business teams</p>
+        <h2>From business questions to data-driven decisions</h2>
+        <p>Elldy Academy teaches the workflow behind modern BI platforms: understand a business problem, prepare data, build BI views, integrate analytics thinking into business operations, and communicate decisions clearly.</p>
         <div class="process-list">
             <span>01. Understand business cases</span>
             <span>02. Analyse data patterns</span>
             <span>03. Build BI dashboards</span>
-            <span>04. Present action-ready insights</span>
+            <span>04. Apply insights to business decisions</span>
         </div>
     </div>
     <div class="activity-list">
         <div class="activity-item">
             <div>
-                <strong>Case-led learning</strong>
-                <span>Programs are built around realistic sales, finance, marketing, and operations scenarios.</span>
+                <strong>For students and analysts</strong>
+                <span>Build practical confidence in datasets, reporting, KPIs, dashboards, and analytics storytelling.</span>
             </div>
         </div>
         <div class="activity-item">
             <div>
-                <strong>Dashboard practice</strong>
-                <span>Learners move from raw data to KPIs, reports, and presentation-ready BI outputs.</span>
+                <strong>For CEOs and departments</strong>
+                <span>Understand how sales, marketing, finance, and operations teams can use analytics in daily decisions.</span>
             </div>
         </div>
         <div class="activity-item">
             <div>
-                <strong>Career-focused outcomes</strong>
-                <span>Each track is designed to strengthen portfolio work, reporting confidence, and analytics thinking.</span>
+                <strong>For business integration</strong>
+                <span>Learn how BI platforms can connect data, people, and decisions across a growing business.</span>
             </div>
         </div>
     </div>

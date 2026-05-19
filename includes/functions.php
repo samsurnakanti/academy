@@ -48,6 +48,48 @@ function asset_url(string $path): string
     return $version !== '' ? $url . '?v=' . rawurlencode($version) : $url;
 }
 
+function academy_faqs(): array
+{
+    return [
+        [
+            'question' => 'How do I continue my classes?',
+            'answer' => 'Login to your Elldy Academy account, open your trainee dashboard, and click Watch Videos or Join Live Sessions beside your enrolled program. You can continue from your available course materials anytime.',
+        ],
+        [
+            'question' => 'Do I need to create an account?',
+            'answer' => 'Yes. Your account keeps your enrollment, video access, payment status, profile details, and certificate access connected safely in one place.',
+        ],
+        [
+            'question' => 'How do I login every time?',
+            'answer' => 'Use the same mobile number or email details you used during registration. After login, go to Dashboard to view your classes, course access, and certificate options.',
+        ],
+        [
+            'question' => 'What is Elldy?',
+            'answer' => 'Elldy is a growing Business Intelligence platform that helps businesses understand data, build dashboards, track performance, and make better decisions from real business information.',
+        ],
+        [
+            'question' => 'What is Elldy Academy?',
+            'answer' => 'Elldy Academy is the official learning initiative of the Elldy BI platform, created for students, analysts, business owners, CEOs, and teams who want practical data analytics and BI skills.',
+        ],
+        [
+            'question' => 'Are these courses useful for my career?',
+            'answer' => 'Yes. The courses focus on practical analytics, dashboards, KPIs, business cases, and decision-making skills that are useful for data analyst, business analyst, MIS, sales, marketing, operations, and management roles.',
+        ],
+        [
+            'question' => 'Can I access videos after completing the course?',
+            'answer' => 'Yes. You can access your available course videos anytime from your learning workspace, based on your enrollment access.',
+        ],
+        [
+            'question' => 'How do I get my certificate?',
+            'answer' => 'After your eligible course access is completed or approved, login to Elldy Academy and use the certificate option in your dashboard to download your valid certificate.',
+        ],
+        [
+            'question' => 'What should I do if I have doubts?',
+            'answer' => 'Use the WhatsApp support button on the website to contact the Elldy Academy team. Share your course name and question so the team can help you faster.',
+        ],
+    ];
+}
+
 function site_url(string $path = ''): string
 {
     $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';

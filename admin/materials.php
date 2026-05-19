@@ -110,7 +110,17 @@ if (isset($_GET['edit'])) {
                     <tr>
                         <td><?= $index + 1 ?></td>
                         <td><?= e($material['course_title']) ?></td>
-                        <td><?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?></td>
+                        <td>
+                            <?php
+                            $materialType = $material['material_type'] ?? 'video';
+                            $materialLabel = match ($materialType) {
+                                'live_session' => 'Live Session',
+                                'material' => 'Material',
+                                default => 'Video',
+                            };
+                            ?>
+                            <span class="type-badge <?= e(str_replace('_', '-', $materialType)) ?>"><?= e($materialLabel) ?></span>
+                        </td>
                         <td><?= e($material['title']) ?><br><small><?= e($material['description']) ?></small></td>
                         <td><?= $material['file_url'] ? '<a href="' . e($material['file_url']) . '" target="_blank">Open</a>' : '-' ?></td>
                         <td class="table-actions">
@@ -129,7 +139,20 @@ if (isset($_GET['edit'])) {
             <input type="hidden" name="material_id" value="<?= (int) ($editingMaterial['id'] ?? 0) ?>">
             <h2><?= $editingMaterial ? 'Edit Learning Item' : 'Add Program Learning Item' ?></h2>
             <fieldset>
-            <legend>Material Details</legend>
+            <?php
+            $selectedMaterialType = $editingMaterial['material_type'] ?? 'video';
+            $selectedMaterialLabel = match ($selectedMaterialType) {
+                'live_session' => 'Live Session',
+                'material' => 'Material',
+                default => 'Video',
+            };
+            ?>
+            <legend class="legend-with-badge">
+                Learning Item Details
+                <span class="type-badge <?= e(str_replace('_', '-', $selectedMaterialType)) ?>" id="material-type-legend">
+                    <?= e($selectedMaterialLabel) ?>
+                </span>
+            </legend>
             <label>Program
                 <select name="course_id" required>
                     <?php foreach ($courses as $course): ?>
@@ -138,7 +161,7 @@ if (isset($_GET['edit'])) {
                 </select>
             </label>
             <label>Item type
-                <select name="material_type" required>
+                <select name="material_type" id="material-type" required>
                     <option value="video" <?= ($editingMaterial['material_type'] ?? 'video') === 'video' ? 'selected' : '' ?>>Course video</option>
                     <option value="live_session" <?= ($editingMaterial['material_type'] ?? '') === 'live_session' ? 'selected' : '' ?>>Live session / meeting</option>
                     <option value="material" <?= ($editingMaterial['material_type'] ?? '') === 'material' ? 'selected' : '' ?>>Download / material</option>
@@ -289,6 +312,31 @@ if (isset($_GET['edit'])) {
             setUploadState('The selected file has not finished uploading yet.', progress.value || 0);
         }
     });
+})();
+
+(() => {
+    const select = document.getElementById('material-type');
+    const badge = document.getElementById('material-type-legend');
+    const labels = {
+        video: 'Video',
+        live_session: 'Live Session',
+        material: 'Material',
+    };
+
+    if (!select || !badge) {
+        return;
+    }
+
+    const syncBadge = () => {
+        const type = select.value;
+        badge.textContent = labels[type] || 'Video';
+        badge.classList.toggle('video', type === 'video');
+        badge.classList.toggle('live-session', type === 'live_session');
+        badge.classList.toggle('material', type === 'material');
+    };
+
+    select.addEventListener('change', syncBadge);
+    syncBadge();
 })();
 </script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>
