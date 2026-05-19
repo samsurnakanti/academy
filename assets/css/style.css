@@ -100,7 +100,7 @@ main {
     position: fixed;
     inset: 0;
     z-index: 999;
-    display: grid;
+    display: none;
     place-items: center;
     padding: 24px;
     background:
@@ -109,6 +109,10 @@ main {
         linear-gradient(145deg, #081426, #0f172a 58%, #111827);
     color: #ffffff;
     transition: opacity 0.42s ease, visibility 0.42s ease;
+}
+
+body.is-installed-app-launch .app-splash {
+    display: grid;
 }
 
 .app-splash.is-hidden {
@@ -1349,6 +1353,7 @@ tbody tr:hover {
 }
 
 .dashboard-install-section {
+    display: none;
     padding-bottom: 0;
 }
 
@@ -2033,7 +2038,12 @@ tbody tr:hover {
     }
 
     .dashboard-install-section {
+        display: block;
         padding-top: 20px;
+    }
+
+    body.is-installed-app .dashboard-install-section {
+        display: none;
     }
 
     .install-app-card {

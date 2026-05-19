@@ -17,8 +17,16 @@ const brandPhrases = [
     'Data Analytics',
 ];
 const appSplash = document.getElementById('app-splash');
+const isInstalledApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-if (appSplash) {
+if (isInstalledApp) {
+    document.body.classList.add('is-installed-app-launch');
+    document.body.classList.add('is-installed-app');
+} else {
+    document.body.classList.remove('is-installed-app-launch');
+}
+
+if (appSplash && isInstalledApp) {
     const hideSplash = () => {
         appSplash.classList.add('is-hidden');
         window.setTimeout(() => appSplash.remove(), 460);
@@ -29,6 +37,8 @@ if (appSplash) {
     });
 
     window.setTimeout(hideSplash, 2600);
+} else if (appSplash) {
+    appSplash.remove();
 }
 
 if (siteHeader) {

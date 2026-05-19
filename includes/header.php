@@ -18,6 +18,11 @@ $admin = current_admin();
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
 <body data-service-worker-url="<?= e(public_url('service-worker.js')) ?>">
+<script>
+if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    document.body.classList.add('is-installed-app-launch');
+}
+</script>
 <div class="app-splash" id="app-splash" role="status" aria-live="polite">
     <div class="app-splash-card">
         <div class="app-splash-icon">
