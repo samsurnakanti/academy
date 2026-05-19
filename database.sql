@@ -69,6 +69,28 @@ CREATE TABLE IF NOT EXISTS enrollments (
     CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS learning_progress (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    enrollment_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    course_id INT UNSIGNED NOT NULL,
+    material_id INT UNSIGNED NOT NULL,
+    watched_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
+    duration_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
+    progress_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+    is_completed TINYINT(1) NOT NULL DEFAULT 0,
+    completed_at DATETIME NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_enrollment_material (enrollment_id, material_id),
+    INDEX idx_learning_progress_user (user_id),
+    INDEX idx_learning_progress_course (course_id),
+    CONSTRAINT fk_learning_progress_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_learning_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_learning_progress_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    CONSTRAINT fk_learning_progress_material FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS login_otps (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
@@ -89,6 +111,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_settings (
     template_name VARCHAR(120) NULL,
     enrollment_template_name VARCHAR(120) NULL,
     reminder_template_name VARCHAR(120) NULL,
+    certificate_template_name VARCHAR(120) NULL,
     template_language VARCHAR(20) NOT NULL DEFAULT 'en',
     graph_version VARCHAR(20) NOT NULL DEFAULT 'v20.0',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

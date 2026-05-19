@@ -98,4 +98,57 @@ document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     video.addEventListener('pause', syncVideoState);
     video.addEventListener('ended', syncVideoState);
     syncVideoState();
+
+    const progressUrl = video.dataset.progressUrl;
+    const csrfToken = video.dataset.csrfToken;
+    const enrollmentId = video.dataset.enrollmentId;
+    const materialId = video.dataset.materialId;
+    const startSeconds = Number.parseFloat(video.dataset.startSeconds || '0');
+    let lastSavedAt = 0;
+    let hasRestoredPosition = false;
+
+    const saveProgress = (force = false) => {
+        if (!progressUrl || !csrfToken || !enrollmentId || !materialId || !Number.isFinite(video.duration) || video.duration <= 0) {
+            return;
+        }
+
+        const now = Date.now();
+        const isComplete = video.ended || ((video.currentTime / video.duration) >= 0.9);
+
+        if (!force && !isComplete && now - lastSavedAt < 10000) {
+            return;
+        }
+
+        lastSavedAt = now;
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('enrollment_id', enrollmentId);
+        formData.append('material_id', materialId);
+        formData.append('watched_seconds', String(Math.max(0, video.currentTime)));
+        formData.append('duration_seconds', String(Math.max(0, video.duration)));
+
+        window.fetch(progressUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            keepalive: true,
+        }).catch(() => {});
+    };
+
+    video.addEventListener('loadedmetadata', () => {
+        if (hasRestoredPosition || !Number.isFinite(startSeconds) || startSeconds <= 0 || !Number.isFinite(video.duration)) {
+            return;
+        }
+
+        if (startSeconds < video.duration - 5) {
+            video.currentTime = startSeconds;
+        }
+
+        hasRestoredPosition = true;
+    });
+
+    video.addEventListener('timeupdate', () => saveProgress(false));
+    video.addEventListener('pause', () => saveProgress(true));
+    video.addEventListener('ended', () => saveProgress(true));
+    window.addEventListener('beforeunload', () => saveProgress(true));
 });

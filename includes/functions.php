@@ -541,6 +541,54 @@ function should_use_native_video_player(string $url): bool
         (!is_embed_video_provider_url($url) && $url !== '');
 }
 
+function ensure_learning_progress_table(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS learning_progress (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            enrollment_id INT UNSIGNED NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            course_id INT UNSIGNED NOT NULL,
+            material_id INT UNSIGNED NOT NULL,
+            watched_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
+            duration_seconds DECIMAL(10,2) NOT NULL DEFAULT 0,
+            progress_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+            is_completed TINYINT(1) NOT NULL DEFAULT 0,
+            completed_at DATETIME NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_enrollment_material (enrollment_id, material_id),
+            INDEX idx_learning_progress_user (user_id),
+            INDEX idx_learning_progress_course (course_id),
+            CONSTRAINT fk_learning_progress_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE,
+            CONSTRAINT fk_learning_progress_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            CONSTRAINT fk_learning_progress_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+            CONSTRAINT fk_learning_progress_material FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+        )"
+    );
+}
+
+function learning_progress_for_enrollment(int $enrollmentId): array
+{
+    ensure_learning_progress_table();
+    $stmt = db()->prepare('SELECT * FROM learning_progress WHERE enrollment_id = ?');
+    $stmt->execute([$enrollmentId]);
+    $rows = [];
+
+    foreach ($stmt->fetchAll() as $row) {
+        $rows[(int) $row['material_id']] = $row;
+    }
+
+    return $rows;
+}
+
 function ensure_material_columns(): void
 {
     static $checked = false;
@@ -914,9 +962,13 @@ function ensure_whatsapp_settings_table(): void
         db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN reminder_template_name VARCHAR(120) NULL AFTER enrollment_template_name");
     }
 
+    if (!isset($existing['certificate_template_name'])) {
+        db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN certificate_template_name VARCHAR(120) NULL AFTER reminder_template_name");
+    }
+
     $stmt = db()->prepare(
-        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, reminder_template_name, template_language, graph_version)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, reminder_template_name, certificate_template_name, template_language, graph_version)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE id = id"
     );
     $stmt->execute([
@@ -924,6 +976,7 @@ function ensure_whatsapp_settings_table(): void
         WHATSAPP_PHONE_NUMBER_ID,
         whatsapp_access_token(),
         whatsapp_otp_template_name(),
+        null,
         null,
         null,
         'en',
@@ -950,6 +1003,7 @@ function whatsapp_settings(): array
         'template_name' => trim((string) ($settings['template_name'] ?? whatsapp_otp_template_name())),
         'enrollment_template_name' => trim((string) ($settings['enrollment_template_name'] ?? '')),
         'reminder_template_name' => trim((string) ($settings['reminder_template_name'] ?? '')),
+        'certificate_template_name' => trim((string) ($settings['certificate_template_name'] ?? '')),
         'template_language' => trim((string) ($settings['template_language'] ?? 'en')) ?: 'en',
         'graph_version' => trim((string) ($settings['graph_version'] ?? WHATSAPP_GRAPH_VERSION)) ?: WHATSAPP_GRAPH_VERSION,
     ];
@@ -961,7 +1015,7 @@ function save_whatsapp_settings(array $data): void
 
     $stmt = db()->prepare(
         "UPDATE whatsapp_settings
-         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, reminder_template_name = ?, template_language = ?, graph_version = ?
+         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, reminder_template_name = ?, certificate_template_name = ?, template_language = ?, graph_version = ?
          WHERE id = 1"
     );
     $stmt->execute([
@@ -971,6 +1025,7 @@ function save_whatsapp_settings(array $data): void
         trim((string) ($data['template_name'] ?? '')),
         trim((string) ($data['enrollment_template_name'] ?? '')),
         trim((string) ($data['reminder_template_name'] ?? '')),
+        trim((string) ($data['certificate_template_name'] ?? '')),
         trim((string) ($data['template_language'] ?? 'en')) ?: 'en',
         trim((string) ($data['graph_version'] ?? WHATSAPP_GRAPH_VERSION)) ?: WHATSAPP_GRAPH_VERSION,
     ]);
@@ -1082,6 +1137,24 @@ function send_class_reminder_whatsapp(array $row): bool
         (string) $row['phone'],
         $settings['reminder_template_name'],
         [(string) $row['name'], (string) $row['title'], site_url('login.php')]
+    );
+}
+
+function send_certificate_eligible_whatsapp(array $row): bool
+{
+    $settings = whatsapp_settings();
+
+    if ($settings['certificate_template_name'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'Certificate WhatsApp template name is missing. Save the approved Meta template name in Admin > WhatsApp.';
+        return false;
+    }
+
+    $certificateUrl = site_url('certificate_apply.php?enrollment_id=' . (int) $row['enrollment_id']);
+
+    return send_whatsapp_template_message(
+        (string) $row['phone'],
+        $settings['certificate_template_name'],
+        [(string) $row['name'], (string) $row['course_title'], $certificateUrl]
     );
 }
 

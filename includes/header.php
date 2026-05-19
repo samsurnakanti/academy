@@ -33,6 +33,7 @@ $admin = current_admin();
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
         <?php if ($user): ?>
             <a href="<?= e(public_url('dashboard.php')) ?>">My Sessions</a>
+            <a href="<?= e(public_url('profile.php')) ?>">Profile</a>
             <a href="<?= e(public_url('logout.php')) ?>">Logout</a>
         <?php else: ?>
             <a href="<?= e(public_url('login.php')) ?>">Login</a>

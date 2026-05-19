@@ -50,6 +50,9 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
             <label>Daily Class Reminder Template
                 <input name="reminder_template_name" value="<?= e($settings['reminder_template_name']) ?>" placeholder="elldy_academy_class_reminder">
             </label>
+            <label>Certificate Eligible Template
+                <input name="certificate_template_name" value="<?= e($settings['certificate_template_name']) ?>" placeholder="elldy_certificate_eligible">
+            </label>
             <label>Template Language Code
                 <input name="template_language" value="<?= e($settings['template_language']) ?>" placeholder="en">
             </label>
@@ -72,12 +75,12 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
             <p><?= e($settings['template_name'] ?: 'Plain text fallback / not recommended for production') ?> / <?= e($settings['template_language']) ?></p>
         </div>
         <div class="material-item">
-            <strong>Enrollment / Reminder Templates</strong>
-            <p><?= e($settings['enrollment_template_name'] ?: 'Not configured') ?> / <?= e($settings['reminder_template_name'] ?: 'Not configured') ?></p>
+            <strong>Enrollment / Reminder / Certificate Templates</strong>
+            <p><?= e($settings['enrollment_template_name'] ?: 'Not configured') ?> / <?= e($settings['reminder_template_name'] ?: 'Not configured') ?> / <?= e($settings['certificate_template_name'] ?: 'Not configured') ?></p>
         </div>
         <div class="material-item">
             <strong>Important</strong>
-            <p>For production, use approved Meta WhatsApp templates. Enrollment and reminder templates should accept 3 body values in this order: trainee name, program title, login URL.</p>
+            <p>For production, use approved Meta WhatsApp templates. Enrollment and reminder templates should accept 3 body values in this order: trainee name, program title, login URL. Certificate templates should accept: trainee name, program title, certificate URL.</p>
         </div>
         <div class="material-item">
             <strong>Enrollment template</strong>
@@ -86,6 +89,10 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
         <div class="material-item">
             <strong>Reminder template</strong>
             <p><?= $settings['reminder_template_name'] !== '' ? 'Configured: ' . e($settings['reminder_template_name']) : 'Not configured. Daily reminder messages will not send until this approved template name is saved.' ?></p>
+        </div>
+        <div class="material-item">
+            <strong>Certificate template</strong>
+            <p><?= $settings['certificate_template_name'] !== '' ? 'Configured: ' . e($settings['certificate_template_name']) : 'Not configured. Certificate eligibility WhatsApp messages will not send until this approved template name is saved.' ?></p>
         </div>
     </aside>
 </section>

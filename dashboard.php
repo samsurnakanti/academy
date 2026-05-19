@@ -56,6 +56,7 @@ require __DIR__ . '/includes/header.php';
     <p class="eyebrow">Trainee dashboard</p>
     <h1>Welcome, <?= e($user['name']) ?></h1>
     <p>Track your live sessions, first session access, and payment status.</p>
+    <a class="button small" href="profile.php">Update Profile</a>
 </section>
 <section class="section">
     <div class="table-wrap">

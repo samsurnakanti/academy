@@ -22,6 +22,16 @@
             <p><span>Email</span><a href="mailto:Info@arklytics.in">Info@arklytics.in</a></p>
         </div>
     </footer>
+    <a
+        class="support-whatsapp"
+        href="https://wa.me/919490238737?text=Hi%20Elldy%20Academy%2C%20I%20need%20support%20regarding%20my%20course."
+        target="_blank"
+        rel="noopener"
+        aria-label="Chat with Elldy Academy support on WhatsApp"
+    >
+        <span class="support-whatsapp-icon" aria-hidden="true"></span>
+        <span>Chat with us</span>
+    </a>
     <script src="<?= e(asset_url('assets/js/app.js')) ?>"></script>
 </body>
 </html>

@@ -24,10 +24,16 @@ $admin = require_admin();
         <a href="courses.php">Programs</a>
         <a href="materials.php">Materials</a>
         <a href="enrollments.php">Enrollments</a>
+        <a href="progress.php">Progress</a>
         <a href="certificates.php">Certificates</a>
-        <a href="s3.php">S3</a>
-        <a href="razorpay.php">Razorpay</a>
-        <a href="whatsapp.php">WhatsApp</a>
+        <span class="nav-dropdown">
+            <button type="button">Settings</button>
+            <span class="nav-dropdown-menu">
+                <a href="s3.php">S3</a>
+                <a href="razorpay.php">Razorpay</a>
+                <a href="whatsapp.php">WhatsApp</a>
+            </span>
+        </span>
         <a href="../index.php">Website</a>
         <a href="logout.php">Logout</a>
     </nav>

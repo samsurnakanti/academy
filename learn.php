@@ -29,6 +29,7 @@ $materialsStmt = db()->prepare(
 );
 $materialsStmt->execute([(int) $enrollment['course_id']]);
 $materials = $materialsStmt->fetchAll();
+$progressByMaterial = learning_progress_for_enrollment((int) $enrollment['id']);
 $primaryType = ($enrollment['delivery_type'] ?? 'video') === 'live_session' ? 'live_session' : 'video';
 $firstPrimaryItemId = null;
 foreach ($materials as $material) {
@@ -78,16 +79,34 @@ require __DIR__ . '/includes/header.php';
                 <p>This is a paid program. The first <?= $primaryType === 'live_session' ? 'live session' : 'video' ?> is available free; complete payment to unlock the remaining sessions, videos, and materials.</p>
                 <a class="button primary" href="payment.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Continue Payment</a>
             </div>
-        <?php elseif ($activeMaterial && !empty($activeMaterial['file_url'])): ?>
+        <?php elseif ($activeMaterial): ?>
             <?php $playbackUrl = playback_video_url($activeMaterial['file_url']); ?>
             <?php $materialType = $activeMaterial['material_type'] ?? 'video'; ?>
             <p class="eyebrow">Now viewing</p>
             <h2><?= e($activeMaterial['title']) ?></h2>
-            <p><?= text_with_links($activeMaterial['description']) ?></p>
-            <?php if ($materialType === 'video'): ?>
+            <?php if (empty($activeMaterial['file_url'])): ?>
+                <div class="empty-state">
+                    <h2><?= $materialType === 'live_session' ? 'Live session not available' : ($materialType === 'video' ? 'Video not available' : 'Material not available') ?></h2>
+                    <p>The description is available below. Admin will add the <?= $materialType === 'live_session' ? 'session link' : ($materialType === 'video' ? 'video' : 'material file') ?> soon.</p>
+                </div>
+            <?php elseif ($materialType === 'video'): ?>
                 <div class="video-frame <?= should_use_native_video_player($activeMaterial['file_url']) ? 'native-player' : '' ?>">
                     <?php if (should_use_native_video_player($activeMaterial['file_url'])): ?>
-                        <video class="academy-video" controls controlsList="nodownload noremoteplayback" disablePictureInPicture preload="metadata" playsinline oncontextmenu="return false;">
+                        <?php $activeProgress = $progressByMaterial[(int) $activeMaterial['id']] ?? null; ?>
+                        <video
+                            class="academy-video"
+                            controls
+                            controlsList="nodownload noremoteplayback"
+                            disablePictureInPicture
+                            preload="metadata"
+                            playsinline
+                            oncontextmenu="return false;"
+                            data-progress-url="<?= e(public_url('save_progress.php')) ?>"
+                            data-csrf-token="<?= e(csrf_token()) ?>"
+                            data-enrollment-id="<?= (int) $enrollment['id'] ?>"
+                            data-material-id="<?= (int) $activeMaterial['id'] ?>"
+                            data-start-seconds="<?= e((string) min((float) ($activeProgress['watched_seconds'] ?? 0), max(0, (float) ($activeProgress['duration_seconds'] ?? 0) - 5))) ?>"
+                        >
                             <source src="<?= e($playbackUrl) ?>">
                             Your browser does not support embedded video playback.
                         </video>
@@ -120,7 +139,10 @@ require __DIR__ . '/includes/header.php';
                     <p><?= $materialType === 'live_session' ? 'Open this session link in a new tab when you are ready.' : 'This file type opens best in a new tab.' ?></p>
                 </div>
             <?php endif; ?>
-            <?php if ($materialType !== 'video' || !should_use_native_video_player($activeMaterial['file_url'])): ?>
+            <?php if (!empty($activeMaterial['description'])): ?>
+                <p class="material-description"><?= text_with_links($activeMaterial['description']) ?></p>
+            <?php endif; ?>
+            <?php if (!empty($activeMaterial['file_url']) && ($materialType !== 'video' || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
             <?php endif; ?>
         <?php else: ?>
@@ -143,7 +165,15 @@ require __DIR__ . '/includes/header.php';
                     <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
                     <div>
                         <strong><?= e($material['title']) ?></strong>
-                        <small><?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?><?= $material['description'] ? ' - ' . e($material['description']) : '' ?><?= !$isAccessible ? ' - Locked until payment' : '' ?></small>
+                        <?php $itemProgress = $progressByMaterial[(int) $material['id']] ?? null; ?>
+                        <small>
+                            <?= e(ucwords(str_replace('_', ' ', $material['material_type'] ?? 'video'))) ?><?= !$isAccessible ? ' - Locked until payment' : '' ?>
+                            <?php if (($material['material_type'] ?? 'video') === 'video' && $itemProgress): ?>
+                                <span class="progress-chip <?= (int) $itemProgress['is_completed'] === 1 ? 'complete' : '' ?>">
+                                    <?= (int) $itemProgress['is_completed'] === 1 ? 'Completed' : (int) round((float) $itemProgress['progress_percent']) . '%' ?>
+                                </span>
+                            <?php endif; ?>
+                        </small>
                     </div>
             <?= $isAccessible ? '</a>' : '</div>' ?>
         <?php endforeach; ?>
