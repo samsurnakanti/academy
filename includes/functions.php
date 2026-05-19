@@ -1239,6 +1239,144 @@ function ensure_login_otp_table(): void
     );
 }
 
+function ensure_user_remember_tokens_table(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS user_remember_tokens (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            user_id INT UNSIGNED NOT NULL,
+            selector VARCHAR(64) NOT NULL UNIQUE,
+            token_hash VARCHAR(255) NOT NULL,
+            user_agent_hash CHAR(64) NULL,
+            expires_at DATETIME NOT NULL,
+            last_used_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_remember_user (user_id),
+            INDEX idx_user_remember_expires (expires_at),
+            CONSTRAINT fk_user_remember_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )"
+    );
+}
+
+function remember_cookie_name(): string
+{
+    return 'elldy_remember';
+}
+
+function remember_cookie_path(): string
+{
+    $path = site_base_path();
+    return ($path === '' ? '' : $path) . '/';
+}
+
+function remember_user_agent_hash(): string
+{
+    return hash('sha256', (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+}
+
+function remember_cookie_options(int $expires): array
+{
+    return [
+        'expires' => $expires,
+        'path' => remember_cookie_path(),
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+}
+
+function create_remembered_device(int $userId): void
+{
+    ensure_user_remember_tokens_table();
+
+    $selector = bin2hex(random_bytes(12));
+    $token = bin2hex(random_bytes(32));
+    $expires = time() + (60 * 60 * 24 * 45);
+
+    $stmt = db()->prepare(
+        "INSERT INTO user_remember_tokens (user_id, selector, token_hash, user_agent_hash, expires_at)
+         VALUES (?, ?, ?, ?, FROM_UNIXTIME(?))"
+    );
+    $stmt->execute([
+        $userId,
+        $selector,
+        password_hash($token, PASSWORD_DEFAULT),
+        remember_user_agent_hash(),
+        $expires,
+    ]);
+
+    if (!headers_sent()) {
+        setcookie(remember_cookie_name(), $selector . ':' . $token, remember_cookie_options($expires));
+    }
+}
+
+function clear_remembered_device(): void
+{
+    ensure_user_remember_tokens_table();
+    $cookie = (string) ($_COOKIE[remember_cookie_name()] ?? '');
+    $parts = explode(':', $cookie, 2);
+
+    if (count($parts) === 2 && preg_match('/^[a-f0-9]{24}$/', $parts[0])) {
+        $stmt = db()->prepare('DELETE FROM user_remember_tokens WHERE selector = ?');
+        $stmt->execute([$parts[0]]);
+    }
+
+    if (!headers_sent()) {
+        setcookie(remember_cookie_name(), '', remember_cookie_options(time() - 3600));
+    }
+}
+
+function user_from_remembered_device(): ?array
+{
+    ensure_user_remember_tokens_table();
+    $cookie = (string) ($_COOKIE[remember_cookie_name()] ?? '');
+    $parts = explode(':', $cookie, 2);
+
+    if (count($parts) !== 2 || !preg_match('/^[a-f0-9]{24}$/', $parts[0]) || !preg_match('/^[a-f0-9]{64}$/', $parts[1])) {
+        return null;
+    }
+
+    [$selector, $token] = $parts;
+    $stmt = db()->prepare(
+        "SELECT u.*, rt.id AS remember_token_id, rt.token_hash, rt.user_agent_hash
+         FROM user_remember_tokens rt
+         JOIN users u ON u.id = rt.user_id
+         WHERE rt.selector = ? AND rt.expires_at >= NOW()
+         LIMIT 1"
+    );
+    $stmt->execute([$selector]);
+    $row = $stmt->fetch();
+
+    if (!$row || !hash_equals((string) $row['user_agent_hash'], remember_user_agent_hash()) || !password_verify($token, (string) $row['token_hash'])) {
+        clear_remembered_device();
+        return null;
+    }
+
+    $_SESSION['user_id'] = (int) $row['id'];
+
+    $newToken = bin2hex(random_bytes(32));
+    $expires = time() + (60 * 60 * 24 * 45);
+    $update = db()->prepare(
+        "UPDATE user_remember_tokens
+         SET token_hash = ?, expires_at = FROM_UNIXTIME(?), last_used_at = NOW()
+         WHERE id = ?"
+    );
+    $update->execute([password_hash($newToken, PASSWORD_DEFAULT), $expires, (int) $row['remember_token_id']]);
+
+    if (!headers_sent()) {
+        setcookie(remember_cookie_name(), $selector . ':' . $newToken, remember_cookie_options($expires));
+    }
+
+    return $row;
+}
+
 function find_user_by_whatsapp(string $phone): ?array
 {
     $normalized = normalize_whatsapp_number($phone);
@@ -1402,7 +1540,7 @@ function flashes(): array
 function current_user(): ?array
 {
     if (empty($_SESSION['user_id'])) {
-        return null;
+        return user_from_remembered_device();
     }
 
     $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');

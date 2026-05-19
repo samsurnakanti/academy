@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 ensure_login_otp_table();
+ensure_user_remember_tokens_table();
+
+if (current_user()) {
+    redirect('dashboard.php');
+}
 
 if (isset($_GET['reset'])) {
     unset($_SESSION['otp_user_id'], $_SESSION['otp_phone']);
@@ -31,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($userId && $phone !== '' && verify_login_otp($userId, $phone, $otp)) {
             $_SESSION['user_id'] = $userId;
+            create_remembered_device($userId);
             unset($_SESSION['otp_user_id'], $_SESSION['otp_phone']);
             flash('success', 'You are logged in.');
             redirect('dashboard.php');
