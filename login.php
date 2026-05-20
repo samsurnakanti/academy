@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 ensure_login_otp_table();
-ensure_user_remember_tokens_table();
 
 if (current_user()) {
     redirect('dashboard.php');

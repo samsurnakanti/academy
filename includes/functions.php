@@ -20,13 +20,21 @@ function site_base_path(): string
 
 if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.gc_maxlifetime', (string) AUTH_REMEMBER_SECONDS);
-    session_set_cookie_params([
-        'lifetime' => AUTH_REMEMBER_SECONDS,
-        'path' => (site_base_path() === '' ? '' : site_base_path()) . '/',
-        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
+    $sessionPath = (site_base_path() === '' ? '' : site_base_path()) . '/';
+    $sessionSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+
+    if (PHP_VERSION_ID >= 70300) {
+        session_set_cookie_params([
+            'lifetime' => AUTH_REMEMBER_SECONDS,
+            'path' => $sessionPath,
+            'secure' => $sessionSecure,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    } else {
+        session_set_cookie_params(AUTH_REMEMBER_SECONDS, $sessionPath . '; samesite=Lax', '', $sessionSecure, true);
+    }
+
     session_start();
 }
 
@@ -1364,13 +1372,14 @@ function clear_remembered_device(): void
 
 function user_from_remembered_device(): ?array
 {
-    ensure_user_remember_tokens_table();
     $cookie = (string) ($_COOKIE[remember_cookie_name()] ?? '');
     $parts = explode(':', $cookie, 2);
 
     if (count($parts) !== 2 || !preg_match('/^[a-f0-9]{24}$/', $parts[0]) || !preg_match('/^[a-f0-9]{64}$/', $parts[1])) {
         return null;
     }
+
+    ensure_user_remember_tokens_table();
 
     [$selector, $token] = $parts;
     $stmt = db()->prepare(
