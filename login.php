@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $phone = (string) ($_SESSION['otp_phone'] ?? '');
 
         if ($userId && $phone !== '' && verify_login_otp($userId, $phone, $otp)) {
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $userId;
             create_remembered_device($userId);
             unset($_SESSION['otp_user_id'], $_SESSION['otp_phone']);

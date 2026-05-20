@@ -1,6 +1,6 @@
 {
     "name": "Elldy Academy",
-    "short_name": "Elldy",
+    "short_name": "Elldy Academy",
     "description": "Access Elldy Academy classes, videos, live sessions, certificates, and support.",
     "start_url": "./dashboard.php",
     "scope": "./",

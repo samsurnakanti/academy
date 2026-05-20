@@ -4,7 +4,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/whatsapp.php';
 
+const AUTH_REMEMBER_SECONDS = 60 * 60 * 24 * 45;
+
+function site_base_path(): string
+{
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+    $scriptDir = rtrim($scriptDir, '/');
+
+    if (str_ends_with($scriptDir, '/admin')) {
+        $scriptDir = substr($scriptDir, 0, -6);
+    }
+
+    return $scriptDir === '' ? '' : $scriptDir;
+}
+
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', (string) AUTH_REMEMBER_SECONDS);
+    session_set_cookie_params([
+        'lifetime' => AUTH_REMEMBER_SECONDS,
+        'path' => (site_base_path() === '' ? '' : site_base_path()) . '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 
@@ -17,18 +39,6 @@ function redirect(string $path): never
 {
     header('Location: ' . $path);
     exit;
-}
-
-function site_base_path(): string
-{
-    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
-    $scriptDir = rtrim($scriptDir, '/');
-
-    if (str_ends_with($scriptDir, '/admin')) {
-        $scriptDir = substr($scriptDir, 0, -6);
-    }
-
-    return $scriptDir === '' ? '' : $scriptDir;
 }
 
 function public_url(string $path = ''): string
@@ -60,8 +70,8 @@ function academy_faqs(): array
             'answer' => 'Yes. Your account keeps your enrollment, video access, payment status, profile details, and certificate access connected safely in one place.',
         ],
         [
-            'question' => 'How do I login every time?',
-            'answer' => 'Use the same mobile number or email details you used during registration. After login, go to Dashboard to view your classes, course access, and certificate options.',
+            'question' => 'Do I need to login every time?',
+            'answer' => 'No. After WhatsApp OTP login, the same browser or installed app stays remembered on that device. If you use another device or browser, login again with your registered WhatsApp number.',
         ],
         [
             'question' => 'What is Elldy?',
@@ -1263,6 +1273,25 @@ function ensure_user_remember_tokens_table(): void
             CONSTRAINT fk_user_remember_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )"
     );
+
+    $schema = db()->query('SELECT DATABASE()')->fetchColumn();
+    $columns = db()->prepare(
+        "SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'user_remember_tokens'"
+    );
+    $columns->execute([$schema]);
+    $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
+
+    if (!isset($existing['user_agent_hash'])) {
+        db()->exec("ALTER TABLE user_remember_tokens ADD COLUMN user_agent_hash CHAR(64) NULL AFTER token_hash");
+    }
+
+    if (!isset($existing['last_used_at'])) {
+        db()->exec("ALTER TABLE user_remember_tokens ADD COLUMN last_used_at DATETIME NULL AFTER expires_at");
+    }
+
+    db()->exec('DELETE FROM user_remember_tokens WHERE expires_at < NOW()');
 }
 
 function remember_cookie_name(): string
@@ -1298,7 +1327,7 @@ function create_remembered_device(int $userId): void
 
     $selector = bin2hex(random_bytes(12));
     $token = bin2hex(random_bytes(32));
-    $expires = time() + (60 * 60 * 24 * 45);
+    $expires = time() + AUTH_REMEMBER_SECONDS;
 
     $stmt = db()->prepare(
         "INSERT INTO user_remember_tokens (user_id, selector, token_hash, user_agent_hash, expires_at)
@@ -1362,7 +1391,7 @@ function user_from_remembered_device(): ?array
     $_SESSION['user_id'] = (int) $row['id'];
 
     $newToken = bin2hex(random_bytes(32));
-    $expires = time() + (60 * 60 * 24 * 45);
+    $expires = time() + AUTH_REMEMBER_SECONDS;
     $update = db()->prepare(
         "UPDATE user_remember_tokens
          SET token_hash = ?, expires_at = FROM_UNIXTIME(?), last_used_at = NOW()
@@ -1545,7 +1574,15 @@ function current_user(): ?array
 
     $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$_SESSION['user_id']]);
-    return $stmt->fetch() ?: null;
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        unset($_SESSION['user_id']);
+        clear_remembered_device();
+        return null;
+    }
+
+    return $user;
 }
 
 function current_admin(): ?array

@@ -34,7 +34,7 @@ if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.
             <span></span>
             <span></span>
         </div>
-        <p class="eyebrow">Elldy</p>
+        <p class="eyebrow">Elldy Academy</p>
         <h1>AI Powered Data Intelligence Platform</h1>
         <p>Learn data analytics and business analytics. Become an advanced master analyst in data.</p>
         <div class="app-splash-loader" aria-hidden="true"></div>
