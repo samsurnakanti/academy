@@ -94,6 +94,7 @@ if ('serviceWorker' in navigator) {
 }
 
 const installAppButton = document.getElementById('install-app-button');
+const installAppHelp = document.getElementById('install-app-help');
 let installPromptEvent = null;
 
 window.addEventListener('beforeinstallprompt', (event) => {
@@ -103,21 +104,41 @@ window.addEventListener('beforeinstallprompt', (event) => {
 
     event.preventDefault();
     installPromptEvent = event;
-    installAppButton.hidden = false;
+    installAppButton.disabled = false;
+    installAppButton.textContent = 'Install App';
+
+    if (installAppHelp) {
+        installAppHelp.textContent = 'Tap Install App and confirm when your browser asks.';
+    }
 });
 
 if (installAppButton) {
     installAppButton.addEventListener('click', async () => {
-        if (!installPromptEvent) {
+        if (installPromptEvent) {
+            installPromptEvent.prompt();
+            await installPromptEvent.userChoice.catch(() => null);
+            installPromptEvent = null;
+            installAppButton.hidden = true;
             return;
         }
 
-        installPromptEvent.prompt();
-        await installPromptEvent.userChoice.catch(() => null);
-        installPromptEvent = null;
-        installAppButton.hidden = true;
+        const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+        if (installAppHelp) {
+            installAppHelp.textContent = isIos
+                ? 'In Safari, tap Share, then Add to Home Screen. Chrome on iPhone cannot install directly.'
+                : 'Use your browser menu and choose Install app or Add to Home screen. On Android, open this page in Chrome if the install option is missing.';
+        }
     });
 }
+
+window.addEventListener('appinstalled', () => {
+    document.body.classList.add('is-installed-app');
+
+    if (installAppButton) {
+        installAppButton.hidden = true;
+    }
+});
 
 document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const video = frame.querySelector('.academy-video');

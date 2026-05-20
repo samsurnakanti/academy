@@ -14,6 +14,9 @@ $admin = current_admin();
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
     <link rel="manifest" href="<?= e(public_url('manifest.webmanifest')) ?>">
     <link rel="apple-touch-icon" href="<?= e(public_url('assets/icons/app-icon-192.png')) ?>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Elldy Academy">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#0b6bcb">
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>

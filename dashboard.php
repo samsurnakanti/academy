@@ -64,9 +64,9 @@ require __DIR__ . '/includes/header.php';
             <p class="eyebrow">Mobile access</p>
             <h2>Add Elldy Academy to your phone</h2>
             <p>Open your classes faster from your mobile home screen, like an app, without searching the website every time.</p>
-            <small class="ios-install-help">On iPhone, tap Share in Safari and choose Add to Home Screen.</small>
+            <small class="install-app-help" id="install-app-help">On iPhone, tap Share in Safari and choose Add to Home Screen.</small>
         </div>
-        <button class="button primary" type="button" id="install-app-button" hidden>Add to Mobile</button>
+        <button class="button primary" type="button" id="install-app-button">Add to Mobile</button>
     </div>
 </section>
 <section class="section">
