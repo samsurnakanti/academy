@@ -1010,9 +1010,14 @@ function money(float|int|string $value): string
 function discounted_amount(array $row, string $regularKey, string $discountKey): float
 {
     $regular = max(0, (float) ($row[$regularKey] ?? 0));
-    $discount = max(0, (float) ($row[$discountKey] ?? 0));
 
-    return ($discount > 0 && $discount < $regular) ? $discount : $regular;
+    if (!array_key_exists($discountKey, $row) || $row[$discountKey] === null || $row[$discountKey] === '') {
+        return $regular;
+    }
+
+    $discount = max(0, (float) $row[$discountKey]);
+
+    return $discount < $regular ? $discount : $regular;
 }
 
 function course_fee_amount(array $course): float
@@ -1031,6 +1036,10 @@ function price_html(array $row, string $regularKey, string $discountKey): string
     $amount = discounted_amount($row, $regularKey, $discountKey);
 
     if ($regular > 0 && $amount < $regular) {
+        if ($amount <= 0) {
+            return '<span class="price-stack"><del>' . e(money($regular)) . '</del><strong>Free</strong></span>';
+        }
+
         return '<span class="price-stack"><del>' . e(money($regular)) . '</del><strong>' . e(money($amount)) . '</strong></span>';
     }
 
@@ -1776,8 +1785,8 @@ function ensure_course_detail_columns(): void
         'expert_bio' => 'ADD COLUMN expert_bio TEXT NULL AFTER expert_title',
         'expert_photo' => 'ADD COLUMN expert_photo VARCHAR(255) NULL AFTER expert_bio',
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
-        'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
-        'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER certification_fee',
+        'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER fee',
+        'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER certification_fee',
         'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
         'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
         'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
@@ -1786,6 +1795,25 @@ function ensure_course_detail_columns(): void
     foreach ($missing as $column => $definition) {
         if (!isset($existing[$column])) {
             db()->exec("ALTER TABLE courses {$definition}");
+        }
+    }
+
+    $nullableColumns = ['discount_fee', 'certificate_discount_fee'];
+    $columnDetails = db()->prepare(
+        "SELECT COLUMN_NAME, IS_NULLABLE
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'courses' AND COLUMN_NAME IN ('discount_fee', 'certificate_discount_fee')"
+    );
+    $columnDetails->execute([$database]);
+    $details = [];
+    foreach ($columnDetails->fetchAll() as $column) {
+        $details[$column['COLUMN_NAME']] = $column['IS_NULLABLE'];
+    }
+
+    foreach ($nullableColumns as $column) {
+        if (($details[$column] ?? 'YES') === 'NO') {
+            db()->exec("ALTER TABLE courses MODIFY COLUMN {$column} DECIMAL(10,2) NULL DEFAULT NULL");
+            db()->exec("UPDATE courses SET {$column} = NULL WHERE {$column} = 0");
         }
     }
 

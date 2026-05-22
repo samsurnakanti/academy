@@ -14,6 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $action = $_POST['action'] ?? 'save';
     $id = (int) ($_POST['id'] ?? 0);
+    $discountFee = trim((string) ($_POST['discount_fee'] ?? ''));
+    $certificateDiscountFee = trim((string) ($_POST['certificate_discount_fee'] ?? ''));
 
     if ($action === 'deactivate' && $id > 0) {
         $stmt = db()->prepare('UPDATE courses SET is_active = 0 WHERE id = ?');
@@ -50,9 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         trim($_POST['expert_photo'] ?? ''),
         trim($_POST['duration'] ?? ''),
         (float) ($_POST['fee'] ?? 0),
-        (float) ($_POST['discount_fee'] ?? 0),
+        $discountFee === '' ? null : (float) $discountFee,
         (float) ($_POST['certification_fee'] ?? 0),
-        (float) ($_POST['certificate_discount_fee'] ?? 0),
+        $certificateDiscountFee === '' ? null : (float) $certificateDiscountFee,
         in_array(($_POST['delivery_type'] ?? 'video'), ['video', 'live_session'], true) ? $_POST['delivery_type'] : 'video',
         trim($_POST['certificate_details'] ?? ''),
         trim($_POST['certificate_title'] ?? ''),
@@ -127,9 +129,9 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
             </legend>
             <label>Duration <input name="duration" value="<?= e($edit['duration'] ?? '') ?>" placeholder="6 weeks" required></label>
             <label>Program video/course fee <input type="number" step="0.01" name="fee" value="<?= e((string) ($edit['fee'] ?? '0')) ?>"></label>
-            <label>Discounted course fee <input type="number" step="0.01" name="discount_fee" value="<?= e((string) ($edit['discount_fee'] ?? '0')) ?>" placeholder="Leave 0 for no discount"></label>
+            <label>Discounted course fee <input type="number" step="0.01" name="discount_fee" value="<?= e($edit && $edit['discount_fee'] !== null ? (string) $edit['discount_fee'] : '') ?>" placeholder="Blank = no discount, 0 = free"></label>
             <label>Certification charge <input type="number" step="0.01" name="certification_fee" value="<?= e((string) ($edit['certification_fee'] ?? '0')) ?>"></label>
-            <label>Discounted certification charge <input type="number" step="0.01" name="certificate_discount_fee" value="<?= e((string) ($edit['certificate_discount_fee'] ?? '0')) ?>" placeholder="Leave 0 for no discount"></label>
+            <label>Discounted certification charge <input type="number" step="0.01" name="certificate_discount_fee" value="<?= e($edit && $edit['certificate_discount_fee'] !== null ? (string) $edit['certificate_discount_fee'] : '') ?>" placeholder="Blank = no discount, 0 = free"></label>
             <label>Program type
                 <select name="delivery_type" id="course-delivery-type" required>
                     <option value="video" <?= ($edit['delivery_type'] ?? 'video') === 'video' ? 'selected' : '' ?>>Video course</option>

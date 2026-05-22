@@ -10,7 +10,7 @@ $rows = db()->query(
      JOIN courses c ON c.id = e.course_id
      WHERE e.daily_reminders_enabled = 1
        AND e.status = 'paid'
-       AND IF(c.discount_fee > 0 AND c.discount_fee < c.fee, c.discount_fee, c.fee) > 0
+       AND IF(c.discount_fee IS NOT NULL AND c.discount_fee < c.fee, c.discount_fee, c.fee) > 0
        AND (e.last_reminder_sent_on IS NULL OR e.last_reminder_sent_on < CURDATE())"
 )->fetchAll();
 
