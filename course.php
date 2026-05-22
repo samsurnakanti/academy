@@ -25,13 +25,13 @@ if ($slug === '' && !empty($course['slug'])) {
 }
 
 ensure_material_columns();
-$materials = db()->prepare('SELECT * FROM materials WHERE course_id = ? ORDER BY created_at ASC, id ASC');
+$materials = db()->prepare('SELECT * FROM materials WHERE course_id = ? ORDER BY sort_order ASC, created_at ASC, id ASC');
 $materials->execute([(int) $course['id']]);
 $materialRows = $materials->fetchAll();
 $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'video'));
 $resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
 $liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
-$isFreeProgram = ((float) $course['fee']) <= 0;
+$isFreeProgram = course_fee_amount($course) <= 0;
 
 $title = $course['title'] . ' | Elldy Academy';
 $canonicalUrl = program_url($course);
@@ -73,8 +73,8 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
-            <span><strong>Fee</strong><?= money($course['fee']) ?></span>
-            <span><strong>Certification</strong><?= ((float) ($course['certification_fee'] ?? 0)) > 0 ? money($course['certification_fee']) : 'Included' ?></span>
+            <span><strong>Fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
+            <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 ? price_html($course, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></span>
             <?php if ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php else: ?>

@@ -649,6 +649,48 @@ function learning_progress_for_enrollment(int $enrollmentId): array
     return $rows;
 }
 
+function enrollment_learning_completion(int $enrollmentId): array
+{
+    ensure_learning_progress_table();
+
+    $stmt = db()->prepare(
+        "SELECT e.id, e.status, c.delivery_type
+         FROM enrollments e
+         JOIN courses c ON c.id = e.course_id
+         WHERE e.id = ? AND e.status != 'cancelled'"
+    );
+    $stmt->execute([$enrollmentId]);
+    $enrollment = $stmt->fetch();
+
+    if (!$enrollment) {
+        return ['total' => 0, 'completed' => 0, 'is_complete' => false];
+    }
+
+    if (($enrollment['status'] ?? '') === 'completed') {
+        return ['total' => 1, 'completed' => 1, 'is_complete' => true];
+    }
+
+    $primaryType = (($enrollment['delivery_type'] ?? 'video') === 'live_session') ? 'live_session' : 'video';
+    $counts = db()->prepare(
+        "SELECT COUNT(m.id) AS total,
+            SUM(CASE WHEN lp.is_completed = 1 THEN 1 ELSE 0 END) AS completed
+         FROM enrollments e
+         JOIN materials m ON m.course_id = e.course_id AND m.material_type = ?
+         LEFT JOIN learning_progress lp ON lp.enrollment_id = e.id AND lp.material_id = m.id
+         WHERE e.id = ?"
+    );
+    $counts->execute([$primaryType, $enrollmentId]);
+    $row = $counts->fetch() ?: [];
+    $total = (int) ($row['total'] ?? 0);
+    $completed = (int) ($row['completed'] ?? 0);
+
+    return [
+        'total' => $total,
+        'completed' => $completed,
+        'is_complete' => $total > 0 && $completed >= $total,
+    ];
+}
+
 function ensure_material_columns(): void
 {
     static $checked = false;
@@ -669,6 +711,10 @@ function ensure_material_columns(): void
 
     if (!isset($existing['material_type'])) {
         db()->exec("ALTER TABLE materials ADD COLUMN material_type ENUM('video', 'live_session', 'material') NOT NULL DEFAULT 'video' AFTER description");
+    }
+
+    if (!isset($existing['sort_order'])) {
+        db()->exec("ALTER TABLE materials ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0 AFTER file_url");
     }
 }
 
@@ -959,6 +1005,36 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
 function money(float|int|string $value): string
 {
     return '₹' . number_format((float) $value, 2);
+}
+
+function discounted_amount(array $row, string $regularKey, string $discountKey): float
+{
+    $regular = max(0, (float) ($row[$regularKey] ?? 0));
+    $discount = max(0, (float) ($row[$discountKey] ?? 0));
+
+    return ($discount > 0 && $discount < $regular) ? $discount : $regular;
+}
+
+function course_fee_amount(array $course): float
+{
+    return discounted_amount($course, 'fee', 'discount_fee');
+}
+
+function certificate_fee_amount(array $course): float
+{
+    return discounted_amount($course, 'certification_fee', 'certificate_discount_fee');
+}
+
+function price_html(array $row, string $regularKey, string $discountKey): string
+{
+    $regular = max(0, (float) ($row[$regularKey] ?? 0));
+    $amount = discounted_amount($row, $regularKey, $discountKey);
+
+    if ($regular > 0 && $amount < $regular) {
+        return '<span class="price-stack"><del>' . e(money($regular)) . '</del><strong>' . e(money($amount)) . '</strong></span>';
+    }
+
+    return e(money($amount));
 }
 
 function csrf_token(): string
@@ -1700,7 +1776,9 @@ function ensure_course_detail_columns(): void
         'expert_bio' => 'ADD COLUMN expert_bio TEXT NULL AFTER expert_title',
         'expert_photo' => 'ADD COLUMN expert_photo VARCHAR(255) NULL AFTER expert_bio',
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
-        'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certification_fee",
+        'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
+        'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER certification_fee',
+        'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
         'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
         'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
     ];

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 header('Content-Type: application/json');
 
 verify_csrf();
@@ -22,7 +23,7 @@ if ($type === 'program') {
     $stmt->execute(['Razorpay payment: ' . $paymentId, $id, $user['id']]);
 
     $courseStmt = db()->prepare(
-        "SELECT e.id, e.user_id, e.course_id, c.certification_fee
+        "SELECT e.id, e.user_id, e.course_id, c.certification_fee, c.certificate_discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ?"
@@ -30,7 +31,7 @@ if ($type === 'program') {
     $courseStmt->execute([$id, $user['id']]);
     $enrollment = $courseStmt->fetch();
 
-    if ($enrollment && ((float) $enrollment['certification_fee']) <= 0) {
+    if ($enrollment && certificate_fee_amount($enrollment) <= 0) {
         $request = db()->prepare(
             "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status)
              VALUES (?, ?, ?, 'requested')

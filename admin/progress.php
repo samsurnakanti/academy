@@ -37,8 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$enrollmentId]);
         $row = $stmt->fetch();
 
-        if (!$row || (int) $row['total_videos'] <= 0 || (int) $row['completed_videos'] < (int) $row['total_videos']) {
-            flash('error', 'WhatsApp was not sent. This learner has not completed all videos yet.');
+        if (!$row) {
+            flash('error', 'WhatsApp was not sent. Enrollment was not found.');
         } elseif (trim((string) $row['phone']) === '') {
             flash('error', 'WhatsApp was not sent. This learner does not have a phone number.');
         } elseif (send_certificate_eligible_whatsapp($row)) {
@@ -113,7 +113,13 @@ $rows = db()->query(
                     $totalVideos = (int) $row['total_videos'];
                     $completedVideos = (int) $row['completed_videos'];
                     $avgProgress = $totalVideos > 0 ? ((float) $row['progress_sum'] / $totalVideos) : 0;
-                    $hasCompletedAll = $totalVideos > 0 && $completedVideos >= $totalVideos;
+                    $completion = enrollment_learning_completion((int) $row['enrollment_id']);
+                    $hasCompletedAll = $completion['is_complete'];
+                    if ($totalVideos === 0 && $hasCompletedAll) {
+                        $totalVideos = (int) $completion['total'];
+                        $completedVideos = (int) $completion['completed'];
+                        $avgProgress = 100;
+                    }
                     ?>
                     <tr>
                         <td><?= $index + 1 ?></td>
@@ -128,16 +134,12 @@ $rows = db()->query(
                         </td>
                         <td><?= e($row['last_activity'] ? date('d M Y, h:i A', strtotime((string) $row['last_activity'])) : '-') ?></td>
                         <td>
-                            <?php if ($hasCompletedAll): ?>
-                                <form method="post" class="inline-action-form">
-                                    <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
-                                    <input type="hidden" name="action" value="send_certificate_whatsapp">
-                                    <input type="hidden" name="enrollment_id" value="<?= (int) $row['enrollment_id'] ?>">
-                                    <button class="button tiny" type="submit" data-confirm="Send certificate eligibility WhatsApp to this learner?">Send WhatsApp</button>
-                                </form>
-                            <?php else: ?>
-                                <small>Available after completion</small>
-                            <?php endif; ?>
+                            <form method="post" class="inline-action-form">
+                                <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+                                <input type="hidden" name="action" value="send_certificate_whatsapp">
+                                <input type="hidden" name="enrollment_id" value="<?= (int) $row['enrollment_id'] ?>">
+                                <button class="button tiny" type="submit" data-confirm="Send certificate eligibility WhatsApp to this learner?">Send WhatsApp</button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -14,11 +14,11 @@ require __DIR__ . '/includes/header.php';
 <section class="section">
     <div class="course-grid">
         <?php foreach ($courses as $course): ?>
-            <?php $isFreeProgram = ((float) $course['fee']) <= 0; ?>
+            <?php $isFreeProgram = course_fee_amount($course) <= 0; ?>
             <article class="course-card <?= $isFreeProgram ? 'is-free' : 'is-paid' ?>">
                 <div class="course-topline">
                     <span><?= e($course['duration']) ?></span>
-                    <strong><?= money($course['fee']) ?></strong>
+                    <?= price_html($course, 'fee', 'discount_fee') ?>
                 </div>
                 <div class="course-badges">
                     <?php if ($isFreeProgram): ?>

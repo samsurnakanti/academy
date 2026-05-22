@@ -2,32 +2,33 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $type = $_GET['type'] ?? '';
 $id = (int) ($_GET['id'] ?? 0);
 
 if ($type === 'program') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.title, c.fee
+        "SELECT e.id, c.title, c.fee, c.discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
     $stmt->execute([$id, $user['id']]);
     $row = $stmt->fetch();
-    $amount = (int) $row['fee'];
+    $amount = (int) round(course_fee_amount($row));
     $receipt = 'EA-PROGRAM-' . $id;
     $heading = 'Program Payment';
 } elseif ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.title, c.certification_fee
+        "SELECT e.id, c.title, c.certification_fee, c.certificate_discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
     $stmt->execute([$id, $user['id']]);
     $row = $stmt->fetch();
-    $amount = (int) $row['certification_fee'];
+    $amount = (int) round(certificate_fee_amount($row));
     $receipt = 'EA-CERT-' . $id;
     $heading = 'Certificate Payment';
 } else {

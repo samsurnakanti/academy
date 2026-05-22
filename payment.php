@@ -1,10 +1,11 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
+ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? $_POST['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.fee
+    "SELECT e.*, c.title, c.fee, c.discount_fee
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ?"
@@ -26,8 +27,8 @@ $paymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id'];
     <div class="form-card">
         <p class="eyebrow">Final payment</p>
         <h1><?= e($enrollment['title']) ?></h1>
-        <p class="price-line"><?= money($enrollment['fee']) ?></p>
-        <?php if ((float) $enrollment['fee'] <= 0): ?>
+        <p class="price-line"><?= price_html($enrollment, 'fee', 'discount_fee') ?></p>
+        <?php if (course_fee_amount($enrollment) <= 0): ?>
             <p>This program is free. No program payment is required.</p>
         <?php else: ?>
             <p>After your free first session, continue payment securely through Razorpay. Access updates automatically after successful payment verification.</p>

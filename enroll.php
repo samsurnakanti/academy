@@ -14,7 +14,7 @@ if (!$course) {
     exit('Program not found.');
 }
 
-$isFreeProgram = ((float) $course['fee']) <= 0;
+$isFreeProgram = course_fee_amount($course) <= 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -83,7 +83,7 @@ require __DIR__ . '/includes/header.php';
         <p>Join Elldy Academy and learn how business cases become dashboards, KPIs, insight notes, and decision-ready BI reports for the Elldy intelligence ecosystem.</p>
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
-            <span><strong>Program fee</strong><?= money($course['fee']) ?></span>
+            <span><strong>Program fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
             <?php if ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php else: ?>

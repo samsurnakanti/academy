@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
     $fileUrl = trim($_POST['file_url'] ?? '');
     $materialId = (int) ($_POST['material_id'] ?? 0);
+    $courseId = (int) ($_POST['course_id'] ?? 0);
+    $sortOrderInput = trim((string) ($_POST['sort_order'] ?? ''));
+    $sortOrder = $sortOrderInput === '' ? null : max(0, (int) $sortOrderInput);
 
     try {
         if (!empty($_FILES['material_file']['name'])) {
@@ -50,24 +53,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($materialId > 0) {
-        $stmt = db()->prepare('UPDATE materials SET course_id = ?, title = ?, description = ?, material_type = ?, file_url = ? WHERE id = ?');
+        $stmt = db()->prepare('UPDATE materials SET course_id = ?, title = ?, description = ?, material_type = ?, file_url = ?, sort_order = ? WHERE id = ?');
         $stmt->execute([
-            (int) $_POST['course_id'],
+            $courseId,
             trim($_POST['title'] ?? ''),
             trim($_POST['description'] ?? ''),
             $_POST['material_type'] ?? 'video',
             $fileUrl,
+            $sortOrder ?? 0,
             $materialId,
         ]);
         flash('success', 'Learning item updated.');
     } else {
-        $stmt = db()->prepare('INSERT INTO materials (course_id, title, description, material_type, file_url) VALUES (?, ?, ?, ?, ?)');
+        if ($sortOrder === null) {
+            $nextOrderStmt = db()->prepare('SELECT COALESCE(MAX(sort_order), 0) + 10 FROM materials WHERE course_id = ?');
+            $nextOrderStmt->execute([$courseId]);
+            $sortOrder = (int) $nextOrderStmt->fetchColumn();
+        }
+
+        $stmt = db()->prepare('INSERT INTO materials (course_id, title, description, material_type, file_url, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
         $stmt->execute([
-            (int) $_POST['course_id'],
+            $courseId,
             trim($_POST['title'] ?? ''),
             trim($_POST['description'] ?? ''),
             $_POST['material_type'] ?? 'video',
             $fileUrl,
+            $sortOrder,
         ]);
         flash('success', 'Program learning item added.');
     }
@@ -86,7 +97,7 @@ $materials = db()->query(
     "SELECT m.*, c.title AS course_title
      FROM materials m
      JOIN courses c ON c.id = m.course_id
-     ORDER BY m.created_at DESC"
+     ORDER BY c.title ASC, m.sort_order ASC, m.created_at ASC, m.id ASC"
 )->fetchAll();
 
 $editingMaterial = null;
@@ -104,11 +115,12 @@ if (isset($_GET['edit'])) {
 <section class="materials-layout">
     <div class="table-wrap materials-table">
         <table>
-            <thead><tr><th>S.No</th><th>Program</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
+            <thead><tr><th>S.No</th><th>Order</th><th>Program</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
             <tbody>
                 <?php foreach ($materials as $index => $material): ?>
                     <tr>
                         <td><?= $index + 1 ?></td>
+                        <td><?= (int) ($material['sort_order'] ?? 0) ?></td>
                         <td><?= e($material['course_title']) ?></td>
                         <td>
                             <?php
@@ -167,6 +179,7 @@ if (isset($_GET['edit'])) {
                     <option value="material" <?= ($editingMaterial['material_type'] ?? '') === 'material' ? 'selected' : '' ?>>Download / material</option>
                 </select>
             </label>
+            <label>Student display order <input type="number" name="sort_order" min="0" step="1" value="<?= e((string) ($editingMaterial['sort_order'] ?? '')) ?>" placeholder="Example: 10"></label>
             <label>Title <input name="title" value="<?= e($editingMaterial['title'] ?? '') ?>" placeholder="Example: Video 1 - BI Foundations" required></label>
             <label>Description <textarea name="description" rows="4" placeholder="Short note for trainees"><?= e($editingMaterial['description'] ?? '') ?></textarea></label>
             <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="YouTube, Vimeo, Google Drive, Meet, PDF, image, or other URL"></label>

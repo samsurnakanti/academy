@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS courses (
     expert_photo VARCHAR(255) NULL,
     duration VARCHAR(80) NOT NULL,
     fee DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
     certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
+    certificate_discount_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
     delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video',
     certificate_details TEXT NULL,
     certificate_title VARCHAR(220) NULL,
@@ -47,6 +49,7 @@ CREATE TABLE IF NOT EXISTS materials (
     description TEXT NULL,
     material_type ENUM('video', 'live_session', 'material') NOT NULL DEFAULT 'video',
     file_url VARCHAR(255) NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_material_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 );

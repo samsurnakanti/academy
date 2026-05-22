@@ -2,12 +2,13 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.delivery_type
+    "SELECT e.*, c.title, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -20,12 +21,12 @@ if (!$enrollment) {
     exit('Learning access not found.');
 }
 
-$hasFullAccess = in_array($enrollment['status'], ['paid', 'completed'], true) || (float) $enrollment['fee'] <= 0;
+$hasFullAccess = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
 $materialsStmt = db()->prepare(
     "SELECT *
      FROM materials
      WHERE course_id = ?
-     ORDER BY created_at ASC, id ASC"
+     ORDER BY sort_order ASC, created_at ASC, id ASC"
 );
 $materialsStmt->execute([(int) $enrollment['course_id']]);
 $materials = $materialsStmt->fetchAll();

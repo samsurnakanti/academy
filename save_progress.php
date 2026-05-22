@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 verify_csrf();
 ensure_learning_progress_table();
+ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_POST['enrollment_id'] ?? 0);
 $materialId = (int) ($_POST['material_id'] ?? 0);
@@ -11,7 +12,7 @@ $watchedSeconds = max(0, (float) ($_POST['watched_seconds'] ?? 0));
 $durationSeconds = max(0, (float) ($_POST['duration_seconds'] ?? 0));
 
 $stmt = db()->prepare(
-    "SELECT e.id, e.course_id, e.user_id, e.status, c.fee, m.material_type
+    "SELECT e.id, e.course_id, e.user_id, e.status, c.fee, c.discount_fee, m.material_type
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      JOIN materials m ON m.course_id = e.course_id

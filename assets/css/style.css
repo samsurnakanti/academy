@@ -816,6 +816,24 @@ body.is-installed-app-launch .app-splash {
     color: var(--muted);
 }
 
+.price-stack {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.price-stack del {
+    color: var(--muted);
+    font-size: 0.88em;
+    font-weight: 600;
+}
+
+.price-stack strong {
+    color: var(--brand-dark);
+    display: inline;
+}
+
 .course-badges {
     display: flex;
     flex-wrap: wrap;

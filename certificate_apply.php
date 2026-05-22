@@ -2,10 +2,11 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? $_POST['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.certification_fee
+    "SELECT e.*, c.title, c.certification_fee, c.certificate_discount_fee
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -21,7 +22,7 @@ if (!$enrollment) {
 $existingStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
-$certificateAmount = (float) $enrollment['certification_fee'];
+$certificateAmount = certificate_fee_amount($enrollment);
 
 if (!$certificate) {
     $insert = db()->prepare(
@@ -31,7 +32,7 @@ if (!$certificate) {
         (int) $enrollment['id'],
         (int) $user['id'],
         (int) $enrollment['course_id'],
-        ((float) $enrollment['certification_fee']) > 0 ? 'payment_pending' : 'requested',
+        $certificateAmount > 0 ? 'payment_pending' : 'requested',
     ]);
     $existingStmt->execute([$enrollmentId]);
     $certificate = $existingStmt->fetch();
@@ -50,7 +51,7 @@ $certificatePaymentUrl = 'pay_redirect.php?type=certificate&id=' . (int) $enroll
     <div class="form-card">
         <p class="eyebrow">Certification</p>
         <h1><?= e($enrollment['title']) ?></h1>
-        <p class="price-line"><?= ((float) $enrollment['certification_fee']) > 0 ? money($enrollment['certification_fee']) : 'Included' ?></p>
+        <p class="price-line"><?= $certificateAmount > 0 ? price_html($enrollment, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></p>
         <p>Once your payment is confirmed, your official certificate from Arklytics Solutions and Innovations and Elldy Platform is generated instantly as a downloadable PDF.</p>
         <?php if ($certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>

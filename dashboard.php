@@ -2,9 +2,10 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.certification_fee, c.delivery_type,
+    "SELECT e.*, c.title, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type,
             cr.status AS certificate_status, cr.certificate_url
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
@@ -97,8 +98,8 @@ require __DIR__ . '/includes/header.php';
                             <span class="type-badge <?= e($courseTypeClass) ?>"><?= e($courseTypeLabel) ?></span>
                         </td>
                         <td data-label="Duration"><?= e($row['duration']) ?></td>
-                        <td data-label="Fee"><?= money($row['fee']) ?></td>
-                        <td data-label="Certification"><?= ((float) ($row['certification_fee'] ?? 0)) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
+                        <td data-label="Fee"><?= price_html($row, 'fee', 'discount_fee') ?></td>
+                        <td data-label="Certification"><?= certificate_fee_amount($row) > 0 ? price_html($row, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></td>
                         <td data-label="Status">
                             <span class="status">
                                 <?php if ($row['status'] === 'free_access'): ?>
@@ -131,7 +132,7 @@ require __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td data-label="Payment">
-                            <?php if ((float) $row['fee'] <= 0): ?>
+                            <?php if (course_fee_amount($row) <= 0): ?>
                                 Included
                             <?php elseif (in_array($row['status'], ['paid', 'completed'], true)): ?>
                                 Paid

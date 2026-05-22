@@ -2,9 +2,10 @@
 $title = 'Certificates';
 require __DIR__ . '/_admin_header.php';
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $rows = db()->query(
-    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.certification_fee, e.status AS enrollment_status
+    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.certification_fee, c.certificate_discount_fee, e.status AS enrollment_status
      FROM certificate_requests cr
      JOIN users u ON u.id = cr.user_id
      JOIN courses c ON c.id = cr.course_id
@@ -15,22 +16,28 @@ $rows = db()->query(
 <section class="page-title">
     <p class="eyebrow">Admin</p>
     <h1>Certificate Control</h1>
-    <p>Certificates are now issued automatically once an eligible learner reaches paid/completed status.</p>
+    <p>Certificates can be issued anytime for eligible learners. Course progress is shown for admin reference.</p>
 </section>
 
 <section class="section">
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>S.No</th><th>Trainee</th><th>Program</th><th>Certificate Fee</th><th>Program Payment</th><th>Certificate Payment</th><th>Certificate</th><th>Status</th></tr>
+                <tr><th>S.No</th><th>Trainee</th><th>Program</th><th>Course Progress</th><th>Certificate Fee</th><th>Program Payment</th><th>Certificate Payment</th><th>Certificate</th><th>Status</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($rows as $index => $row): ?>
+                    <?php $completion = enrollment_learning_completion((int) $row['enrollment_id']); ?>
                     <tr>
                         <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
-                        <td><?= ((float) $row['certification_fee']) > 0 ? money($row['certification_fee']) : 'Included' ?></td>
+                        <td>
+                            <span class="progress-chip <?= $completion['is_complete'] ? 'complete' : '' ?>">
+                                <?= $completion['is_complete'] ? 'Completed' : 'In progress' ?>
+                            </span>
+                        </td>
+                        <td><?= certificate_fee_amount($row) > 0 ? price_html($row, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></td>
                         <td><?= e(enrollment_badge($row['enrollment_status'])) ?></td>
                         <td><?= nl2br(e($row['payment_note'] ?: '-')) ?></td>
                         <td>
@@ -44,7 +51,7 @@ $rows = db()->query(
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="8">No certificate requests yet.</td></tr>
+                    <tr><td colspan="9">No certificate requests yet.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

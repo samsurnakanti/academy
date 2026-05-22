@@ -50,7 +50,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         trim($_POST['expert_photo'] ?? ''),
         trim($_POST['duration'] ?? ''),
         (float) ($_POST['fee'] ?? 0),
+        (float) ($_POST['discount_fee'] ?? 0),
         (float) ($_POST['certification_fee'] ?? 0),
+        (float) ($_POST['certificate_discount_fee'] ?? 0),
         in_array(($_POST['delivery_type'] ?? 'video'), ['video', 'live_session'], true) ? $_POST['delivery_type'] : 'video',
         trim($_POST['certificate_details'] ?? ''),
         trim($_POST['certificate_title'] ?? ''),
@@ -62,14 +64,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('error', 'Program title and duration are required.');
     } elseif ($id > 0) {
         $stmt = db()->prepare(
-            'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, duration=?, fee=?, certification_fee=?, delivery_type=?, certificate_details=?, certificate_title=?, first_class_link=?, is_active=? WHERE id=?'
+            'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, duration=?, fee=?, discount_fee=?, certification_fee=?, certificate_discount_fee=?, delivery_type=?, certificate_details=?, certificate_title=?, first_class_link=?, is_active=? WHERE id=?'
         );
         $stmt->execute([...$data, $id]);
         flash('success', 'Program updated.');
         redirect('courses.php');
     } else {
         $stmt = db()->prepare(
-            'INSERT INTO courses (title, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, duration, fee, certification_fee, delivery_type, certificate_details, certificate_title, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO courses (title, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, duration, fee, discount_fee, certification_fee, certificate_discount_fee, delivery_type, certificate_details, certificate_title, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute($data);
         flash('success', 'Program added.');
@@ -125,7 +127,9 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
             </legend>
             <label>Duration <input name="duration" value="<?= e($edit['duration'] ?? '') ?>" placeholder="6 weeks" required></label>
             <label>Program video/course fee <input type="number" step="0.01" name="fee" value="<?= e((string) ($edit['fee'] ?? '0')) ?>"></label>
+            <label>Discounted course fee <input type="number" step="0.01" name="discount_fee" value="<?= e((string) ($edit['discount_fee'] ?? '0')) ?>" placeholder="Leave 0 for no discount"></label>
             <label>Certification charge <input type="number" step="0.01" name="certification_fee" value="<?= e((string) ($edit['certification_fee'] ?? '0')) ?>"></label>
+            <label>Discounted certification charge <input type="number" step="0.01" name="certificate_discount_fee" value="<?= e((string) ($edit['certificate_discount_fee'] ?? '0')) ?>" placeholder="Leave 0 for no discount"></label>
             <label>Program type
                 <select name="delivery_type" id="course-delivery-type" required>
                     <option value="video" <?= ($edit['delivery_type'] ?? 'video') === 'video' ? 'selected' : '' ?>>Video course</option>
@@ -158,7 +162,7 @@ $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchA
                             </span>
                         </td>
                         <td><?= e($course['duration']) ?></td>
-                        <td><?= money($course['fee']) ?></td>
+                        <td><?= price_html($course, 'fee', 'discount_fee') ?></td>
                         <td><?= $course['is_active'] ? 'Active' : 'Inactive' ?></td>
                         <td>
                             <a href="courses.php?edit=<?= (int) $course['id'] ?>">Edit</a>

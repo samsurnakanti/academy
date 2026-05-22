@@ -2,13 +2,14 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $type = $_GET['type'] ?? '';
 $id = (int) ($_GET['id'] ?? 0);
 
 if ($type === 'program') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.fee
+        "SELECT e.id, c.fee, c.discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -21,7 +22,7 @@ if ($type === 'program') {
         exit('Payment not found.');
     }
 
-    if ((float) $row['fee'] <= 0) {
+    if (course_fee_amount($row) <= 0) {
         redirect('dashboard.php');
     }
 
@@ -30,7 +31,7 @@ if ($type === 'program') {
 
 if ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, e.course_id, c.certification_fee
+        "SELECT e.id, e.course_id, c.certification_fee, c.certificate_discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -52,7 +53,7 @@ if ($type === 'certificate') {
         (int) $row['id'],
         (int) $user['id'],
         (int) $row['course_id'],
-        ((float) $row['certification_fee']) > 0 ? 'payment_pending' : 'requested',
+        certificate_fee_amount($row) > 0 ? 'payment_pending' : 'requested',
     ]);
 
     redirect('razorpay_checkout.php?type=certificate&id=' . (int) $row['id']);

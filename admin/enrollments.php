@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $rows = db()->query(
-    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee
+    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee
      FROM enrollments e
      JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
@@ -84,7 +84,7 @@ $rows = db()->query(
                         <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['title']) ?></td>
-                        <td><?= money($row['fee']) ?></td>
+                        <td><?= price_html($row, 'fee', 'discount_fee') ?></td>
                         <td><?= e($row['payment_note'] ?: '-') ?></td>
                         <td><?= e(enrollment_badge($row['status'])) ?></td>
                         <td>
@@ -109,7 +109,7 @@ $rows = db()->query(
                                     <button class="button tiny" type="submit">Send Today Reminder</button>
                                 </form>
                             <?php endif; ?>
-                            <?php if ($row['status'] === 'free_access' && (float) $row['fee'] > 0): ?>
+                            <?php if ($row['status'] === 'free_access' && course_fee_amount($row) > 0): ?>
                                 <form method="post" class="inline-action-form">
                                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                     <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
