@@ -20,7 +20,11 @@ $admin = current_admin();
     <meta name="theme-color" content="#0b6bcb">
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
 </head>
-<body data-service-worker-url="<?= e(public_url('service-worker.js')) ?>">
+<body
+    data-service-worker-url="<?= e(public_url('service-worker.js')) ?>"
+    data-app-analytics-url="<?= e(public_url('track_app.php')) ?>"
+    data-app-analytics-token="<?= e(csrf_token()) ?>"
+>
 <script>
 if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
     document.body.classList.add('is-installed-app-launch');

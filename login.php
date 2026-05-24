@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($userId && $phone !== '' && verify_login_otp($userId, $phone, $otp)) {
             session_regenerate_id(true);
             $_SESSION['user_id'] = $userId;
+            record_user_login($userId);
             create_remembered_device($userId);
             unset($_SESSION['otp_user_id'], $_SESSION['otp_phone']);
             flash('success', 'You are logged in.');

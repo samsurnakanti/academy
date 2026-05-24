@@ -18,6 +18,8 @@ const brandPhrases = [
 ];
 const appSplash = document.getElementById('app-splash');
 const isInstalledApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const appAnalyticsUrl = document.body.dataset.appAnalyticsUrl;
+const appAnalyticsToken = document.body.dataset.appAnalyticsToken;
 
 if (isInstalledApp) {
     document.body.classList.add('is-installed-app-launch');
@@ -132,13 +134,83 @@ if (installAppButton) {
     });
 }
 
+const appInstallStorageKey = 'elldy_app_install_key';
+const appLaunchStorageKey = 'elldy_last_installed_launch_day';
+
+const bytesToHex = (bytes) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+const appStorage = () => {
+    try {
+        return window.localStorage;
+    } catch (error) {
+        return null;
+    }
+};
+
+const appInstallKey = () => {
+    const storage = appStorage();
+
+    if (!storage) {
+        return '';
+    }
+
+    let key = storage.getItem(appInstallStorageKey);
+
+    if (!key || !/^[a-f0-9]{64}$/.test(key)) {
+        const bytes = new Uint8Array(32);
+        window.crypto.getRandomValues(bytes);
+        key = bytesToHex(bytes);
+        storage.setItem(appInstallStorageKey, key);
+    }
+
+    return key;
+};
+
+function trackAppInstallEvent(eventType) {
+    const storage = appStorage();
+
+    if (!appAnalyticsUrl || !appAnalyticsToken || !storage || !window.crypto || !window.crypto.getRandomValues) {
+        return;
+    }
+
+    const installKey = appInstallKey();
+
+    if (!installKey) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('csrf_token', appAnalyticsToken);
+    formData.append('event_type', eventType);
+    formData.append('install_key', installKey);
+    formData.append('platform', window.navigator.platform || '');
+
+    window.fetch(appAnalyticsUrl, {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        keepalive: true,
+    }).catch(() => {});
+}
+
 window.addEventListener('appinstalled', () => {
     document.body.classList.add('is-installed-app');
+    trackAppInstallEvent('appinstalled');
 
     if (installAppButton) {
         installAppButton.hidden = true;
     }
 });
+
+if (isInstalledApp) {
+    const storage = appStorage();
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (storage && storage.getItem(appLaunchStorageKey) !== today) {
+        storage.setItem(appLaunchStorageKey, today);
+        trackAppInstallEvent('installed_launch');
+    }
+}
 
 document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const video = frame.querySelector('.academy-video');

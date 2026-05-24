@@ -1318,6 +1318,129 @@ function normalize_whatsapp_number(string $phone): string
     return $digits;
 }
 
+function ensure_app_analytics_tables(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS app_user_activity (
+            user_id INT UNSIGNED PRIMARY KEY,
+            login_count INT UNSIGNED NOT NULL DEFAULT 0,
+            return_count INT UNSIGNED NOT NULL DEFAULT 0,
+            first_login_at DATETIME NULL,
+            last_login_at DATETIME NULL,
+            last_active_at DATETIME NULL,
+            last_return_at DATETIME NULL,
+            last_installed_app_at DATETIME NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            CONSTRAINT fk_app_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        )"
+    );
+
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS app_installs (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            install_key CHAR(64) NOT NULL UNIQUE,
+            user_id INT UNSIGNED NULL,
+            platform VARCHAR(80) NULL,
+            user_agent TEXT NULL,
+            first_installed_at DATETIME NOT NULL,
+            last_seen_at DATETIME NOT NULL,
+            launch_count INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_app_installs_user (user_id),
+            CONSTRAINT fk_app_install_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+        )"
+    );
+}
+
+function record_user_login(int $userId): void
+{
+    ensure_app_analytics_tables();
+
+    $stmt = db()->prepare(
+        "INSERT INTO app_user_activity (user_id, login_count, first_login_at, last_login_at, last_active_at)
+         VALUES (?, 1, NOW(), NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            login_count = login_count + 1,
+            last_login_at = NOW(),
+            last_active_at = NOW()"
+    );
+    $stmt->execute([$userId]);
+}
+
+function record_user_activity(int $userId, bool $installedApp = false): void
+{
+    ensure_app_analytics_tables();
+
+    $sessionKey = $installedApp ? 'last_installed_app_activity_at' : 'last_user_activity_at';
+    $lastRecordedAt = (int) ($_SESSION[$sessionKey] ?? 0);
+
+    if (time() - $lastRecordedAt < 300) {
+        return;
+    }
+
+    $_SESSION[$sessionKey] = time();
+
+    $installedSql = $installedApp ? ', last_installed_app_at = NOW()' : '';
+    $stmt = db()->prepare(
+        "INSERT INTO app_user_activity (user_id, last_active_at, last_installed_app_at)
+         VALUES (?, NOW(), " . ($installedApp ? 'NOW()' : 'NULL') . ")
+         ON DUPLICATE KEY UPDATE last_active_at = NOW(){$installedSql}"
+    );
+    $stmt->execute([$userId]);
+}
+
+function record_user_return(int $userId): void
+{
+    ensure_app_analytics_tables();
+
+    $stmt = db()->prepare(
+        "INSERT INTO app_user_activity (user_id, return_count, last_return_at, last_active_at)
+         VALUES (?, 1, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            return_count = return_count + 1,
+            last_return_at = NOW(),
+            last_active_at = NOW()"
+    );
+    $stmt->execute([$userId]);
+}
+
+function record_app_install_event(string $installKey, ?int $userId, string $eventType, string $platform): void
+{
+    ensure_app_analytics_tables();
+
+    if (!preg_match('/^[a-f0-9]{64}$/', $installKey)) {
+        return;
+    }
+
+    $userAgent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 1000);
+    $isLaunch = $eventType === 'installed_launch';
+
+    $stmt = db()->prepare(
+        "INSERT INTO app_installs (install_key, user_id, platform, user_agent, first_installed_at, last_seen_at, launch_count)
+         VALUES (?, ?, ?, ?, NOW(), NOW(), ?)
+         ON DUPLICATE KEY UPDATE
+            user_id = COALESCE(VALUES(user_id), user_id),
+            platform = VALUES(platform),
+            user_agent = VALUES(user_agent),
+            last_seen_at = NOW(),
+            launch_count = launch_count + VALUES(launch_count)"
+    );
+    $stmt->execute([$installKey, $userId, substr($platform, 0, 80), $userAgent, $isLaunch ? 1 : 0]);
+
+    if ($userId) {
+        record_user_activity($userId, true);
+    }
+}
+
 function ensure_login_otp_table(): void
 {
     static $checked = false;
@@ -1483,6 +1606,7 @@ function user_from_remembered_device(): ?array
     }
 
     $_SESSION['user_id'] = (int) $row['id'];
+    record_user_return((int) $row['id']);
 
     $newToken = bin2hex(random_bytes(32));
     $expires = time() + AUTH_REMEMBER_SECONDS;
@@ -1675,6 +1799,8 @@ function current_user(): ?array
         clear_remembered_device();
         return null;
     }
+
+    record_user_activity((int) $user['id']);
 
     return $user;
 }

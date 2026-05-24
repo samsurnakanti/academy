@@ -120,6 +120,34 @@ CREATE TABLE IF NOT EXISTS user_remember_tokens (
     CONSTRAINT fk_user_remember_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS app_user_activity (
+    user_id INT UNSIGNED PRIMARY KEY,
+    login_count INT UNSIGNED NOT NULL DEFAULT 0,
+    return_count INT UNSIGNED NOT NULL DEFAULT 0,
+    first_login_at DATETIME NULL,
+    last_login_at DATETIME NULL,
+    last_active_at DATETIME NULL,
+    last_return_at DATETIME NULL,
+    last_installed_app_at DATETIME NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_app_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS app_installs (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    install_key CHAR(64) NOT NULL UNIQUE,
+    user_id INT UNSIGNED NULL,
+    platform VARCHAR(80) NULL,
+    user_agent TEXT NULL,
+    first_installed_at DATETIME NOT NULL,
+    last_seen_at DATETIME NOT NULL,
+    launch_count INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_app_installs_user (user_id),
+    CONSTRAINT fk_app_install_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS whatsapp_settings (
     id TINYINT UNSIGNED PRIMARY KEY,
     business_account_id VARCHAR(80) NULL,

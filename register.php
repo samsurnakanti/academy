@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = db()->prepare('INSERT INTO users (name, email, phone, password_hash) VALUES (?, ?, ?, ?)');
             $stmt->execute([$name, $email, $phone, password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT)]);
             $_SESSION['user_id'] = (int) db()->lastInsertId();
+            record_user_login((int) $_SESSION['user_id']);
             flash('success', 'Welcome to Elldy Academy. You can choose an analytics program now.');
             redirect('courses.php');
         } catch (PDOException) {
