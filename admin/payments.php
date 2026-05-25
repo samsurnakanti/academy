@@ -4,17 +4,27 @@ require __DIR__ . '/_admin_header.php';
 ensure_certificate_requests_table();
 ensure_course_detail_columns();
 
-$paidCourses = db()->query(
+$dateFilter = admin_date_filter();
+$courseParams = [];
+$courseDateCondition = admin_date_condition('COALESCE(e.payment_requested_at, e.created_at)', $dateFilter, $courseParams);
+$courseWhere = $courseDateCondition === '' ? '' : " AND {$courseDateCondition}";
+$courseStmt = db()->prepare(
     "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee
      FROM enrollments e
      JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
      WHERE e.status IN ('paid', 'completed')
        AND IF(c.discount_fee IS NOT NULL AND c.discount_fee < c.fee, c.discount_fee, c.fee) > 0
+       {$courseWhere}
      ORDER BY COALESCE(e.payment_requested_at, e.created_at) DESC, e.id DESC"
-)->fetchAll();
+);
+$courseStmt->execute($courseParams);
+$paidCourses = $courseStmt->fetchAll();
 
-$paidCertificates = db()->query(
+$certificateParams = [];
+$certificateDateCondition = admin_date_condition('COALESCE(cr.updated_at, cr.requested_at)', $dateFilter, $certificateParams);
+$certificateWhere = $certificateDateCondition === '' ? '' : " AND {$certificateDateCondition}";
+$certificateStmt = db()->prepare(
     "SELECT cr.*, u.name, u.email, u.phone, c.title, c.certification_fee, c.certificate_discount_fee, e.status AS enrollment_status
      FROM certificate_requests cr
      JOIN users u ON u.id = cr.user_id
@@ -23,8 +33,11 @@ $paidCertificates = db()->query(
      WHERE cr.payment_note IS NOT NULL
        AND cr.payment_note != ''
        AND IF(c.certificate_discount_fee IS NOT NULL AND c.certificate_discount_fee < c.certification_fee, c.certificate_discount_fee, c.certification_fee) > 0
+       {$certificateWhere}
      ORDER BY cr.updated_at DESC, cr.requested_at DESC"
-)->fetchAll();
+);
+$certificateStmt->execute($certificateParams);
+$paidCertificates = $certificateStmt->fetchAll();
 
 $courseTotal = 0.0;
 foreach ($paidCourses as $row) {
@@ -40,6 +53,10 @@ foreach ($paidCertificates as $row) {
     <p class="eyebrow">Admin</p>
     <h1>Paid Trainees</h1>
     <p>See who paid program fees and who paid certificate fees.</p>
+</section>
+
+<section class="section compact-section">
+    <?php require __DIR__ . '/_date_filter.php'; ?>
 </section>
 
 <section class="admin-stats">

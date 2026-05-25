@@ -3,6 +3,7 @@ $title = 'Enrollments';
 require __DIR__ . '/_admin_header.php';
 ensure_enrollment_detail_columns();
 ensure_course_detail_columns();
+$dateFilter = admin_date_filter();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -60,17 +61,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('enrollments.php');
 }
 
-$rows = db()->query(
+$params = [];
+$dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
+$where = $dateCondition === '' ? '' : "WHERE {$dateCondition}";
+$stmt = db()->prepare(
     "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee
      FROM enrollments e
      JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
+     {$where}
      ORDER BY e.created_at DESC"
-)->fetchAll();
+);
+$stmt->execute($params);
+$rows = $stmt->fetchAll();
 ?>
 <section class="page-title">
     <p class="eyebrow">Admin</p>
     <h1>Elldy Enrollments</h1>
+</section>
+<section class="section compact-section">
+    <?php require __DIR__ . '/_date_filter.php'; ?>
 </section>
 <section class="section">
     <div class="table-wrap">

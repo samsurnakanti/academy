@@ -4,6 +4,7 @@ require __DIR__ . '/_admin_header.php';
 ensure_app_analytics_tables();
 
 $view = (string) ($_GET['view'] ?? 'overview');
+$dateFilter = admin_date_filter();
 $viewOptions = [
     'overview' => 'Overview',
     'app_installs' => 'Installed apps',
@@ -20,61 +21,120 @@ if (!isset($viewOptions[$view])) {
     $view = 'overview';
 }
 
+function admin_count_query(string $sql, array $params): int
+{
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+
+    return (int) $stmt->fetchColumn();
+}
+
+$installStatsParams = [];
+$installStatsDate = admin_date_condition('last_seen_at', $dateFilter, $installStatsParams);
+$installStatsWhere = $installStatsDate === '' ? '' : "WHERE {$installStatsDate}";
+$activityStatsParams = [];
+$activityStatsDate = admin_date_condition('last_active_at', $dateFilter, $activityStatsParams);
+$activityStatsWhere = $activityStatsDate === '' ? '' : "WHERE {$activityStatsDate}";
+$activityPrefix = $activityStatsWhere === '' ? 'WHERE' : $activityStatsWhere . ' AND';
+
 $stats = [
-    'app_installs' => db()->query('SELECT COUNT(*) FROM app_installs')->fetchColumn(),
-    'installed_users' => db()->query('SELECT COUNT(DISTINCT user_id) FROM app_installs WHERE user_id IS NOT NULL')->fetchColumn(),
-    'installed_launches_today' => db()->query('SELECT COUNT(*) FROM app_installs WHERE DATE(last_seen_at) = CURDATE()')->fetchColumn(),
-    'active_now' => db()->query("SELECT COUNT(*) FROM app_user_activity WHERE last_active_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)")->fetchColumn(),
-    'active_today' => db()->query('SELECT COUNT(*) FROM app_user_activity WHERE DATE(last_active_at) = CURDATE()')->fetchColumn(),
-    'active_7_days' => db()->query("SELECT COUNT(*) FROM app_user_activity WHERE last_active_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn(),
-    'return_users' => db()->query('SELECT COUNT(*) FROM app_user_activity WHERE return_count > 0')->fetchColumn(),
-    'repeat_login_users' => db()->query('SELECT COUNT(*) FROM app_user_activity WHERE login_count > 1')->fetchColumn(),
+    'app_installs' => admin_count_query("SELECT COUNT(*) FROM app_installs {$installStatsWhere}", $installStatsParams),
+    'installed_users' => admin_count_query(
+        "SELECT COUNT(DISTINCT user_id) FROM app_installs " . ($installStatsWhere === '' ? 'WHERE' : $installStatsWhere . ' AND') . " user_id IS NOT NULL",
+        $installStatsParams
+    ),
+    'installed_launches_today' => admin_count_query(
+        "SELECT COUNT(*) FROM app_installs " . ($installStatsWhere === '' ? 'WHERE DATE(last_seen_at) = CURDATE()' : $installStatsWhere),
+        $installStatsParams
+    ),
+    'active_now' => admin_count_query(
+        "SELECT COUNT(*) FROM app_user_activity {$activityPrefix} last_active_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)",
+        $activityStatsParams
+    ),
+    'active_today' => admin_count_query(
+        "SELECT COUNT(*) FROM app_user_activity " . ($activityStatsWhere === '' ? 'WHERE DATE(last_active_at) = CURDATE()' : $activityStatsWhere),
+        $activityStatsParams
+    ),
+    'active_7_days' => admin_count_query(
+        "SELECT COUNT(*) FROM app_user_activity {$activityPrefix} last_active_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)",
+        $activityStatsParams
+    ),
+    'return_users' => admin_count_query(
+        "SELECT COUNT(*) FROM app_user_activity {$activityPrefix} return_count > 0",
+        $activityStatsParams
+    ),
+    'repeat_login_users' => admin_count_query(
+        "SELECT COUNT(*) FROM app_user_activity {$activityPrefix} login_count > 1",
+        $activityStatsParams
+    ),
 ];
 
-$activityWhere = '';
-$installWhere = '';
+$activityConditions = [];
+$activityParams = [];
+$activityDateCondition = admin_date_condition('aua.last_active_at', $dateFilter, $activityParams);
+if ($activityDateCondition !== '') {
+    $activityConditions[] = $activityDateCondition;
+}
+
+$installConditions = [];
+$installParams = [];
+$installDateCondition = admin_date_condition('ai.last_seen_at', $dateFilter, $installParams);
+if ($installDateCondition !== '') {
+    $installConditions[] = $installDateCondition;
+}
 
 switch ($view) {
     case 'active_now':
-        $activityWhere = "WHERE aua.last_active_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)";
+        $activityConditions[] = "aua.last_active_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE)";
         break;
     case 'active_today':
-        $activityWhere = 'WHERE DATE(aua.last_active_at) = CURDATE()';
+        if ($activityDateCondition === '') {
+            $activityConditions[] = 'DATE(aua.last_active_at) = CURDATE()';
+        }
         break;
     case 'active_7_days':
-        $activityWhere = "WHERE aua.last_active_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+        $activityConditions[] = "aua.last_active_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
         break;
     case 'return_users':
-        $activityWhere = 'WHERE aua.return_count > 0';
+        $activityConditions[] = 'aua.return_count > 0';
         break;
     case 'repeat_login_users':
-        $activityWhere = 'WHERE aua.login_count > 1';
+        $activityConditions[] = 'aua.login_count > 1';
         break;
     case 'installed_users':
-        $activityWhere = 'WHERE aua.last_installed_app_at IS NOT NULL';
+        $activityConditions[] = 'aua.last_installed_app_at IS NOT NULL';
         break;
     case 'installed_launches_today':
-        $installWhere = 'WHERE DATE(ai.last_seen_at) = CURDATE()';
+        if ($installDateCondition === '') {
+            $installConditions[] = 'DATE(ai.last_seen_at) = CURDATE()';
+        }
         break;
 }
 
-$recentUsers = db()->query(
+$activityWhere = $activityConditions ? 'WHERE ' . implode(' AND ', $activityConditions) : '';
+$installWhere = $installConditions ? 'WHERE ' . implode(' AND ', $installConditions) : '';
+
+$recentUsersStmt = db()->prepare(
     "SELECT u.name, u.email, u.phone, aua.login_count, aua.return_count, aua.last_login_at, aua.last_active_at, aua.last_return_at, aua.last_installed_app_at
      FROM app_user_activity aua
      JOIN users u ON u.id = aua.user_id
      {$activityWhere}
      ORDER BY aua.last_active_at DESC
      LIMIT " . ($view === 'overview' ? '25' : '200')
-)->fetchAll();
+);
+$recentUsersStmt->execute($activityParams);
+$recentUsers = $recentUsersStmt->fetchAll();
 
-$recentInstalls = db()->query(
+$recentInstallsStmt = db()->prepare(
     "SELECT ai.*, u.name, u.email
      FROM app_installs ai
      LEFT JOIN users u ON u.id = ai.user_id
      {$installWhere}
      ORDER BY ai.last_seen_at DESC
      LIMIT " . ($view === 'overview' ? '25' : '200')
-)->fetchAll();
+);
+$recentInstallsStmt->execute($installParams);
+$recentInstalls = $recentInstallsStmt->fetchAll();
 
 $showUserTable = in_array($view, ['overview', 'active_now', 'active_today', 'active_7_days', 'return_users', 'repeat_login_users', 'installed_users'], true);
 $showInstallTable = in_array($view, ['overview', 'app_installs', 'installed_launches_today'], true);
@@ -85,15 +145,23 @@ $showInstallTable = in_array($view, ['overview', 'app_installs', 'installed_laun
     <p>Track app installs, login activity, active trainees, and returning users.</p>
 </section>
 
+<section class="section compact-section">
+    <?php
+    $dateFilterAction = 'insights.php';
+    $dateFilterHidden = ['view' => $view];
+    require __DIR__ . '/_date_filter.php';
+    ?>
+</section>
+
 <section class="admin-stats">
-    <a class="<?= $view === 'app_installs' ? 'active' : '' ?>" href="insights.php?view=app_installs"><strong><?= (int) $stats['app_installs'] ?></strong><span>Installed apps</span></a>
-    <a class="<?= $view === 'installed_users' ? 'active' : '' ?>" href="insights.php?view=installed_users"><strong><?= (int) $stats['installed_users'] ?></strong><span>Installed users</span></a>
-    <a class="<?= $view === 'installed_launches_today' ? 'active' : '' ?>" href="insights.php?view=installed_launches_today"><strong><?= (int) $stats['installed_launches_today'] ?></strong><span>App opens today</span></a>
-    <a class="<?= $view === 'active_now' ? 'active' : '' ?>" href="insights.php?view=active_now"><strong><?= (int) $stats['active_now'] ?></strong><span>Active now</span></a>
-    <a class="<?= $view === 'active_today' ? 'active' : '' ?>" href="insights.php?view=active_today"><strong><?= (int) $stats['active_today'] ?></strong><span>Active today</span></a>
-    <a class="<?= $view === 'active_7_days' ? 'active' : '' ?>" href="insights.php?view=active_7_days"><strong><?= (int) $stats['active_7_days'] ?></strong><span>Active 7 days</span></a>
-    <a class="<?= $view === 'return_users' ? 'active' : '' ?>" href="insights.php?view=return_users"><strong><?= (int) $stats['return_users'] ?></strong><span>Return users</span></a>
-    <a class="<?= $view === 'repeat_login_users' ? 'active' : '' ?>" href="insights.php?view=repeat_login_users"><strong><?= (int) $stats['repeat_login_users'] ?></strong><span>Repeat logins</span></a>
+    <a class="<?= $view === 'app_installs' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'app_installs'], $dateFilter)) ?>"><strong><?= (int) $stats['app_installs'] ?></strong><span>Installed apps</span></a>
+    <a class="<?= $view === 'installed_users' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'installed_users'], $dateFilter)) ?>"><strong><?= (int) $stats['installed_users'] ?></strong><span>Installed users</span></a>
+    <a class="<?= $view === 'installed_launches_today' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'installed_launches_today'], $dateFilter)) ?>"><strong><?= (int) $stats['installed_launches_today'] ?></strong><span>App opens</span></a>
+    <a class="<?= $view === 'active_now' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'active_now'], $dateFilter)) ?>"><strong><?= (int) $stats['active_now'] ?></strong><span>Active now</span></a>
+    <a class="<?= $view === 'active_today' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'active_today'], $dateFilter)) ?>"><strong><?= (int) $stats['active_today'] ?></strong><span>Active</span></a>
+    <a class="<?= $view === 'active_7_days' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'active_7_days'], $dateFilter)) ?>"><strong><?= (int) $stats['active_7_days'] ?></strong><span>Active 7 days</span></a>
+    <a class="<?= $view === 'return_users' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'return_users'], $dateFilter)) ?>"><strong><?= (int) $stats['return_users'] ?></strong><span>Return users</span></a>
+    <a class="<?= $view === 'repeat_login_users' ? 'active' : '' ?>" href="<?= e(admin_date_filter_url('insights.php', ['view' => 'repeat_login_users'], $dateFilter)) ?>"><strong><?= (int) $stats['repeat_login_users'] ?></strong><span>Repeat logins</span></a>
 </section>
 
 <?php if ($showUserTable): ?>
@@ -101,7 +169,7 @@ $showInstallTable = in_array($view, ['overview', 'app_installs', 'installed_laun
     <div class="section-heading">
         <h2><?= $view === 'overview' ? 'Recently Active Users' : e($viewOptions[$view]) ?></h2>
         <?php if ($view !== 'overview'): ?>
-            <a href="insights.php">Show overview</a>
+            <a href="<?= e(admin_date_filter_url('insights.php', ['view' => 'overview'], $dateFilter)) ?>">Show overview</a>
         <?php endif; ?>
     </div>
     <div class="table-wrap">
@@ -135,7 +203,7 @@ $showInstallTable = in_array($view, ['overview', 'app_installs', 'installed_laun
     <div class="section-heading">
         <h2><?= $view === 'overview' ? 'Recent App Installs & Launches' : e($viewOptions[$view]) ?></h2>
         <?php if ($view !== 'overview'): ?>
-            <a href="insights.php">Show overview</a>
+            <a href="<?= e(admin_date_filter_url('insights.php', ['view' => 'overview'], $dateFilter)) ?>">Show overview</a>
         <?php endif; ?>
     </div>
     <div class="table-wrap">

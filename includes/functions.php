@@ -49,6 +49,77 @@ function redirect(string $path): never
     exit;
 }
 
+function admin_date_filter(string $default = 'all'): array
+{
+    $range = (string) ($_GET['range'] ?? $default);
+    $allowed = ['all', 'today', 'yesterday', 'this_week', 'this_month', 'custom'];
+
+    if (!in_array($range, $allowed, true)) {
+        $range = $default;
+    }
+
+    $today = new DateTimeImmutable('today');
+    $from = null;
+    $to = null;
+
+    if ($range === 'today') {
+        $from = $today;
+        $to = $today;
+    } elseif ($range === 'yesterday') {
+        $from = $today->modify('-1 day');
+        $to = $from;
+    } elseif ($range === 'this_week') {
+        $from = $today->modify('monday this week');
+        $to = $today;
+    } elseif ($range === 'this_month') {
+        $from = $today->modify('first day of this month');
+        $to = $today;
+    } elseif ($range === 'custom') {
+        $fromInput = trim((string) ($_GET['from'] ?? ''));
+        $toInput = trim((string) ($_GET['to'] ?? ''));
+        $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromInput) ? new DateTimeImmutable($fromInput) : null;
+        $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', $toInput) ? new DateTimeImmutable($toInput) : null;
+    }
+
+    if ($from && !$to) {
+        $to = $today;
+    } elseif (!$from && $to) {
+        $from = $to;
+    }
+
+    return [
+        'range' => $range,
+        'from' => $from ? $from->format('Y-m-d') : '',
+        'to' => $to ? $to->format('Y-m-d') : '',
+        'from_datetime' => $from ? $from->format('Y-m-d 00:00:00') : '',
+        'to_datetime' => $to ? $to->format('Y-m-d 23:59:59') : '',
+    ];
+}
+
+function admin_date_condition(string $expression, array $filter, array &$params): string
+{
+    if ($filter['from_datetime'] === '' || $filter['to_datetime'] === '') {
+        return '';
+    }
+
+    $params[] = $filter['from_datetime'];
+    $params[] = $filter['to_datetime'];
+
+    return "{$expression} BETWEEN ? AND ?";
+}
+
+function admin_date_filter_url(string $path, array $extra, array $filter): string
+{
+    $query = array_merge($extra, ['range' => $filter['range']]);
+
+    if ($filter['range'] === 'custom') {
+        $query['from'] = $filter['from'];
+        $query['to'] = $filter['to'];
+    }
+
+    return $path . '?' . http_build_query($query);
+}
+
 function public_url(string $path = ''): string
 {
     $base = site_base_path();

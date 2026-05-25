@@ -13,22 +13,42 @@ $admin = require_admin();
 </head>
 <body>
 <header class="site-header admin-header">
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="admin-navigation" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
     <a class="brand" href="index.php">
         <span class="brand-lockup">
             <img class="brand-logo" src="<?= e(public_url('assets/elldy-logo.png')) ?>" alt="Elldy">
             <span class="brand-label">Academy Admin</span>
         </span>
     </a>
-    <nav class="main-nav">
+    <nav class="main-nav admin-nav" id="admin-navigation">
         <a href="index.php">Dashboard</a>
-        <a href="courses.php">Programs</a>
-        <a href="materials.php">Materials</a>
-        <a href="live_attendance.php">Live Attendance</a>
-        <a href="enrollments.php">Enrollments</a>
-        <a href="payments.php">Payments</a>
-        <a href="insights.php">Insights</a>
-        <a href="progress.php">Progress</a>
-        <a href="certificates.php">Certificates</a>
+        <span class="nav-dropdown">
+            <button type="button">Learning</button>
+            <span class="nav-dropdown-menu">
+                <a href="courses.php">Programs</a>
+                <a href="materials.php">Videos & Live Classes</a>
+                <a href="live_attendance.php">Live Attendance</a>
+                <a href="progress.php">Learning Progress</a>
+            </span>
+        </span>
+        <span class="nav-dropdown">
+            <button type="button">Students</button>
+            <span class="nav-dropdown-menu">
+                <a href="enrollments.php">Enrollments</a>
+                <a href="payments.php">Payments</a>
+                <a href="certificates.php">Certificates</a>
+            </span>
+        </span>
+        <span class="nav-dropdown">
+            <button type="button">Reports</button>
+            <span class="nav-dropdown-menu">
+                <a href="insights.php">App & Login Insights</a>
+            </span>
+        </span>
         <span class="nav-dropdown">
             <button type="button">Settings</button>
             <span class="nav-dropdown-menu">

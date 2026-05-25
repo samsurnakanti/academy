@@ -339,6 +339,10 @@ body.is-installed-app-launch .app-splash {
     gap: 20px;
 }
 
+.admin-nav {
+    gap: 14px;
+}
+
 .main-nav a {
     color: #344054;
     font-size: 15px;
@@ -389,6 +393,10 @@ body.is-installed-app-launch .app-splash {
     border-radius: 8px;
     background: #ffffff;
     box-shadow: var(--shadow-soft);
+}
+
+.admin-nav .nav-dropdown-menu {
+    min-width: 210px;
 }
 
 .nav-dropdown:hover .nav-dropdown-menu,
@@ -1515,6 +1523,37 @@ tbody tr:hover {
     min-height: 100vh;
     place-items: center;
     padding: 24px;
+}
+
+.compact-section {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.date-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    box-shadow: var(--shadow-soft);
+}
+
+.date-filter-form label {
+    min-width: 150px;
+    margin: 0;
+}
+
+.date-filter-form select,
+.date-filter-form input {
+    min-height: 42px;
+}
+
+.date-filter-form .button {
+    min-height: 42px;
 }
 
 .video-frame.native-player {
