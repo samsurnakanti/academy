@@ -192,6 +192,123 @@ function save_s3_settings(array $data): void
     ]);
 }
 
+function ensure_zoom_settings_table(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS zoom_settings (
+            id TINYINT UNSIGNED PRIMARY KEY,
+            client_id VARCHAR(190) NULL,
+            client_secret TEXT NULL,
+            sdk_version VARCHAR(20) NOT NULL DEFAULT '5.1.4',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )"
+    );
+
+    $stmt = db()->prepare(
+        "INSERT INTO zoom_settings (id, client_id, client_secret, sdk_version)
+         VALUES (1, '', '', '5.1.4')
+         ON DUPLICATE KEY UPDATE id = id"
+    );
+    $stmt->execute();
+}
+
+function zoom_settings(): array
+{
+    ensure_zoom_settings_table();
+    $settings = db()->query('SELECT * FROM zoom_settings WHERE id = 1')->fetch() ?: [];
+
+    return [
+        'client_id' => trim((string) ($settings['client_id'] ?? '')),
+        'client_secret' => trim((string) ($settings['client_secret'] ?? '')),
+        'sdk_version' => trim((string) ($settings['sdk_version'] ?? '5.1.4')) ?: '5.1.4',
+    ];
+}
+
+function save_zoom_settings(array $data): void
+{
+    ensure_zoom_settings_table();
+    $stmt = db()->prepare(
+        "UPDATE zoom_settings
+         SET client_id = ?, client_secret = ?, sdk_version = ?
+         WHERE id = 1"
+    );
+    $stmt->execute([
+        trim((string) ($data['client_id'] ?? '')),
+        trim((string) ($data['client_secret'] ?? '')),
+        trim((string) ($data['sdk_version'] ?? '5.1.4')) ?: '5.1.4',
+    ]);
+}
+
+function zoom_base64_url(string $value): string
+{
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function zoom_meeting_details_from_url(string $url): array
+{
+    $details = [
+        'meeting_number' => '',
+        'password' => '',
+    ];
+    $url = trim($url);
+
+    if ($url === '') {
+        return $details;
+    }
+
+    $parts = parse_url($url);
+    $path = (string) ($parts['path'] ?? '');
+    $query = [];
+    parse_str((string) ($parts['query'] ?? ''), $query);
+
+    if (preg_match('#/(?:j|wc/join|w)/(\d+)#', $path, $matches)) {
+        $details['meeting_number'] = $matches[1];
+    } elseif (preg_match('/^\d{9,12}$/', preg_replace('/\D+/', '', $url))) {
+        $details['meeting_number'] = preg_replace('/\D+/', '', $url);
+    }
+
+    foreach (['pwd', 'password', 'passWord'] as $key) {
+        if (!empty($query[$key])) {
+            $details['password'] = (string) $query[$key];
+            break;
+        }
+    }
+
+    return $details;
+}
+
+function zoom_sdk_signature(string $meetingNumber, int $role): string
+{
+    $settings = zoom_settings();
+
+    if ($settings['client_id'] === '' || $settings['client_secret'] === '') {
+        return '';
+    }
+
+    $issuedAt = time() - 30;
+    $expiresAt = $issuedAt + (60 * 60 * 2);
+    $header = zoom_base64_url(json_encode(['alg' => 'HS256', 'typ' => 'JWT'], JSON_THROW_ON_ERROR));
+    $payload = zoom_base64_url(json_encode([
+        'appKey' => $settings['client_id'],
+        'sdkKey' => $settings['client_id'],
+        'mn' => $meetingNumber,
+        'role' => $role,
+        'iat' => $issuedAt,
+        'exp' => $expiresAt,
+        'tokenExp' => $expiresAt,
+    ], JSON_THROW_ON_ERROR));
+    $signature = zoom_base64_url(hash_hmac('sha256', $header . '.' . $payload, $settings['client_secret'], true));
+
+    return $header . '.' . $payload . '.' . $signature;
+}
+
 function s3_hmac(string $key, string $data): string
 {
     return hash_hmac('sha256', $data, $key, true);
@@ -647,6 +764,137 @@ function learning_progress_for_enrollment(int $enrollmentId): array
     }
 
     return $rows;
+}
+
+function ensure_live_session_attendance_table(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS live_session_attendance (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            enrollment_id INT UNSIGNED NOT NULL,
+            user_id INT UNSIGNED NOT NULL,
+            course_id INT UNSIGNED NOT NULL,
+            material_id INT UNSIGNED NOT NULL,
+            joined_at DATETIME NOT NULL,
+            last_seen_at DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_live_session_attendance (enrollment_id, material_id),
+            INDEX idx_live_session_attendance_user (user_id),
+            INDEX idx_live_session_attendance_course (course_id),
+            CONSTRAINT fk_live_session_attendance_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE,
+            CONSTRAINT fk_live_session_attendance_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            CONSTRAINT fk_live_session_attendance_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+            CONSTRAINT fk_live_session_attendance_material FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+        )"
+    );
+}
+
+function live_session_room_name(array $enrollment, array $material): string
+{
+    $configured = trim((string) ($material['file_url'] ?? ''));
+
+    if ($configured !== '' && !str_contains($configured, '://')) {
+        return preg_replace('/[^A-Za-z0-9_-]/', '', $configured) ?: 'ElldyAcademyLiveClass';
+    }
+
+    if ($configured !== '') {
+        $host = strtolower((string) (parse_url($configured, PHP_URL_HOST) ?? ''));
+        $path = trim((string) (parse_url($configured, PHP_URL_PATH) ?? ''), '/');
+
+        if (str_contains($host, 'meet.jit.si') && $path !== '') {
+            return preg_replace('/[^A-Za-z0-9_-]/', '', basename($path)) ?: 'ElldyAcademyLiveClass';
+        }
+    }
+
+    $courseId = (int) ($enrollment['course_id'] ?? $material['course_id'] ?? 0);
+    $materialId = (int) ($material['id'] ?? 0);
+    $hash = substr(hash('sha256', 'elldy-academy-live:' . $courseId . ':' . $materialId), 0, 10);
+
+    return 'ElldyAcademyC' . $courseId . 'M' . $materialId . $hash;
+}
+
+function live_session_is_external_url(string $url): bool
+{
+    if ($url === '' || !str_contains($url, '://')) {
+        return false;
+    }
+
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    return !str_contains($host, 'meet.jit.si');
+}
+
+function live_session_provider_name(string $url): string
+{
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    if (str_contains($host, 'meet.google.com')) {
+        return 'Google Meet';
+    }
+
+    if (str_contains($host, 'zoom.us')) {
+        return 'Zoom';
+    }
+
+    if (str_contains($host, 'teams.microsoft.com')) {
+        return 'Microsoft Teams';
+    }
+
+    if (str_contains($host, 'meet.jit.si')) {
+        return 'Jitsi Meet';
+    }
+
+    return 'Live class';
+}
+
+function live_session_is_zoom_url(string $url): bool
+{
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    return str_contains($host, 'zoom.us');
+}
+
+function live_session_embed_url(array $enrollment, array $material, array $user): string
+{
+    $room = live_session_room_name($enrollment, $material);
+    $displayName = trim((string) ($user['name'] ?? 'Trainee')) ?: 'Trainee';
+
+    return 'https://meet.jit.si/' . rawurlencode($room) .
+        '#config.prejoinPageEnabled=false&userInfo.displayName=' . rawurlencode('"' . $displayName . '"');
+}
+
+function record_live_session_attendance(array $enrollment, array $material): void
+{
+    ensure_live_session_attendance_table();
+    ensure_learning_progress_table();
+
+    $enrollmentId = (int) $enrollment['id'];
+    $userId = (int) $enrollment['user_id'];
+    $courseId = (int) $enrollment['course_id'];
+    $materialId = (int) $material['id'];
+
+    $attendance = db()->prepare(
+        "INSERT INTO live_session_attendance (enrollment_id, user_id, course_id, material_id, joined_at, last_seen_at)
+         VALUES (?, ?, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE last_seen_at = NOW()"
+    );
+    $attendance->execute([$enrollmentId, $userId, $courseId, $materialId]);
+
+    $progress = db()->prepare(
+        "INSERT INTO learning_progress
+            (enrollment_id, user_id, course_id, material_id, watched_seconds, duration_seconds, progress_percent, is_completed, completed_at)
+         VALUES (?, ?, ?, ?, 0, 0, 100, 1, NOW())
+         ON DUPLICATE KEY UPDATE progress_percent = 100, is_completed = 1, completed_at = COALESCE(completed_at, NOW())"
+    );
+    $progress->execute([$enrollmentId, $userId, $courseId, $materialId]);
 }
 
 function enrollment_learning_completion(int $enrollmentId): array

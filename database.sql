@@ -94,6 +94,25 @@ CREATE TABLE IF NOT EXISTS learning_progress (
     CONSTRAINT fk_learning_progress_material FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS live_session_attendance (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    enrollment_id INT UNSIGNED NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    course_id INT UNSIGNED NOT NULL,
+    material_id INT UNSIGNED NOT NULL,
+    joined_at DATETIME NOT NULL,
+    last_seen_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_live_session_attendance (enrollment_id, material_id),
+    INDEX idx_live_session_attendance_user (user_id),
+    INDEX idx_live_session_attendance_course (course_id),
+    CONSTRAINT fk_live_session_attendance_enrollment FOREIGN KEY (enrollment_id) REFERENCES enrollments(id) ON DELETE CASCADE,
+    CONSTRAINT fk_live_session_attendance_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_live_session_attendance_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    CONSTRAINT fk_live_session_attendance_material FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS login_otps (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNSIGNED NOT NULL,
@@ -159,6 +178,14 @@ CREATE TABLE IF NOT EXISTS whatsapp_settings (
     certificate_template_name VARCHAR(120) NULL,
     template_language VARCHAR(20) NOT NULL DEFAULT 'en',
     graph_version VARCHAR(20) NOT NULL DEFAULT 'v20.0',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS zoom_settings (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    client_id VARCHAR(190) NULL,
+    client_secret TEXT NULL,
+    sdk_version VARCHAR(20) NOT NULL DEFAULT '5.1.4',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 

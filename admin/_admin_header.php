@@ -23,6 +23,7 @@ $admin = require_admin();
         <a href="index.php">Dashboard</a>
         <a href="courses.php">Programs</a>
         <a href="materials.php">Materials</a>
+        <a href="live_attendance.php">Live Attendance</a>
         <a href="enrollments.php">Enrollments</a>
         <a href="payments.php">Payments</a>
         <a href="insights.php">Insights</a>
@@ -33,6 +34,7 @@ $admin = require_admin();
             <span class="nav-dropdown-menu">
                 <a href="security.php">Security</a>
                 <a href="s3.php">S3</a>
+                <a href="zoom.php">Zoom</a>
                 <a href="razorpay.php">Razorpay</a>
                 <a href="whatsapp.php">WhatsApp</a>
             </span>

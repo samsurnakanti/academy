@@ -182,7 +182,12 @@ if (isset($_GET['edit'])) {
             <label>Student display order <input type="number" name="sort_order" min="0" step="1" value="<?= e((string) ($editingMaterial['sort_order'] ?? '')) ?>" placeholder="Example: 10"></label>
             <label>Title <input name="title" value="<?= e($editingMaterial['title'] ?? '') ?>" placeholder="Example: Video 1 - BI Foundations" required></label>
             <label>Description <textarea name="description" rows="4" placeholder="Short note for trainees"><?= e($editingMaterial['description'] ?? '') ?></textarea></label>
-            <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="YouTube, Vimeo, Google Drive, Meet, PDF, image, or other URL"></label>
+            <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="Paste Zoom or Google Meet link, or leave blank for auto Jitsi room"></label>
+            <div class="inline-actions">
+                <button class="button small" type="button" id="create-zoom-meeting">Create Zoom Meeting</button>
+                <button class="button small" type="button" id="create-google-meet">Create Google Meet</button>
+                <button class="button small" type="button" id="generate-jitsi-room">Auto Jitsi Link</button>
+            </div>
             <label>Or upload a file directly to S3
                 <input type="file" name="material_file" id="material-file" accept="video/*,image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx">
             </label>
@@ -212,6 +217,10 @@ if (isset($_GET['edit'])) {
         <div class="material-item">
             <strong>Need setup?</strong>
             <p><a href="s3.php">Open S3 settings</a> to add AWS credentials, bucket, and optional public/CDN URL.</p>
+        </div>
+        <div class="material-item">
+            <strong>Live sessions</strong>
+            <p>Choose Live session / meeting and paste your Zoom link for in-website Zoom classes. The Create Zoom Meeting button opens Zoom scheduling in a new tab.</p>
         </div>
         <div class="material-item">
             <strong>Large uploads</strong>
@@ -330,6 +339,11 @@ if (isset($_GET['edit'])) {
 (() => {
     const select = document.getElementById('material-type');
     const badge = document.getElementById('material-type-legend');
+    const fileUrlInput = document.getElementById('material-file-url');
+    const titleInput = document.querySelector('[name="title"]');
+    const zoomButton = document.getElementById('create-zoom-meeting');
+    const googleMeetButton = document.getElementById('create-google-meet');
+    const jitsiButton = document.getElementById('generate-jitsi-room');
     const labels = {
         video: 'Video',
         live_session: 'Live Session',
@@ -350,6 +364,30 @@ if (isset($_GET['edit'])) {
 
     select.addEventListener('change', syncBadge);
     syncBadge();
+
+    zoomButton?.addEventListener('click', () => {
+        select.value = 'live_session';
+        syncBadge();
+        window.open('https://zoom.us/meeting/schedule', '_blank', 'noopener');
+    });
+
+    googleMeetButton?.addEventListener('click', () => {
+        select.value = 'live_session';
+        syncBadge();
+        window.open('https://meet.google.com/new', '_blank', 'noopener');
+    });
+
+    jitsiButton?.addEventListener('click', () => {
+        const base = (titleInput?.value || 'Elldy Academy Live Class')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 50) || 'elldy-academy-live-class';
+        const suffix = Math.random().toString(36).slice(2, 8);
+        fileUrlInput.value = 'https://meet.jit.si/' + base + '-' + suffix;
+        select.value = 'live_session';
+        syncBadge();
+    });
 })();
 </script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>

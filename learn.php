@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
 ensure_course_detail_columns();
+ensure_material_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
@@ -63,6 +64,10 @@ foreach ($materials as $material) {
     }
 }
 
+if ($activeMaterial && ($activeMaterial['material_type'] ?? 'video') === 'live_session') {
+    record_live_session_attendance($enrollment, $activeMaterial);
+}
+
 $title = 'Learn | ' . $enrollment['title'] . ' | Elldy Academy';
 require __DIR__ . '/includes/header.php';
 ?>
@@ -85,7 +90,33 @@ require __DIR__ . '/includes/header.php';
             <?php $materialType = $activeMaterial['material_type'] ?? 'video'; ?>
             <p class="eyebrow">Now viewing</p>
             <h2><?= e($activeMaterial['title']) ?></h2>
-            <?php if (empty($activeMaterial['file_url'])): ?>
+            <?php if ($materialType === 'live_session'): ?>
+                <?php $configuredLiveUrl = trim((string) ($activeMaterial['file_url'] ?? '')); ?>
+                <?php if (live_session_is_external_url($configuredLiveUrl)): ?>
+                    <?php $providerName = live_session_provider_name($configuredLiveUrl); ?>
+                    <div class="empty-state live-session-card">
+                        <h2><?= e($providerName) ?> class</h2>
+                        <?php if (live_session_is_zoom_url($configuredLiveUrl)): ?>
+                            <p>Join from here when class starts. Zoom opens inside the academy website using the Zoom Meeting SDK.</p>
+                            <a class="button primary" href="<?= e(public_url('zoom_class.php?enrollment_id=' . (int) $enrollment['id'] . '&material_id=' . (int) $activeMaterial['id'])) ?>">Join Zoom Class</a>
+                        <?php else: ?>
+                            <p>Join from here when class starts. <?= $providerName === 'Google Meet' ? 'Google Meet opens in a new tab so camera and microphone work correctly.' : 'The class opens in a new tab.' ?></p>
+                            <a class="button primary" href="<?= e($configuredLiveUrl) ?>" target="_blank" rel="noopener">Join <?= e($providerName) ?></a>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="live-session-frame">
+                        <iframe
+                            src="<?= e(live_session_embed_url($enrollment, $activeMaterial, $user)) ?>"
+                            allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                        ></iframe>
+                    </div>
+                    <div class="live-session-actions">
+                        <a class="button small" href="https://meet.jit.si/<?= e(rawurlencode(live_session_room_name($enrollment, $activeMaterial))) ?>" target="_blank" rel="noopener">Open in New Tab</a>
+                    </div>
+                <?php endif; ?>
+            <?php elseif (empty($activeMaterial['file_url'])): ?>
                 <div class="empty-state">
                     <h2><?= $materialType === 'live_session' ? 'Live session not available' : ($materialType === 'video' ? 'Video not available' : 'Material not available') ?></h2>
                     <p>The description is available below. Admin will add the <?= $materialType === 'live_session' ? 'session link' : ($materialType === 'video' ? 'video' : 'material file') ?> soon.</p>
@@ -143,7 +174,7 @@ require __DIR__ . '/includes/header.php';
             <?php if (!empty($activeMaterial['description'])): ?>
                 <p class="material-description"><?= text_with_links($activeMaterial['description']) ?></p>
             <?php endif; ?>
-            <?php if (!empty($activeMaterial['file_url']) && ($materialType !== 'video' || !should_use_native_video_player($activeMaterial['file_url']))): ?>
+            <?php if ($materialType !== 'live_session' && !empty($activeMaterial['file_url']) && ($materialType !== 'video' || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
             <?php endif; ?>
         <?php else: ?>
