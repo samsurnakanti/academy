@@ -8,6 +8,15 @@ $admin = current_admin();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Elldy Academy') ?></title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1HCSRBVEC8"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-1HCSRBVEC8');
+    </script>
     <?php if (!empty($canonicalUrl)): ?>
         <link rel="canonical" href="<?= e($canonicalUrl) ?>">
     <?php endif; ?>

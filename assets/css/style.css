@@ -793,6 +793,15 @@ body.is-installed-app-launch .app-splash {
         0 12px 28px rgba(8, 77, 148, 0.1);
 }
 
+.course-card.is-discounted {
+    border-color: rgba(217, 119, 6, 0.34);
+    background:
+        linear-gradient(180deg, rgba(255, 251, 235, 0.76), #ffffff 46%);
+    box-shadow:
+        inset 0 4px 0 #d97706,
+        0 14px 30px rgba(146, 64, 14, 0.1);
+}
+
 .course-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow);
@@ -887,6 +896,12 @@ body.is-installed-app-launch .app-splash {
     border: 1px solid rgba(146, 64, 14, 0.16);
     background: #fffbeb;
     color: #92400e;
+}
+
+.course-badge.offer {
+    border: 1px solid rgba(180, 83, 9, 0.22);
+    background: #fff7ed;
+    color: #b45309;
 }
 
 .split,
@@ -1049,6 +1064,29 @@ small,
 
 .stats-row strong {
     display: block;
+}
+
+.offer-callout {
+    display: grid;
+    gap: 4px;
+    margin: 24px 0 0;
+    padding: 16px 18px;
+    border: 1px solid rgba(217, 119, 6, 0.24);
+    border-left: 4px solid #d97706;
+    border-radius: 8px;
+    background: #fffbeb;
+}
+
+.offer-callout span {
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.offer-callout strong {
+    color: #344054;
 }
 
 .detail-aside,
@@ -1805,7 +1843,7 @@ tbody tr:hover {
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr);
     gap: 14px;
-    align-items: start;
+    align-items: center;
     padding: 14px;
     border: 1px solid var(--line);
     border-radius: 8px;

@@ -32,6 +32,9 @@ $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => (
 $resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
 $liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
 $isFreeProgram = course_fee_amount($course) <= 0;
+$isLiveSessionCourse = ($course['delivery_type'] ?? 'video') === 'live_session';
+$regularFee = max(0, (float) ($course['fee'] ?? 0));
+$hasCourseDiscount = $regularFee > 0 && course_fee_amount($course) < $regularFee;
 
 $title = $course['title'] . ' | Elldy Academy';
 $canonicalUrl = program_url($course);
@@ -71,27 +74,33 @@ require __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php endif; ?>
+        <?php if ($hasCourseDiscount): ?>
+            <div class="offer-callout">
+                <span>Limited Time Offer</span>
+                <strong>Discounted enrollment is active for this program.</strong>
+            </div>
+        <?php endif; ?>
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
             <span><strong>Fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
             <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 ? price_html($course, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></span>
             <?php if ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
-            <?php else: ?>
+            <?php elseif ($isLiveSessionCourse): ?>
                 <span><strong>First session</strong>Free access</span>
+            <?php else: ?>
+                <span><strong>Access</strong>Full video course</span>
             <?php endif; ?>
         </div>
         <a class="button primary" href="<?= e(public_url('enroll.php?course_id=' . (int) $course['id'])) ?>">Enroll Now</a>
         <?php if ($videoRows): ?>
             <div class="info-block">
                 <h2>Course Videos</h2>
-                <p><?= $isFreeProgram ? 'After enrollment, trainees can access every course video directly inside the Elldy Academy learning workspace.' : 'After enrollment and payment, trainees can watch every course video directly inside the Elldy Academy learning workspace.' ?></p>
                 <div class="video-outline">
                     <?php foreach ($videoRows as $index => $video): ?>
                         <div>
                             <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
                             <strong><?= e($video['title']) ?></strong>
-                            <small><?= e($video['description'] ?: 'Course video') ?></small>
                         </div>
                     <?php endforeach; ?>
                 </div>
