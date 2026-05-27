@@ -6,6 +6,45 @@ $title = 'Bulk WhatsApp Invites';
 ensure_course_detail_columns();
 ensure_whatsapp_settings_table();
 
+function ensure_whatsapp_invite_logs_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS whatsapp_invite_logs (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            course_id INT UNSIGNED NULL,
+            course_title VARCHAR(190) NULL,
+            contact_name VARCHAR(190) NULL,
+            phone VARCHAR(40) NOT NULL,
+            invite_description TEXT NULL,
+            invite_duration VARCHAR(120) NULL,
+            status ENUM('sent', 'failed') NOT NULL DEFAULT 'sent',
+            response_message TEXT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_whatsapp_invite_sent_at (sent_at),
+            INDEX idx_whatsapp_invite_course (course_id)
+        )"
+    );
+}
+
+function log_whatsapp_invite(array $course, array $contact, string $description, string $duration, bool $sent, string $message): void
+{
+    $stmt = db()->prepare(
+        "INSERT INTO whatsapp_invite_logs
+            (course_id, course_title, contact_name, phone, invite_description, invite_duration, status, response_message)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
+    $stmt->execute([
+        (int) ($course['id'] ?? 0) ?: null,
+        (string) ($course['title'] ?? ''),
+        (string) ($contact['name'] ?? ''),
+        (string) ($contact['phone'] ?? ''),
+        $description,
+        $duration,
+        $sent ? 'sent' : 'failed',
+        $message,
+    ]);
+}
+
 function bulk_invite_phone_from_row(array $row): string
 {
     foreach (['phone', 'mobile', 'whatsapp', 'number', 'contact'] as $key) {
@@ -212,6 +251,8 @@ function bulk_invite_unique_contacts(array $contacts): array
     return $unique;
 }
 
+ensure_whatsapp_invite_logs_table();
+
 $settings = whatsapp_settings();
 $courses = active_courses(100);
 $results = [];
@@ -220,6 +261,111 @@ $selectedCourseId = (int) ($_POST['course_id'] ?? ($courses[0]['id'] ?? 0));
 $pastedContacts = (string) ($_POST['contacts'] ?? '');
 $inviteDescription = trim((string) ($_POST['invite_description'] ?? ''));
 $inviteDuration = trim((string) ($_POST['invite_duration'] ?? ''));
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
+    verify_csrf();
+    header('Content-Type: application/json');
+
+    try {
+        if ($_GET['ajax'] === 'prepare') {
+            $courseStmt = db()->prepare('SELECT * FROM courses WHERE id = ?');
+            $courseStmt->execute([$selectedCourseId]);
+            $course = $courseStmt->fetch();
+
+            if (!$course) {
+                throw new RuntimeException('Please choose a valid program.');
+            }
+
+            $description = $inviteDescription !== '' ? $inviteDescription : trim((string) ($course['short_description'] ?? ''));
+            $duration = $inviteDuration !== '' ? $inviteDuration : trim((string) ($course['duration'] ?? ''));
+            $contacts = array_merge(
+                bulk_invite_parse_text($pastedContacts),
+                bulk_invite_uploaded_contacts($_FILES['contacts_file'] ?? [])
+            );
+            $contacts = bulk_invite_unique_contacts($contacts);
+
+            if (!$contacts) {
+                throw new RuntimeException('Add contacts by pasting phone numbers or uploading a CSV/XLSX file.');
+            }
+
+            $_SESSION['bulk_invite_job'] = [
+                'course_id' => (int) $course['id'],
+                'description' => $description,
+                'duration' => $duration,
+                'contacts' => $contacts,
+            ];
+
+            echo json_encode(['ok' => true, 'total' => count($contacts)]);
+            exit;
+        }
+
+        if ($_GET['ajax'] === 'send-batch') {
+            $job = $_SESSION['bulk_invite_job'] ?? null;
+            if (!$job || empty($job['contacts']) || empty($job['course_id'])) {
+                throw new RuntimeException('Bulk invite job expired. Prepare the contacts again.');
+            }
+
+            $offset = max(0, (int) ($_POST['offset'] ?? 0));
+            $limit = max(1, min(5, (int) ($_POST['limit'] ?? 5)));
+            $contacts = array_values($job['contacts']);
+            $total = count($contacts);
+            $batch = array_slice($contacts, $offset, $limit);
+            $courseStmt = db()->prepare('SELECT * FROM courses WHERE id = ?');
+            $courseStmt->execute([(int) $job['course_id']]);
+            $course = $courseStmt->fetch();
+
+            if (!$course) {
+                throw new RuntimeException('Selected program is no longer available.');
+            }
+
+            $batchResults = [];
+            foreach ($batch as $contact) {
+                $ok = send_course_invite_whatsapp(
+                    (string) $contact['phone'],
+                    (string) $contact['name'],
+                    $course,
+                    (string) ($job['description'] ?? ''),
+                    (string) ($job['duration'] ?? '')
+                );
+                $message = $ok ? 'Delivered to Meta API' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
+                log_whatsapp_invite(
+                    $course,
+                    $contact,
+                    (string) ($job['description'] ?? ''),
+                    (string) ($job['duration'] ?? ''),
+                    $ok,
+                    $message
+                );
+                $batchResults[] = [
+                    'name' => (string) $contact['name'],
+                    'phone' => (string) $contact['phone'],
+                    'status' => $ok ? 'Sent' : 'Failed',
+                    'message' => $message,
+                ];
+            }
+
+            $nextOffset = $offset + count($batch);
+            if ($nextOffset >= $total) {
+                unset($_SESSION['bulk_invite_job']);
+            }
+
+            echo json_encode([
+                'ok' => true,
+                'results' => $batchResults,
+                'next_offset' => $nextOffset,
+                'total' => $total,
+                'done' => $nextOffset >= $total,
+            ]);
+            exit;
+        }
+
+        throw new RuntimeException('Unknown bulk invite action.');
+    } catch (RuntimeException $exception) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'error' => $exception->getMessage()]);
+        exit;
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -257,11 +403,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             foreach ($contacts as $contact) {
                 $ok = send_course_invite_whatsapp($contact['phone'], $contact['name'], $course, $inviteDescription, $inviteDuration);
+                $message = $ok ? 'Delivered to Meta API' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
+                log_whatsapp_invite($course, $contact, $inviteDescription, $inviteDuration, $ok, $message);
                 $results[] = [
                     'name' => $contact['name'],
                     'phone' => $contact['phone'],
                     'status' => $ok ? 'Sent' : 'Failed',
-                    'message' => $ok ? 'Delivered to Meta API' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send'),
+                    'message' => $message,
                 ];
             }
 
@@ -273,6 +421,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$dateFilter = admin_date_filter('today');
+$logParams = [];
+$logDateCondition = admin_date_condition('sent_at', $dateFilter, $logParams);
+$logWhere = $logDateCondition === '' ? '' : "WHERE {$logDateCondition}";
+$logStmt = db()->prepare(
+    "SELECT *
+     FROM whatsapp_invite_logs
+     {$logWhere}
+     ORDER BY sent_at DESC, id DESC
+     LIMIT 300"
+);
+$logStmt->execute($logParams);
+$inviteLogs = $logStmt->fetchAll();
+$sentLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'sent'));
+$failedLogCount = count($inviteLogs) - $sentLogCount;
+
 require __DIR__ . '/_admin_header.php';
 ?>
 <section class="page-title">
@@ -282,7 +446,7 @@ require __DIR__ . '/_admin_header.php';
 </section>
 
 <section class="admin-grid">
-    <form method="post" enctype="multipart/form-data" class="form-card">
+    <form method="post" enctype="multipart/form-data" class="form-card" id="bulk-invite-form">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <h2>Invite Contacts</h2>
         <fieldset>
@@ -315,7 +479,14 @@ require __DIR__ . '/_admin_header.php';
 
         <div class="materials-form-actions">
             <button class="button secondary" type="submit" name="action" value="preview">Preview Contacts</button>
-            <button class="button primary" type="submit" name="action" value="send" data-confirm="Send WhatsApp invite to all imported contacts?">Send Bulk Invites</button>
+            <button class="button primary" type="submit" name="action" value="send" id="bulk-send-button">Send Bulk Invites</button>
+        </div>
+        <div class="upload-status" id="bulk-invite-progress" hidden>
+            <div class="upload-status-row">
+                <strong id="bulk-invite-progress-text">Preparing contacts...</strong>
+                <span id="bulk-invite-progress-count">0 / 0</span>
+            </div>
+            <progress id="bulk-invite-progress-bar" max="100" value="0"></progress>
         </div>
     </form>
 
@@ -338,6 +509,16 @@ require __DIR__ . '/_admin_header.php';
             <p><a href="whatsapp.php">Open WhatsApp settings</a> to save the approved invite template name.</p>
         </div>
     </aside>
+</section>
+
+<section class="section compact-section">
+    <?php require __DIR__ . '/_date_filter.php'; ?>
+</section>
+
+<section class="admin-stats">
+    <div><strong><?= count($inviteLogs) ?></strong><span>Filtered invites</span></div>
+    <div><strong><?= $sentLogCount ?></strong><span>Sent</span></div>
+    <div><strong><?= $failedLogCount ?></strong><span>Failed</span></div>
 </section>
 
 <?php if ($previewContacts): ?>
@@ -379,6 +560,43 @@ require __DIR__ . '/_admin_header.php';
         </div>
     </section>
 <?php endif; ?>
+<section class="section" id="bulk-live-results-section" hidden>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>S.No</th><th>Name</th><th>WhatsApp</th><th>Status</th><th>Message</th></tr></thead>
+            <tbody id="bulk-live-results"></tbody>
+        </table>
+    </div>
+</section>
+<section class="section">
+    <div class="section-heading">
+        <h2>WhatsApp Invite History</h2>
+        <small>Showing latest 300 records for the selected date range.</small>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>S.No</th><th>Date</th><th>Contact</th><th>Program</th><th>Duration</th><th>Status</th><th>Message</th></tr>
+            </thead>
+            <tbody>
+                <?php if (!$inviteLogs): ?>
+                    <tr><td colspan="7">No invite messages found for this date range.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($inviteLogs as $index => $row): ?>
+                    <tr>
+                        <td><?= $index + 1 ?></td>
+                        <td><?= e(date('d M Y, h:i A', strtotime((string) $row['sent_at']))) ?></td>
+                        <td><?= e($row['contact_name'] ?: '-') ?><br><small><?= e($row['phone']) ?></small></td>
+                        <td><?= e($row['course_title'] ?: '-') ?><br><small><?= e($row['invite_description'] ?: '-') ?></small></td>
+                        <td><?= e($row['invite_duration'] ?: '-') ?></td>
+                        <td><?= e(ucfirst((string) $row['status'])) ?></td>
+                        <td><?= e($row['response_message'] ?: '-') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
 <script>
 (() => {
     const select = document.getElementById('bulk-course-id');
@@ -409,6 +627,110 @@ require __DIR__ . '/_admin_header.php';
     if (description.value.trim() === '' && duration.value.trim() === '') {
         syncCourseDefaults();
     }
+})();
+
+(() => {
+    const form = document.getElementById('bulk-invite-form');
+    const sendButton = document.getElementById('bulk-send-button');
+    const progressBox = document.getElementById('bulk-invite-progress');
+    const progressText = document.getElementById('bulk-invite-progress-text');
+    const progressCount = document.getElementById('bulk-invite-progress-count');
+    const progressBar = document.getElementById('bulk-invite-progress-bar');
+    const resultsSection = document.getElementById('bulk-live-results-section');
+    const resultsBody = document.getElementById('bulk-live-results');
+    let resultIndex = 0;
+
+    if (!form || !sendButton || !progressBox || !resultsBody) {
+        return;
+    }
+
+    const setProgress = (text, sent, total) => {
+        progressBox.hidden = false;
+        progressText.textContent = text;
+        progressCount.textContent = sent + ' / ' + total;
+        progressBar.value = total > 0 ? Math.round((sent / total) * 100) : 0;
+    };
+
+    const addResults = (rows) => {
+        resultsSection.hidden = false;
+        const fragment = document.createDocumentFragment();
+
+        rows.forEach((row) => {
+            resultIndex++;
+            const tr = document.createElement('tr');
+            [resultIndex, row.name || '-', row.phone || '-', row.status || '-', row.message || '-'].forEach((value) => {
+                const td = document.createElement('td');
+                td.textContent = String(value);
+                tr.appendChild(td);
+            });
+            fragment.appendChild(tr);
+        });
+
+        resultsBody.appendChild(fragment);
+    };
+
+    const postForm = async (url, body) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            body,
+            credentials: 'same-origin',
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || payload.ok === false) {
+            throw new Error(payload.error || 'Bulk invite request failed.');
+        }
+
+        return payload;
+    };
+
+    const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+    form.addEventListener('submit', async (event) => {
+        const submitter = event.submitter;
+        if (submitter?.value !== 'send') {
+            return;
+        }
+
+        event.preventDefault();
+        if (!window.confirm('Send WhatsApp invite to all imported contacts?')) {
+            return;
+        }
+
+        sendButton.disabled = true;
+        resultsBody.textContent = '';
+        resultIndex = 0;
+        setProgress('Preparing contacts...', 0, 0);
+
+        try {
+            const prepareBody = new FormData(form);
+            prepareBody.set('action', 'send');
+            const prepared = await postForm('whatsapp_bulk.php?ajax=prepare', prepareBody);
+            const total = Number(prepared.total || 0);
+            let offset = 0;
+
+            setProgress('Sending WhatsApp invites...', 0, total);
+
+            while (offset < total) {
+                const batchBody = new FormData();
+                batchBody.append('csrf_token', form.querySelector('[name="csrf_token"]').value);
+                batchBody.append('offset', String(offset));
+                batchBody.append('limit', '5');
+                const batch = await postForm('whatsapp_bulk.php?ajax=send-batch', batchBody);
+
+                addResults(batch.results || []);
+                offset = Number(batch.next_offset || total);
+                setProgress(batch.done ? 'Bulk invite completed.' : 'Sending WhatsApp invites...', Math.min(offset, total), total);
+                if (!batch.done) {
+                    await wait(500);
+                }
+            }
+        } catch (error) {
+            setProgress(error.message || 'Bulk invite failed.', resultIndex, Math.max(resultIndex, Number(progressCount.textContent.split('/').pop()) || 0));
+        } finally {
+            sendButton.disabled = false;
+        }
+    });
 })();
 </script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>

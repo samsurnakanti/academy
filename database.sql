@@ -183,6 +183,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS whatsapp_invite_logs (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    course_id INT UNSIGNED NULL,
+    course_title VARCHAR(190) NULL,
+    contact_name VARCHAR(190) NULL,
+    phone VARCHAR(40) NOT NULL,
+    invite_description TEXT NULL,
+    invite_duration VARCHAR(120) NULL,
+    status ENUM('sent', 'failed') NOT NULL DEFAULT 'sent',
+    response_message TEXT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_whatsapp_invite_sent_at (sent_at),
+    INDEX idx_whatsapp_invite_course (course_id)
+);
+
 CREATE TABLE IF NOT EXISTS zoom_settings (
     id TINYINT UNSIGNED PRIMARY KEY,
     client_id VARCHAR(190) NULL,
