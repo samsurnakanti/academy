@@ -526,6 +526,16 @@ function is_allowed_material_mime(string $mime): bool
         ], true);
 }
 
+function is_allowed_image_mime(string $mime): bool
+{
+    return str_starts_with($mime, 'image/');
+}
+
+function is_allowed_video_mime(string $mime): bool
+{
+    return str_starts_with($mime, 'video/');
+}
+
 function upload_material_to_s3(array $file): string
 {
     $settings = s3_settings();
@@ -606,6 +616,38 @@ function upload_material_to_s3(array $file): string
 function upload_video_to_s3(array $file): string
 {
     return upload_material_to_s3($file);
+}
+
+function upload_image_to_s3(array $file): string
+{
+    $settings = s3_settings();
+
+    if ($settings['access_key_id'] === '' || $settings['secret_access_key'] === '' || $settings['bucket_name'] === '') {
+        throw new RuntimeException('S3 settings are incomplete. Add AWS credentials, region, and bucket first.');
+    }
+
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('Image upload failed before reaching S3.');
+    }
+
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+    if (!is_uploaded_file($tmpName)) {
+        throw new RuntimeException('Uploaded image could not be verified.');
+    }
+
+    $mime = mime_content_type($tmpName) ?: '';
+    if (!is_allowed_image_mime($mime)) {
+        throw new RuntimeException('Please upload a valid image file.');
+    }
+
+    return upload_material_to_s3($file);
+}
+
+function s3_display_url(string $url): string
+{
+    $objectKey = s3_object_key_from_url($url);
+
+    return $objectKey !== null ? s3_presigned_get_url($objectKey) : $url;
 }
 
 function text_with_links(?string $value): string
@@ -1422,8 +1464,12 @@ function ensure_whatsapp_settings_table(): void
         db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN enrollment_template_name VARCHAR(120) NULL AFTER template_name");
     }
 
+    if (!isset($existing['course_invite_template_name'])) {
+        db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN course_invite_template_name VARCHAR(120) NULL AFTER enrollment_template_name");
+    }
+
     if (!isset($existing['reminder_template_name'])) {
-        db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN reminder_template_name VARCHAR(120) NULL AFTER enrollment_template_name");
+        db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN reminder_template_name VARCHAR(120) NULL AFTER course_invite_template_name");
     }
 
     if (!isset($existing['certificate_template_name'])) {
@@ -1431,8 +1477,8 @@ function ensure_whatsapp_settings_table(): void
     }
 
     $stmt = db()->prepare(
-        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, reminder_template_name, certificate_template_name, template_language, graph_version)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, course_invite_template_name, reminder_template_name, certificate_template_name, template_language, graph_version)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE id = id"
     );
     $stmt->execute([
@@ -1440,6 +1486,7 @@ function ensure_whatsapp_settings_table(): void
         WHATSAPP_PHONE_NUMBER_ID,
         whatsapp_access_token(),
         whatsapp_otp_template_name(),
+        null,
         null,
         null,
         null,
@@ -1466,6 +1513,7 @@ function whatsapp_settings(): array
         'access_token' => trim((string) ($settings['access_token'] ?? whatsapp_access_token())),
         'template_name' => trim((string) ($settings['template_name'] ?? whatsapp_otp_template_name())),
         'enrollment_template_name' => trim((string) ($settings['enrollment_template_name'] ?? '')),
+        'course_invite_template_name' => trim((string) ($settings['course_invite_template_name'] ?? '')),
         'reminder_template_name' => trim((string) ($settings['reminder_template_name'] ?? '')),
         'certificate_template_name' => trim((string) ($settings['certificate_template_name'] ?? '')),
         'template_language' => trim((string) ($settings['template_language'] ?? 'en')) ?: 'en',
@@ -1479,7 +1527,7 @@ function save_whatsapp_settings(array $data): void
 
     $stmt = db()->prepare(
         "UPDATE whatsapp_settings
-         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, reminder_template_name = ?, certificate_template_name = ?, template_language = ?, graph_version = ?
+         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, course_invite_template_name = ?, reminder_template_name = ?, certificate_template_name = ?, template_language = ?, graph_version = ?
          WHERE id = 1"
     );
     $stmt->execute([
@@ -1488,6 +1536,7 @@ function save_whatsapp_settings(array $data): void
         trim((string) ($data['access_token'] ?? '')),
         trim((string) ($data['template_name'] ?? '')),
         trim((string) ($data['enrollment_template_name'] ?? '')),
+        trim((string) ($data['course_invite_template_name'] ?? '')),
         trim((string) ($data['reminder_template_name'] ?? '')),
         trim((string) ($data['certificate_template_name'] ?? '')),
         trim((string) ($data['template_language'] ?? 'en')) ?: 'en',
@@ -1585,6 +1634,28 @@ function send_enrollment_whatsapp(array $user, array $course): bool
         (string) $user['phone'],
         $settings['enrollment_template_name'],
         [(string) $user['name'], (string) $course['title'], site_url('login.php')]
+    );
+}
+
+function send_course_invite_whatsapp(string $phone, string $name, array $course, string $description = '', string $duration = ''): bool
+{
+    $settings = whatsapp_settings();
+
+    if ($settings['course_invite_template_name'] === '') {
+        $_SESSION['whatsapp_send_error'] = 'Course invite WhatsApp template name is missing. Save the approved Meta template name in Admin > WhatsApp.';
+        return false;
+    }
+
+    return send_whatsapp_template_message(
+        $phone,
+        $settings['course_invite_template_name'],
+        [
+            $name !== '' ? $name : 'there',
+            (string) $course['title'],
+            $description !== '' ? $description : (string) ($course['short_description'] ?? 'Master practical data analytics, dashboards, and business case solving with Elldy Academy.'),
+            $duration !== '' ? $duration : (string) ($course['duration'] ?? 'Flexible duration'),
+            program_url($course),
+        ]
     );
 }
 
@@ -2229,6 +2300,7 @@ function ensure_course_detail_columns(): void
         'expert_title' => 'ADD COLUMN expert_title VARCHAR(190) NULL AFTER expert_name',
         'expert_bio' => 'ADD COLUMN expert_bio TEXT NULL AFTER expert_title',
         'expert_photo' => 'ADD COLUMN expert_photo VARCHAR(255) NULL AFTER expert_bio',
+        'promo_video_url' => 'ADD COLUMN promo_video_url VARCHAR(255) NULL AFTER expert_photo',
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
         'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER fee',
         'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER certification_fee',

@@ -1197,6 +1197,35 @@ small,
     color: var(--brand-dark);
 }
 
+.promo-video-block {
+    margin: 24px 0;
+}
+
+.promo-video-block h2 {
+    margin: 0 0 12px;
+    font-size: 22px;
+}
+
+.promo-video-frame {
+    margin: 0;
+    box-shadow: var(--shadow-soft);
+}
+
+.program-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin: 22px 0 10px;
+}
+
+.share-status {
+    margin: 0 0 16px;
+    color: var(--brand-dark);
+    font-size: 14px;
+    font-weight: 700;
+}
+
 .registration-preview {
     display: grid;
     gap: 18px;

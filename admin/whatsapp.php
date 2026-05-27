@@ -47,6 +47,9 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
             <label>Enrollment Welcome Template
                 <input name="enrollment_template_name" value="<?= e($settings['enrollment_template_name']) ?>" placeholder="elldy_academy_enrollment">
             </label>
+            <label>New Course Invite Template
+                <input name="course_invite_template_name" value="<?= e($settings['course_invite_template_name']) ?>" placeholder="elldy_course_invite">
+            </label>
             <label>Daily Class Reminder Template
                 <input name="reminder_template_name" value="<?= e($settings['reminder_template_name']) ?>" placeholder="elldy_academy_class_reminder">
             </label>
@@ -76,11 +79,15 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
         </div>
         <div class="material-item">
             <strong>Enrollment / Reminder / Certificate Templates</strong>
-            <p><?= e($settings['enrollment_template_name'] ?: 'Not configured') ?> / <?= e($settings['reminder_template_name'] ?: 'Not configured') ?> / <?= e($settings['certificate_template_name'] ?: 'Not configured') ?></p>
+            <p><?= e($settings['enrollment_template_name'] ?: 'Not configured') ?> / <?= e($settings['course_invite_template_name'] ?: 'Not configured') ?> / <?= e($settings['reminder_template_name'] ?: 'Not configured') ?> / <?= e($settings['certificate_template_name'] ?: 'Not configured') ?></p>
         </div>
         <div class="material-item">
             <strong>Important</strong>
-            <p>For production, use approved Meta WhatsApp templates. Enrollment and reminder templates should accept 3 body values in this order: trainee name, program title, login URL. Certificate templates should accept: trainee name, program title, certificate URL.</p>
+            <p>For production, use approved Meta WhatsApp templates. Enrollment and reminder templates should accept 3 body values in this order: trainee name, program title, login URL. Course invite templates should accept 5 values: contact name, program title, description, duration, program URL. Certificate templates should accept: trainee name, program title, certificate URL.</p>
+        </div>
+        <div class="material-item">
+            <strong>Bulk course invites</strong>
+            <p><a href="whatsapp_bulk.php">Open Bulk Invites</a> to import contacts from CSV/Excel and send course invitation templates.</p>
         </div>
         <div class="material-item">
             <strong>Enrollment template</strong>
