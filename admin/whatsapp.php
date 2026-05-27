@@ -34,6 +34,9 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
             <label>Graph API Version
                 <input name="graph_version" value="<?= e($settings['graph_version']) ?>" placeholder="v20.0" required>
             </label>
+            <label>Webhook Verify Token
+                <input name="webhook_verify_token" value="<?= e($settings['webhook_verify_token']) ?>" placeholder="Create any private token, then paste same token in Meta webhook setup">
+            </label>
         </fieldset>
 
         <fieldset>
@@ -72,6 +75,10 @@ $maskedToken = $settings['access_token'] !== '' ? str_repeat('•', 18) . substr
         <div class="material-item">
             <strong>Phone Number ID</strong>
             <p><?= e($settings['phone_number_id'] ?: 'Not configured') ?></p>
+        </div>
+        <div class="material-item">
+            <strong>Webhook Callback URL</strong>
+            <p><?= e(site_url('whatsapp_webhook.php')) ?></p>
         </div>
         <div class="material-item">
             <strong>Template</strong>

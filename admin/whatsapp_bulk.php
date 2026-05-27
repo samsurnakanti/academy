@@ -6,45 +6,6 @@ $title = 'Bulk WhatsApp Invites';
 ensure_course_detail_columns();
 ensure_whatsapp_settings_table();
 
-function ensure_whatsapp_invite_logs_table(): void
-{
-    db()->exec(
-        "CREATE TABLE IF NOT EXISTS whatsapp_invite_logs (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-            course_id INT UNSIGNED NULL,
-            course_title VARCHAR(190) NULL,
-            contact_name VARCHAR(190) NULL,
-            phone VARCHAR(40) NOT NULL,
-            invite_description TEXT NULL,
-            invite_duration VARCHAR(120) NULL,
-            status ENUM('sent', 'failed') NOT NULL DEFAULT 'sent',
-            response_message TEXT NULL,
-            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_whatsapp_invite_sent_at (sent_at),
-            INDEX idx_whatsapp_invite_course (course_id)
-        )"
-    );
-}
-
-function log_whatsapp_invite(array $course, array $contact, string $description, string $duration, bool $sent, string $message): void
-{
-    $stmt = db()->prepare(
-        "INSERT INTO whatsapp_invite_logs
-            (course_id, course_title, contact_name, phone, invite_description, invite_duration, status, response_message)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-    );
-    $stmt->execute([
-        (int) ($course['id'] ?? 0) ?: null,
-        (string) ($course['title'] ?? ''),
-        (string) ($contact['name'] ?? ''),
-        (string) ($contact['phone'] ?? ''),
-        $description,
-        $duration,
-        $sent ? 'sent' : 'failed',
-        $message,
-    ]);
-}
-
 function bulk_invite_phone_from_row(array $row): string
 {
     foreach (['phone', 'mobile', 'whatsapp', 'number', 'contact'] as $key) {
@@ -320,13 +281,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
 
             $batchResults = [];
             foreach ($batch as $contact) {
-                $ok = send_course_invite_whatsapp(
+                $sendResult = send_course_invite_whatsapp_result(
                     (string) $contact['phone'],
                     (string) $contact['name'],
                     $course,
                     (string) ($job['description'] ?? ''),
                     (string) ($job['duration'] ?? '')
                 );
+                $ok = (bool) $sendResult['ok'];
                 $message = $ok ? 'Delivered to Meta API' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
                 log_whatsapp_invite(
                     $course,
@@ -334,7 +296,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
                     (string) ($job['description'] ?? ''),
                     (string) ($job['duration'] ?? ''),
                     $ok,
-                    $message
+                    $message,
+                    (string) ($sendResult['message_id'] ?? '')
                 );
                 $batchResults[] = [
                     'name' => (string) $contact['name'],
@@ -402,9 +365,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success', count($contacts) . ' unique contacts are ready for this invite.');
         } else {
             foreach ($contacts as $contact) {
-                $ok = send_course_invite_whatsapp($contact['phone'], $contact['name'], $course, $inviteDescription, $inviteDuration);
+                $sendResult = send_course_invite_whatsapp_result($contact['phone'], $contact['name'], $course, $inviteDescription, $inviteDuration);
+                $ok = (bool) $sendResult['ok'];
                 $message = $ok ? 'Delivered to Meta API' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
-                log_whatsapp_invite($course, $contact, $inviteDescription, $inviteDuration, $ok, $message);
+                log_whatsapp_invite($course, $contact, $inviteDescription, $inviteDuration, $ok, $message, (string) ($sendResult['message_id'] ?? ''));
                 $results[] = [
                     'name' => $contact['name'],
                     'phone' => $contact['phone'],
@@ -435,7 +399,9 @@ $logStmt = db()->prepare(
 $logStmt->execute($logParams);
 $inviteLogs = $logStmt->fetchAll();
 $sentLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'sent'));
-$failedLogCount = count($inviteLogs) - $sentLogCount;
+$deliveredLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'delivered'));
+$readLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'read'));
+$failedLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'failed'));
 
 require __DIR__ . '/_admin_header.php';
 ?>
@@ -518,6 +484,8 @@ require __DIR__ . '/_admin_header.php';
 <section class="admin-stats">
     <div><strong><?= count($inviteLogs) ?></strong><span>Filtered invites</span></div>
     <div><strong><?= $sentLogCount ?></strong><span>Sent</span></div>
+    <div><strong><?= $deliveredLogCount ?></strong><span>Delivered</span></div>
+    <div><strong><?= $readLogCount ?></strong><span>Read</span></div>
     <div><strong><?= $failedLogCount ?></strong><span>Failed</span></div>
 </section>
 
@@ -576,11 +544,11 @@ require __DIR__ . '/_admin_header.php';
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>S.No</th><th>Date</th><th>Contact</th><th>Program</th><th>Duration</th><th>Status</th><th>Message</th></tr>
+                <tr><th>S.No</th><th>Date</th><th>Contact</th><th>Program</th><th>Duration</th><th>Status</th><th>Delivery</th><th>Message</th></tr>
             </thead>
             <tbody>
                 <?php if (!$inviteLogs): ?>
-                    <tr><td colspan="7">No invite messages found for this date range.</td></tr>
+                    <tr><td colspan="8">No invite messages found for this date range.</td></tr>
                 <?php endif; ?>
                 <?php foreach ($inviteLogs as $index => $row): ?>
                     <tr>
@@ -590,6 +558,12 @@ require __DIR__ . '/_admin_header.php';
                         <td><?= e($row['course_title'] ?: '-') ?><br><small><?= e($row['invite_description'] ?: '-') ?></small></td>
                         <td><?= e($row['invite_duration'] ?: '-') ?></td>
                         <td><?= e(ucfirst((string) $row['status'])) ?></td>
+                        <td>
+                            <small>
+                                Delivered: <?= !empty($row['delivered_at']) ? e(date('d M, h:i A', strtotime((string) $row['delivered_at']))) : '-' ?><br>
+                                Read: <?= !empty($row['read_at']) ? e(date('d M, h:i A', strtotime((string) $row['read_at']))) : '-' ?>
+                            </small>
+                        </td>
                         <td><?= e($row['response_message'] ?: '-') ?></td>
                     </tr>
                 <?php endforeach; ?>

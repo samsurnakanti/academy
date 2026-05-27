@@ -1487,9 +1487,13 @@ function ensure_whatsapp_settings_table(): void
         db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN certificate_template_name VARCHAR(120) NULL AFTER reminder_template_name");
     }
 
+    if (!isset($existing['webhook_verify_token'])) {
+        db()->exec("ALTER TABLE whatsapp_settings ADD COLUMN webhook_verify_token VARCHAR(190) NULL AFTER graph_version");
+    }
+
     $stmt = db()->prepare(
-        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, course_invite_template_name, reminder_template_name, certificate_template_name, template_language, graph_version)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, access_token, template_name, enrollment_template_name, course_invite_template_name, reminder_template_name, certificate_template_name, template_language, graph_version, webhook_verify_token)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE id = id"
     );
     $stmt->execute([
@@ -1503,6 +1507,7 @@ function ensure_whatsapp_settings_table(): void
         null,
         'en',
         WHATSAPP_GRAPH_VERSION,
+        '',
     ]);
 
     db()->exec(
@@ -1529,6 +1534,7 @@ function whatsapp_settings(): array
         'certificate_template_name' => trim((string) ($settings['certificate_template_name'] ?? '')),
         'template_language' => trim((string) ($settings['template_language'] ?? 'en')) ?: 'en',
         'graph_version' => trim((string) ($settings['graph_version'] ?? WHATSAPP_GRAPH_VERSION)) ?: WHATSAPP_GRAPH_VERSION,
+        'webhook_verify_token' => trim((string) ($settings['webhook_verify_token'] ?? '')),
     ];
 }
 
@@ -1538,7 +1544,7 @@ function save_whatsapp_settings(array $data): void
 
     $stmt = db()->prepare(
         "UPDATE whatsapp_settings
-         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, course_invite_template_name = ?, reminder_template_name = ?, certificate_template_name = ?, template_language = ?, graph_version = ?
+         SET business_account_id = ?, phone_number_id = ?, access_token = ?, template_name = ?, enrollment_template_name = ?, course_invite_template_name = ?, reminder_template_name = ?, certificate_template_name = ?, template_language = ?, graph_version = ?, webhook_verify_token = ?
          WHERE id = 1"
     );
     $stmt->execute([
@@ -1552,32 +1558,33 @@ function save_whatsapp_settings(array $data): void
         trim((string) ($data['certificate_template_name'] ?? '')),
         trim((string) ($data['template_language'] ?? 'en')) ?: 'en',
         trim((string) ($data['graph_version'] ?? WHATSAPP_GRAPH_VERSION)) ?: WHATSAPP_GRAPH_VERSION,
+        trim((string) ($data['webhook_verify_token'] ?? '')),
     ]);
 }
 
-function send_whatsapp_template_message(string $phone, string $templateName, array $bodyParameters = []): bool
+function send_whatsapp_template_message_result(string $phone, string $templateName, array $bodyParameters = []): array
 {
     $settings = whatsapp_settings();
     unset($_SESSION['whatsapp_send_error']);
 
     if ($settings['access_token'] === '') {
         $_SESSION['whatsapp_send_error'] = 'WhatsApp access token is missing. Save it in Admin > WhatsApp.';
-        return false;
+        return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
     }
 
     if ($settings['phone_number_id'] === '') {
         $_SESSION['whatsapp_send_error'] = 'WhatsApp Phone Number ID is missing. Save it in Admin > WhatsApp.';
-        return false;
+        return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
     }
 
     if ($templateName === '') {
         $_SESSION['whatsapp_send_error'] = 'WhatsApp template name is missing.';
-        return false;
+        return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
     }
 
     if (!function_exists('curl_init')) {
         $_SESSION['whatsapp_send_error'] = 'PHP cURL extension is not enabled in XAMPP.';
-        return false;
+        return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
     }
 
     $payload = [
@@ -1627,9 +1634,19 @@ function send_whatsapp_template_message(string $phone, string $templateName, arr
             $message .= ' ' . $curlError;
         }
         $_SESSION['whatsapp_send_error'] = $message;
+
+        return ['ok' => false, 'message_id' => '', 'error' => $message];
     }
 
-    return $status >= 200 && $status < 300;
+    $decoded = json_decode((string) $response, true);
+    $messageId = (string) ($decoded['messages'][0]['id'] ?? '');
+
+    return ['ok' => true, 'message_id' => $messageId, 'error' => ''];
+}
+
+function send_whatsapp_template_message(string $phone, string $templateName, array $bodyParameters = []): bool
+{
+    return send_whatsapp_template_message_result($phone, $templateName, $bodyParameters)['ok'];
 }
 
 function send_enrollment_whatsapp(array $user, array $course): bool
@@ -1650,14 +1667,19 @@ function send_enrollment_whatsapp(array $user, array $course): bool
 
 function send_course_invite_whatsapp(string $phone, string $name, array $course, string $description = '', string $duration = ''): bool
 {
+    return send_course_invite_whatsapp_result($phone, $name, $course, $description, $duration)['ok'];
+}
+
+function send_course_invite_whatsapp_result(string $phone, string $name, array $course, string $description = '', string $duration = ''): array
+{
     $settings = whatsapp_settings();
 
     if ($settings['course_invite_template_name'] === '') {
         $_SESSION['whatsapp_send_error'] = 'Course invite WhatsApp template name is missing. Save the approved Meta template name in Admin > WhatsApp.';
-        return false;
+        return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
     }
 
-    return send_whatsapp_template_message(
+    return send_whatsapp_template_message_result(
         $phone,
         $settings['course_invite_template_name'],
         [
@@ -1668,6 +1690,121 @@ function send_course_invite_whatsapp(string $phone, string $name, array $course,
             program_absolute_url($course),
         ]
     );
+}
+
+function ensure_whatsapp_invite_logs_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS whatsapp_invite_logs (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            course_id INT UNSIGNED NULL,
+            course_title VARCHAR(190) NULL,
+            contact_name VARCHAR(190) NULL,
+            phone VARCHAR(40) NOT NULL,
+            invite_description TEXT NULL,
+            invite_duration VARCHAR(120) NULL,
+            message_id VARCHAR(190) NULL,
+            status ENUM('queued', 'sent', 'delivered', 'read', 'failed') NOT NULL DEFAULT 'sent',
+            response_message TEXT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            delivered_at DATETIME NULL,
+            read_at DATETIME NULL,
+            status_updated_at DATETIME NULL,
+            INDEX idx_whatsapp_invite_sent_at (sent_at),
+            INDEX idx_whatsapp_invite_course (course_id),
+            INDEX idx_whatsapp_invite_message_id (message_id)
+        )"
+    );
+
+    $database = db()->query('SELECT DATABASE()')->fetchColumn();
+    $columns = db()->prepare(
+        "SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'whatsapp_invite_logs'"
+    );
+    $columns->execute([$database]);
+    $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
+
+    $missing = [
+        'message_id' => 'ADD COLUMN message_id VARCHAR(190) NULL AFTER invite_duration',
+        'delivered_at' => 'ADD COLUMN delivered_at DATETIME NULL AFTER sent_at',
+        'read_at' => 'ADD COLUMN read_at DATETIME NULL AFTER delivered_at',
+        'status_updated_at' => 'ADD COLUMN status_updated_at DATETIME NULL AFTER read_at',
+    ];
+
+    foreach ($missing as $column => $definition) {
+        if (!isset($existing[$column])) {
+            db()->exec("ALTER TABLE whatsapp_invite_logs {$definition}");
+        }
+    }
+
+    db()->exec("ALTER TABLE whatsapp_invite_logs MODIFY COLUMN status ENUM('queued', 'sent', 'delivered', 'read', 'failed') NOT NULL DEFAULT 'sent'");
+}
+
+function log_whatsapp_invite(array $course, array $contact, string $description, string $duration, bool $sent, string $message, string $messageId = ''): void
+{
+    ensure_whatsapp_invite_logs_table();
+    $stmt = db()->prepare(
+        "INSERT INTO whatsapp_invite_logs
+            (course_id, course_title, contact_name, phone, invite_description, invite_duration, message_id, status, response_message, status_updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+    );
+    $stmt->execute([
+        (int) ($course['id'] ?? 0) ?: null,
+        (string) ($course['title'] ?? ''),
+        (string) ($contact['name'] ?? ''),
+        (string) ($contact['phone'] ?? ''),
+        $description,
+        $duration,
+        $messageId !== '' ? $messageId : null,
+        $sent ? 'sent' : 'failed',
+        $message,
+    ]);
+}
+
+function update_whatsapp_invite_delivery_status(string $messageId, string $status, int $timestamp = 0, string $errorMessage = ''): void
+{
+    ensure_whatsapp_invite_logs_table();
+    $allowed = ['sent', 'delivered', 'read', 'failed'];
+    if ($messageId === '' || !in_array($status, $allowed, true)) {
+        return;
+    }
+
+    $occurredAt = $timestamp > 0 ? date('Y-m-d H:i:s', $timestamp) : date('Y-m-d H:i:s');
+    $statusRank = ['sent' => 1, 'delivered' => 2, 'read' => 3, 'failed' => 4];
+
+    $stmt = db()->prepare('SELECT id, status FROM whatsapp_invite_logs WHERE message_id = ? ORDER BY id DESC LIMIT 1');
+    $stmt->execute([$messageId]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return;
+    }
+
+    $currentStatus = (string) ($row['status'] ?? 'sent');
+    if (($statusRank[$status] ?? 0) < ($statusRank[$currentStatus] ?? 0)) {
+        return;
+    }
+
+    $deliveredAtSql = in_array($status, ['delivered', 'read'], true) ? ', delivered_at = COALESCE(delivered_at, ?)' : '';
+    $readAtSql = $status === 'read' ? ', read_at = COALESCE(read_at, ?)' : '';
+    $params = [$status, $errorMessage !== '' ? $errorMessage : ucfirst($status), $occurredAt];
+
+    if (in_array($status, ['delivered', 'read'], true)) {
+        $params[] = $occurredAt;
+    }
+
+    if ($status === 'read') {
+        $params[] = $occurredAt;
+    }
+
+    $params[] = (int) $row['id'];
+    $update = db()->prepare(
+        "UPDATE whatsapp_invite_logs
+         SET status = ?, response_message = ?, status_updated_at = ?{$deliveredAtSql}{$readAtSql}
+         WHERE id = ?"
+    );
+    $update->execute($params);
 }
 
 function send_class_reminder_whatsapp(array $row): bool
