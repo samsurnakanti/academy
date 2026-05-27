@@ -757,6 +757,17 @@ function program_url(array $course): string
     return public_url('program/' . rawurlencode($slug));
 }
 
+function program_absolute_url(array $course): string
+{
+    $slug = trim((string) ($course['slug'] ?? ''));
+
+    if ($slug === '') {
+        $slug = slugify((string) ($course['title'] ?? 'program'));
+    }
+
+    return site_url('program/' . rawurlencode($slug));
+}
+
 function detail_points(?string $value): string
 {
     $lines = preg_split('/\R/', trim((string) $value)) ?: [];
@@ -1654,7 +1665,7 @@ function send_course_invite_whatsapp(string $phone, string $name, array $course,
             (string) $course['title'],
             $description !== '' ? $description : (string) ($course['short_description'] ?? 'Master practical data analytics, dashboards, and business case solving with Elldy Academy.'),
             $duration !== '' ? $duration : (string) ($course['duration'] ?? 'Flexible duration'),
-            program_url($course),
+            program_absolute_url($course),
         ]
     );
 }
