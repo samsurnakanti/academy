@@ -834,7 +834,7 @@ function published_blog_posts(int $limit = 12): array
     $stmt = db()->prepare(
         "SELECT *
          FROM blog_posts
-         WHERE status = 'published' AND (published_at IS NULL OR published_at <= NOW())
+         WHERE status = 'published'
          ORDER BY COALESCE(published_at, created_at) DESC, id DESC
          LIMIT ?"
     );

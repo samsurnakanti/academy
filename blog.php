@@ -8,7 +8,7 @@ if ($slug !== '') {
     $stmt = db()->prepare(
         "SELECT *
          FROM blog_posts
-         WHERE slug = ? AND status = 'published' AND (published_at IS NULL OR published_at <= NOW())
+         WHERE slug = ? AND status = 'published'
          LIMIT 1"
     );
     $stmt->execute([$slug]);
