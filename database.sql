@@ -180,7 +180,6 @@ CREATE TABLE IF NOT EXISTS whatsapp_settings (
     certificate_template_name VARCHAR(120) NULL,
     template_language VARCHAR(20) NOT NULL DEFAULT 'en',
     graph_version VARCHAR(20) NOT NULL DEFAULT 'v20.0',
-    webhook_verify_token VARCHAR(190) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
@@ -196,8 +195,6 @@ CREATE TABLE IF NOT EXISTS whatsapp_invite_logs (
     status ENUM('queued', 'sent', 'delivered', 'read', 'failed') NOT NULL DEFAULT 'sent',
     response_message TEXT NULL,
     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    delivered_at DATETIME NULL,
-    read_at DATETIME NULL,
     status_updated_at DATETIME NULL,
     INDEX idx_whatsapp_invite_sent_at (sent_at),
     INDEX idx_whatsapp_invite_course (course_id),

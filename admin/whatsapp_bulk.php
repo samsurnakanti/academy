@@ -215,9 +215,7 @@ function bulk_invite_unique_contacts(array $contacts): array
 function whatsapp_invite_status_label(string $status): string
 {
     return match ($status) {
-        'sent' => 'API Accepted',
-        'delivered' => 'Delivered',
-        'read' => 'Read',
+        'sent', 'delivered', 'read' => 'Sent',
         'failed' => 'Failed',
         default => ucfirst($status),
     };
@@ -300,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
                     (string) ($job['duration'] ?? '')
                 );
                 $ok = (bool) $sendResult['ok'];
-                $message = $ok ? 'Accepted by Meta API. Waiting for delivery webhook.' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
+                $message = $ok ? 'Message send request accepted by Meta.' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
                 log_whatsapp_invite(
                     $course,
                     $contact,
@@ -313,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
                 $batchResults[] = [
                     'name' => (string) $contact['name'],
                     'phone' => (string) $contact['phone'],
-                    'status' => $ok ? 'API Accepted' : 'Failed',
+                    'status' => $ok ? 'Sent' : 'Failed',
                     'message' => $message,
                 ];
             }
@@ -378,17 +376,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             foreach ($contacts as $contact) {
                 $sendResult = send_course_invite_whatsapp_result($contact['phone'], $contact['name'], $course, $inviteDescription, $inviteDuration);
                 $ok = (bool) $sendResult['ok'];
-                $message = $ok ? 'Accepted by Meta API. Waiting for delivery webhook.' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
+                $message = $ok ? 'Message send request accepted by Meta.' : ($_SESSION['whatsapp_send_error'] ?? 'Unable to send');
                 log_whatsapp_invite($course, $contact, $inviteDescription, $inviteDuration, $ok, $message, (string) ($sendResult['message_id'] ?? ''));
                 $results[] = [
                     'name' => $contact['name'],
                     'phone' => $contact['phone'],
-                    'status' => $ok ? 'API Accepted' : 'Failed',
+                    'status' => $ok ? 'Sent' : 'Failed',
                     'message' => $message,
                 ];
             }
 
-            $sent = count(array_filter($results, static fn (array $row): bool => $row['status'] === 'API Accepted'));
+            $sent = count(array_filter($results, static fn (array $row): bool => $row['status'] === 'Sent'));
             flash($sent > 0 ? 'success' : 'error', $sent . ' of ' . count($results) . ' WhatsApp invites sent.');
         }
     } catch (RuntimeException $exception) {
@@ -409,9 +407,7 @@ $logStmt = db()->prepare(
 );
 $logStmt->execute($logParams);
 $inviteLogs = $logStmt->fetchAll();
-$sentLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'sent'));
-$deliveredLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'delivered'));
-$readLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'read'));
+$sentLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => in_array((string) $row['status'], ['sent', 'delivered', 'read'], true)));
 $failedLogCount = count(array_filter($inviteLogs, static fn (array $row): bool => $row['status'] === 'failed'));
 
 require __DIR__ . '/_admin_header.php';
@@ -486,8 +482,8 @@ require __DIR__ . '/_admin_header.php';
             <p><a href="whatsapp.php">Open WhatsApp settings</a> to save the approved invite template name.</p>
         </div>
         <div class="material-item">
-            <strong>Delivery tracking</strong>
-            <p>API Accepted means Meta accepted the request. Delivered and Read appear only after Meta sends webhook status updates to this site.</p>
+            <strong>Not received?</strong>
+            <p>Check template quality, recipient opt-in, phone number validity, and your Meta WhatsApp Manager logs.</p>
         </div>
     </aside>
 </section>
@@ -498,9 +494,7 @@ require __DIR__ . '/_admin_header.php';
 
 <section class="admin-stats">
     <div><strong><?= count($inviteLogs) ?></strong><span>Filtered invites</span></div>
-    <div><strong><?= $sentLogCount ?></strong><span>API accepted</span></div>
-    <div><strong><?= $deliveredLogCount ?></strong><span>Delivered</span></div>
-    <div><strong><?= $readLogCount ?></strong><span>Read</span></div>
+    <div><strong><?= $sentLogCount ?></strong><span>Sent</span></div>
     <div><strong><?= $failedLogCount ?></strong><span>Failed</span></div>
 </section>
 
@@ -559,7 +553,7 @@ require __DIR__ . '/_admin_header.php';
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th>S.No</th><th>Date</th><th>Contact</th><th>Program</th><th>Duration</th><th>Status</th><th>Delivery</th><th>Message</th></tr>
+                <tr><th>S.No</th><th>Date</th><th>Contact</th><th>Program</th><th>Duration</th><th>Status</th><th>Meta ID</th><th>Message</th></tr>
             </thead>
             <tbody>
                 <?php if (!$inviteLogs): ?>
@@ -573,12 +567,7 @@ require __DIR__ . '/_admin_header.php';
                         <td><?= e($row['course_title'] ?: '-') ?><br><small><?= e($row['invite_description'] ?: '-') ?></small></td>
                         <td><?= e($row['invite_duration'] ?: '-') ?></td>
                         <td><?= e(whatsapp_invite_status_label((string) $row['status'])) ?></td>
-                        <td>
-                            <small>
-                                Delivered: <?= !empty($row['delivered_at']) ? e(date('d M, h:i A', strtotime((string) $row['delivered_at']))) : '-' ?><br>
-                                Read: <?= !empty($row['read_at']) ? e(date('d M, h:i A', strtotime((string) $row['read_at']))) : '-' ?>
-                            </small>
-                        </td>
+                        <td><small><?= e($row['message_id'] ?: '-') ?></small></td>
                         <td><?= e($row['response_message'] ?: '-') ?></td>
                     </tr>
                 <?php endforeach; ?>
