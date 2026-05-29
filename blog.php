@@ -52,7 +52,7 @@ if ($slug !== '') {
 }
 
 $title = 'Blog | Elldy Academy';
-$canonicalUrl = public_url('blog');
+$canonicalUrl = public_url('blog.php');
 $metaDescription = 'Read daily Elldy Academy articles about data analytics, business intelligence, dashboards, career learning, and practical BI workflows.';
 $posts = published_blog_posts(60);
 require __DIR__ . '/includes/header.php';

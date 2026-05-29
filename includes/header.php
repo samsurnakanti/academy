@@ -74,7 +74,7 @@ if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.
     <nav class="main-nav" id="main-navigation">
         <a href="<?= e(public_url()) ?>">Home</a>
         <a href="<?= e(public_url('programs')) ?>">Programs</a>
-        <a href="<?= e(public_url('blog')) ?>">Blog</a>
+        <a href="<?= e(public_url('blog.php')) ?>">Blog</a>
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
         <?php if ($user): ?>
             <a href="<?= e(public_url('dashboard.php')) ?>">My Sessions</a>

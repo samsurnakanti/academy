@@ -60,7 +60,7 @@
             <strong>Explore</strong>
             <a href="<?= e(public_url('about')) ?>">About</a>
             <a href="<?= e(public_url('programs')) ?>">Programs</a>
-            <a href="<?= e(public_url('blog')) ?>">Blog</a>
+            <a href="<?= e(public_url('blog.php')) ?>">Blog</a>
             <a href="<?= e(public_url('certification')) ?>">Certification Details</a>
             <a href="<?= e(public_url('contact')) ?>">Contact</a>
         </div>

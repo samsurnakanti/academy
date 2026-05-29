@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $featuredImageUrl = trim((string) ($_POST['featured_image_url'] ?? ''));
     $authorName = trim((string) ($_POST['author_name'] ?? 'Elldy Academy'));
     $metaDescription = trim((string) ($_POST['meta_description'] ?? ''));
-    $status = in_array(($_POST['status'] ?? 'draft'), ['draft', 'published'], true) ? (string) $_POST['status'] : 'draft';
+    $status = in_array(($_POST['status'] ?? 'published'), ['draft', 'published'], true) ? (string) $_POST['status'] : 'published';
     $publishedAtInput = trim((string) ($_POST['published_at'] ?? ''));
     $publishedAt = $publishedAtInput !== '' ? str_replace('T', ' ', $publishedAtInput) . ':00' : null;
 
@@ -123,8 +123,8 @@ require __DIR__ . '/_admin_header.php';
             </label>
             <label>Status
                 <select name="status">
-                    <?php foreach (['draft' => 'Draft', 'published' => 'Published'] as $value => $label): ?>
-                        <option value="<?= e($value) ?>" <?= ($edit['status'] ?? 'draft') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php foreach (['published' => 'Published', 'draft' => 'Draft'] as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= ($edit['status'] ?? 'published') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>

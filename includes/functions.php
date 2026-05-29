@@ -820,12 +820,12 @@ function unique_blog_slug(string $title, int $ignoreId = 0): string
 
 function blog_url(array $post): string
 {
-    return public_url('blog/' . rawurlencode((string) ($post['slug'] ?? '')));
+    return public_url('blog.php?slug=' . rawurlencode((string) ($post['slug'] ?? '')));
 }
 
 function blog_absolute_url(array $post): string
 {
-    return site_url('blog/' . rawurlencode((string) ($post['slug'] ?? '')));
+    return site_url('blog.php?slug=' . rawurlencode((string) ($post['slug'] ?? '')));
 }
 
 function published_blog_posts(int $limit = 12): array

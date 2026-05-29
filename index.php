@@ -121,7 +121,7 @@ require __DIR__ . '/includes/header.php';
             <p class="eyebrow">Latest articles</p>
             <h2>Daily analytics and BI learning notes</h2>
         </div>
-        <a href="<?= e(public_url('blog')) ?>">View blog</a>
+        <a href="<?= e(public_url('blog.php')) ?>">View blog</a>
     </div>
     <div class="blog-grid compact">
         <?php foreach ($blogPosts as $post): ?>
