@@ -20,6 +20,9 @@ $admin = current_admin();
     <?php if (!empty($canonicalUrl)): ?>
         <link rel="canonical" href="<?= e($canonicalUrl) ?>">
     <?php endif; ?>
+    <?php if (!empty($metaDescription)): ?>
+        <meta name="description" content="<?= e($metaDescription) ?>">
+    <?php endif; ?>
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
     <link rel="manifest" href="<?= e(public_url('manifest.webmanifest')) ?>">
     <link rel="apple-touch-icon" href="<?= e(public_url('assets/icons/app-icon-192.png')) ?>">
@@ -71,6 +74,7 @@ if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.
     <nav class="main-nav" id="main-navigation">
         <a href="<?= e(public_url()) ?>">Home</a>
         <a href="<?= e(public_url('programs')) ?>">Programs</a>
+        <a href="<?= e(public_url('blog')) ?>">Blog</a>
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
         <?php if ($user): ?>
             <a href="<?= e(public_url('dashboard.php')) ?>">My Sessions</a>

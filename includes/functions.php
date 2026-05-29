@@ -746,6 +746,110 @@ function slugify(string $value): string
     return $value !== '' ? $value : 'program';
 }
 
+function ensure_blog_posts_table(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS blog_posts (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(220) NOT NULL,
+            slug VARCHAR(240) NOT NULL UNIQUE,
+            excerpt VARCHAR(500) NULL,
+            body MEDIUMTEXT NOT NULL,
+            featured_image_url VARCHAR(255) NULL,
+            author_name VARCHAR(160) NULL,
+            meta_description VARCHAR(255) NULL,
+            status ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
+            published_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_blog_status_published (status, published_at)
+        )"
+    );
+
+    $database = db()->query('SELECT DATABASE()')->fetchColumn();
+    $columns = db()->prepare(
+        "SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'blog_posts'"
+    );
+    $columns->execute([$database]);
+    $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
+
+    $missing = [
+        'excerpt' => 'ADD COLUMN excerpt VARCHAR(500) NULL AFTER slug',
+        'featured_image_url' => 'ADD COLUMN featured_image_url VARCHAR(255) NULL AFTER body',
+        'author_name' => 'ADD COLUMN author_name VARCHAR(160) NULL AFTER featured_image_url',
+        'meta_description' => 'ADD COLUMN meta_description VARCHAR(255) NULL AFTER author_name',
+        'status' => "ADD COLUMN status ENUM('draft', 'published') NOT NULL DEFAULT 'draft' AFTER meta_description",
+        'published_at' => 'ADD COLUMN published_at DATETIME NULL AFTER status',
+    ];
+
+    foreach ($missing as $column => $definition) {
+        if (!isset($existing[$column])) {
+            db()->exec("ALTER TABLE blog_posts {$definition}");
+        }
+    }
+}
+
+function unique_blog_slug(string $title, int $ignoreId = 0): string
+{
+    ensure_blog_posts_table();
+    $baseSlug = slugify($title);
+    $slug = $baseSlug;
+    $suffix = 2;
+
+    while (true) {
+        $stmt = db()->prepare('SELECT id FROM blog_posts WHERE slug = ? AND id != ? LIMIT 1');
+        $stmt->execute([$slug, $ignoreId]);
+
+        if (!$stmt->fetch()) {
+            return $slug;
+        }
+
+        $slug = $baseSlug . '-' . $suffix;
+        $suffix++;
+    }
+}
+
+function blog_url(array $post): string
+{
+    return public_url('blog/' . rawurlencode((string) ($post['slug'] ?? '')));
+}
+
+function blog_absolute_url(array $post): string
+{
+    return site_url('blog/' . rawurlencode((string) ($post['slug'] ?? '')));
+}
+
+function published_blog_posts(int $limit = 12): array
+{
+    ensure_blog_posts_table();
+    $stmt = db()->prepare(
+        "SELECT *
+         FROM blog_posts
+         WHERE status = 'published' AND (published_at IS NULL OR published_at <= NOW())
+         ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+         LIMIT ?"
+    );
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+
+    return $stmt->fetchAll();
+}
+
+function blog_reading_minutes(string $body): int
+{
+    $words = str_word_count(strip_tags($body));
+    return max(1, (int) ceil($words / 180));
+}
+
 function program_url(array $course): string
 {
     $slug = trim((string) ($course['slug'] ?? ''));

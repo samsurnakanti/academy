@@ -4,6 +4,7 @@ require_once __DIR__ . '/includes/functions.php';
 $title = 'Elldy Academy | Official BI Platform Learning';
 $canonicalUrl = public_url();
 $courses = active_courses(6);
+$blogPosts = published_blog_posts(3);
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="hero">
@@ -112,6 +113,37 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 </section>
+
+<?php if ($blogPosts): ?>
+<section class="section">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Latest articles</p>
+            <h2>Daily analytics and BI learning notes</h2>
+        </div>
+        <a href="<?= e(public_url('blog')) ?>">View blog</a>
+    </div>
+    <div class="blog-grid compact">
+        <?php foreach ($blogPosts as $post): ?>
+            <article class="blog-card">
+                <?php if (!empty($post['featured_image_url'])): ?>
+                    <a href="<?= e(blog_url($post)) ?>" class="blog-card-image">
+                        <img src="<?= e(s3_display_url((string) $post['featured_image_url'])) ?>" alt="<?= e($post['title']) ?>">
+                    </a>
+                <?php endif; ?>
+                <div class="blog-card-body">
+                    <div class="blog-meta">
+                        <span><?= e(date('d M Y', strtotime((string) ($post['published_at'] ?: $post['created_at'])))) ?></span>
+                        <span><?= blog_reading_minutes((string) $post['body']) ?> min read</span>
+                    </div>
+                    <h3><a href="<?= e(blog_url($post)) ?>"><?= e($post['title']) ?></a></h3>
+                    <p><?= e($post['excerpt'] ?: substr(strip_tags((string) $post['body']), 0, 140)) ?></p>
+                </div>
+            </article>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
 
 <section class="section faq-section">
     <div class="section-heading">

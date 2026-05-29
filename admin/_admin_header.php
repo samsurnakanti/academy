@@ -31,6 +31,7 @@ $admin = require_admin();
             <span class="nav-dropdown-menu">
                 <a href="courses.php">Programs</a>
                 <a href="materials.php">Videos & Live Classes</a>
+                <a href="blog.php">Blog</a>
                 <a href="live_attendance.php">Live Attendance</a>
                 <a href="progress.php">Learning Progress</a>
             </span>

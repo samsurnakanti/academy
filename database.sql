@@ -168,6 +168,22 @@ CREATE TABLE IF NOT EXISTS app_installs (
     CONSTRAINT fk_app_install_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(220) NOT NULL,
+    slug VARCHAR(240) NOT NULL UNIQUE,
+    excerpt VARCHAR(500) NULL,
+    body MEDIUMTEXT NOT NULL,
+    featured_image_url VARCHAR(255) NULL,
+    author_name VARCHAR(160) NULL,
+    meta_description VARCHAR(255) NULL,
+    status ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
+    published_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_blog_status_published (status, published_at)
+);
+
 CREATE TABLE IF NOT EXISTS whatsapp_settings (
     id TINYINT UNSIGNED PRIMARY KEY,
     business_account_id VARCHAR(80) NULL,
