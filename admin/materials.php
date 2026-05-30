@@ -125,11 +125,7 @@ if (isset($_GET['edit'])) {
                         <td>
                             <?php
                             $materialType = $material['material_type'] ?? 'video';
-                            $materialLabel = match ($materialType) {
-                                'live_session' => 'Live Session',
-                                'material' => 'Material',
-                                default => 'Video',
-                            };
+                            $materialLabel = material_display_label($material);
                             ?>
                             <span class="type-badge <?= e(str_replace('_', '-', $materialType)) ?>"><?= e($materialLabel) ?></span>
                         </td>
@@ -153,11 +149,7 @@ if (isset($_GET['edit'])) {
             <fieldset>
             <?php
             $selectedMaterialType = $editingMaterial['material_type'] ?? 'video';
-            $selectedMaterialLabel = match ($selectedMaterialType) {
-                'live_session' => 'Live Session',
-                'material' => 'Material',
-                default => 'Video',
-            };
+            $selectedMaterialLabel = $editingMaterial ? material_display_label($editingMaterial) : 'Video';
             ?>
             <legend class="legend-with-badge">
                 Learning Item Details

@@ -137,19 +137,19 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <?php if ($resourceRows || $liveSessionRows): ?>
             <div class="info-block">
-                <h2>Program Materials</h2>
+                <h2>Program Resources</h2>
                 <p>These learning items are included in the program and become available inside the learning workspace after enrollment.</p>
                 <div class="material-outline">
                     <?php foreach ($resourceRows as $resource): ?>
                         <article>
-                            <span>Material</span>
+                            <span><?= e(material_display_label($resource)) ?></span>
                             <strong><?= e($resource['title']) ?></strong>
                             <small><?= e($resource['description'] ?: 'Supporting learning material') ?></small>
                         </article>
                     <?php endforeach; ?>
                     <?php foreach ($liveSessionRows as $session): ?>
                         <article>
-                            <span>Live Session</span>
+                            <span><?= e(material_display_label($session)) ?></span>
                             <strong><?= e($session['title']) ?></strong>
                             <small><?= e($session['description'] ?: 'Scheduled live session') ?></small>
                         </article>

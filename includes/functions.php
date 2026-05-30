@@ -511,6 +511,30 @@ function is_pdf_material_url(string $url): bool
     return material_extension($url) === 'pdf';
 }
 
+function material_display_label(array $material): string
+{
+    $type = (string) ($material['material_type'] ?? 'video');
+
+    if ($type === 'live_session') {
+        return 'Live Session';
+    }
+
+    if ($type === 'video') {
+        return 'Video';
+    }
+
+    $extension = material_extension((string) ($material['file_url'] ?? ''));
+
+    return match ($extension) {
+        'pdf' => 'PDF',
+        'doc', 'docx' => 'Document',
+        'ppt', 'pptx' => 'Presentation',
+        'xls', 'xlsx' => 'Spreadsheet',
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif' => 'Image',
+        default => 'Resource',
+    };
+}
+
 function is_allowed_material_mime(string $mime): bool
 {
     return str_starts_with($mime, 'video/')
