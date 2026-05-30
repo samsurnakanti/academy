@@ -15,6 +15,7 @@ if (!$course) {
 }
 
 $isFreeProgram = course_fee_amount($course) <= 0;
+$showFeeDetails = course_should_show_fee_details($course);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -83,8 +84,12 @@ require __DIR__ . '/includes/header.php';
         <p>Join Elldy Academy and learn how business cases become dashboards, KPIs, insight notes, and decision-ready BI reports for the Elldy intelligence ecosystem.</p>
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
-            <span><strong>Program fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
-            <?php if ($isFreeProgram): ?>
+            <?php if ($showFeeDetails): ?>
+                <span><strong>Program fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
+            <?php endif; ?>
+            <?php if (!$showFeeDetails): ?>
+                <span><strong>Access</strong>Enrollment available</span>
+            <?php elseif ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php else: ?>
                 <span><strong>First session</strong>Free access</span>

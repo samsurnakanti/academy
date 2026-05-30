@@ -31,10 +31,11 @@ $materialRows = $materials->fetchAll();
 $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'video'));
 $resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
 $liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
+$showFeeDetails = course_should_show_fee_details($course);
 $isFreeProgram = course_fee_amount($course) <= 0;
 $isLiveSessionCourse = ($course['delivery_type'] ?? 'video') === 'live_session';
 $regularFee = max(0, (float) ($course['fee'] ?? 0));
-$hasCourseDiscount = $regularFee > 0 && course_fee_amount($course) < $regularFee;
+$hasCourseDiscount = $showFeeDetails && $regularFee > 0 && course_fee_amount($course) < $regularFee;
 $promoVideoUrl = trim((string) ($course['promo_video_url'] ?? ''));
 
 $title = $course['title'] . ' | Elldy Academy';
@@ -96,9 +97,13 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
-            <span><strong>Fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
-            <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 ? price_html($course, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></span>
-            <?php if ($isFreeProgram): ?>
+            <?php if ($showFeeDetails): ?>
+                <span><strong>Fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
+                <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 ? price_html($course, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></span>
+            <?php endif; ?>
+            <?php if (!$showFeeDetails): ?>
+                <span><strong>Access</strong>Enrollment available</span>
+            <?php elseif ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php elseif ($isLiveSessionCourse): ?>
                 <span><strong>First session</strong>Free access</span>

@@ -2157,6 +2157,11 @@ function certificate_fee_amount(array $course): float
     return discounted_amount($course, 'certification_fee', 'certificate_discount_fee');
 }
 
+function course_should_show_fee_details(array $course): bool
+{
+    return (int) ($course['show_fee_details'] ?? 1) === 1;
+}
+
 function price_html(array $row, string $regularKey, string $discountKey): string
 {
     $regular = max(0, (float) ($row[$regularKey] ?? 0));
@@ -3151,6 +3156,7 @@ function ensure_course_detail_columns(): void
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
         'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER fee',
         'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER certification_fee',
+        'show_fee_details' => 'ADD COLUMN show_fee_details TINYINT(1) NOT NULL DEFAULT 1 AFTER certificate_discount_fee',
         'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
         'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
         'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
