@@ -42,8 +42,17 @@ if ($slug !== '') {
             <img class="blog-featured-image" src="<?= e(s3_display_url((string) $post['featured_image_url'])) ?>" alt="<?= e($post['title']) ?>">
         <?php endif; ?>
 
+        <aside class="blog-course-cta" aria-label="Data analytics course offer">
+            <div>
+                <span>First enroll offer</span>
+                <strong>Start your data analytics journey for just Rs. 499/-</strong>
+                <p>Usually Rs. 2499/-. Learn analytics with practical dashboards, business examples, and no-code workflows.</p>
+            </div>
+            <a class="button" href="https://academy.elldy.com/program/learn-data-analytics-course-free">Enroll Now</a>
+        </aside>
+
         <div class="blog-content">
-            <?= nl2br(e($post['body'])) ?>
+            <?= blog_content_html((string) $post['body']) ?>
         </div>
     </article>
     <?php

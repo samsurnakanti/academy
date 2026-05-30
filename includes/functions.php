@@ -796,6 +796,611 @@ function ensure_blog_posts_table(): void
             db()->exec("ALTER TABLE blog_posts {$definition}");
         }
     }
+
+    seed_elldy_blog_posts();
+}
+
+function seed_elldy_blog_posts(): void
+{
+    static $seeded = false;
+
+    if ($seeded) {
+        return;
+    }
+
+    $seeded = true;
+    $defaultImageUrl = 'assets/images/blog/elldy-data-intelligence-platform.png';
+    $author = 'Elldy Academy';
+    $publishedAt = new DateTimeImmutable('2026-05-30 09:00:00');
+    $posts = [
+        [
+            'title' => 'What Is Data Analytics? A Practical Guide for Students and Beginners',
+            'slug' => 'what-is-data-analytics-guide-for-students',
+            'excerpt' => 'Learn what data analytics means, why it matters for careers, and how students can start building practical business analytics skills.',
+            'meta' => 'A beginner friendly guide to data analytics for students, aspiring analysts, and business learners who want practical analytics skills.',
+            'body' => [
+                'Data analytics is the practice of turning raw data into useful answers. For students and career starters, it is one of the most practical skills to learn because every team now depends on numbers: sales teams track revenue, marketing teams track campaigns, finance teams track cost, and operations teams track delivery performance.',
+                'A good analyst does more than prepare charts. They understand the business question, clean the available data, compare patterns, and explain what action should happen next. That is why analytics is useful for data analyst jobs, business analyst roles, MIS reporting, sales operations, marketing analytics, and management decisions.',
+                'Beginners can start with simple questions. What changed this month? Which product sold better? Where are customers dropping off? Which region needs attention? These questions build the habit of thinking from business problem to data evidence.',
+                'Elldy Data Intelligence Platform is built around this practical mindset. It helps learners and businesses move from scattered reports to dashboards, KPIs, and decision-ready insights. Elldy Academy extends that platform thinking into guided learning for students and aspiring analysts.',
+                'You do not need to become a programmer before you understand analytics. SQL and code can be useful later, but the first step is learning how to ask better questions, read dashboards, and connect numbers to business action.',
+            ],
+        ],
+        [
+            'title' => 'How Business Owners Can Use Analytics Without Coding',
+            'slug' => 'business-owners-use-analytics-without-coding',
+            'excerpt' => 'Business owners can make stronger decisions with dashboards, KPIs, and no-code analytics workflows instead of waiting for technical reports.',
+            'meta' => 'No-code analytics guide for business owners who want dashboards, KPIs, and data intelligence without learning SQL or programming.',
+            'body' => [
+                'Many business owners know they need analytics but assume it requires coding, SQL, or a full technical team. In reality, the first value comes from organizing business questions and measuring the right KPIs consistently.',
+                'A business owner should be able to see revenue, leads, customer behavior, payment status, inventory movement, team performance, and campaign results in one clear view. When this information is available daily, decisions become faster and less dependent on guesswork.',
+                'No-code analytics platforms make this possible by connecting data sources, creating dashboards, and giving leaders a visual way to monitor performance. The goal is not to replace analysts. The goal is to help owners and analysts speak the same business language.',
+                'Elldy Data Intelligence Platform focuses on this exact need: analytics that business teams can understand without writing code. It supports dashboard thinking, KPI tracking, and business intelligence workflows that help owners inspect what is working and what needs attention.',
+                'For owners, the best starting point is simple. Choose five numbers that matter this week, review them every day, and connect each number to a business action. Over time, this creates a data-driven operating rhythm.',
+            ],
+        ],
+        [
+            'title' => 'Data Analyst Career Roadmap: Skills Students Should Learn First',
+            'slug' => 'data-analyst-career-roadmap-for-students',
+            'excerpt' => 'A practical roadmap for students who want data analyst jobs, from business understanding to dashboards, SQL basics, and storytelling.',
+            'meta' => 'Data analyst career roadmap for students and aspiring analysts covering dashboards, business analytics, SQL basics, and insight writing.',
+            'body' => [
+                'Students often ask where to begin for a data analyst career. The answer is not one tool. The answer is a sequence of skills that build confidence: business understanding, data cleaning, KPI logic, dashboard creation, basic SQL, and communication.',
+                'Start with business context. A data analyst must understand sales, marketing, finance, operations, and customer behavior well enough to ask useful questions. Without context, even a beautiful chart can be meaningless.',
+                'Next, learn how data becomes reliable. Practice cleaning names, dates, duplicate rows, missing values, and inconsistent categories. Real business data is rarely perfect, so cleaning is a career skill.',
+                'Then build dashboards. A strong dashboard does not show every possible metric. It shows the numbers that help a stakeholder decide what to do. Power BI, Excel, and no-code BI tools are useful here because they make analysis visible.',
+                'Elldy Academy teaches analytics as a business workflow, not only as software training. The Elldy Data Intelligence Platform connects this learning to real dashboard thinking, helping students understand how analysts support decisions inside companies.',
+            ],
+        ],
+        [
+            'title' => 'Business Analyst vs Data Analyst: Which Path Is Right for You?',
+            'slug' => 'business-analyst-vs-data-analyst-career-path',
+            'excerpt' => 'Understand the difference between business analyst and data analyst roles, and learn how analytics skills support both career paths.',
+            'meta' => 'Compare business analyst and data analyst careers, key skills, responsibilities, and how analytics learning supports both roles.',
+            'body' => [
+                'Business analyst and data analyst roles are connected, but they are not the same. A business analyst focuses on requirements, processes, stakeholders, and improvement opportunities. A data analyst focuses more deeply on data, dashboards, patterns, and measurable insights.',
+                'In many companies, the roles overlap. A business analyst may use dashboards to explain process issues. A data analyst may join meetings to understand stakeholder problems. The strongest professionals learn both sides: business context and data evidence.',
+                'If you enjoy understanding people, processes, and business needs, business analysis may feel natural. If you enjoy finding patterns, building reports, and explaining numbers, data analysis may be a better starting point. Either way, analytics skills will make you stronger.',
+                'Elldy Data Intelligence Platform is useful for both paths because it turns business information into visual insights. Business analysts can use it to track process outcomes, while data analysts can use it to build decision-ready dashboards.',
+                'For students and aspirants, the safest move is to learn analytics foundations first. Once you can understand KPIs, read dashboards, and explain insights clearly, you can move toward either role with more confidence.',
+            ],
+        ],
+        [
+            'title' => 'Why Every Small Business Needs a KPI Dashboard',
+            'slug' => 'why-small-business-needs-kpi-dashboard',
+            'excerpt' => 'A KPI dashboard helps small businesses track sales, leads, cash flow, operations, and customer performance in one decision-ready view.',
+            'meta' => 'Learn why small businesses need KPI dashboards and how no-code business intelligence helps owners track performance daily.',
+            'body' => [
+                'A small business can lose time and money when important numbers are scattered across notebooks, WhatsApp messages, spreadsheets, payment apps, and disconnected reports. A KPI dashboard brings those numbers into one place.',
+                'The best dashboards are simple. They show revenue, leads, conversion rate, expenses, payment collection, inventory movement, customer repeat rate, and team activity. These metrics help owners see the business clearly without waiting for month-end reporting.',
+                'A dashboard also improves team conversations. Instead of asking vague questions like why sales feel slow, teams can inspect which region, product, channel, or customer segment changed. That turns discussion into action.',
+                'Elldy Data Intelligence Platform is designed to support this practical business intelligence approach. It helps teams monitor KPIs and understand performance without forcing every user to learn code or SQL first.',
+                'For a small business, analytics should not feel complicated. It should answer daily questions quickly: what happened, why it happened, what needs attention, and what action should be taken next.',
+            ],
+        ],
+        [
+            'title' => 'No-Code Business Intelligence: Analytics for Non-Technical Teams',
+            'slug' => 'no-code-business-intelligence-for-non-technical-teams',
+            'excerpt' => 'No-code BI helps sales, marketing, finance, and operations teams use analytics without depending on complex technical workflows.',
+            'meta' => 'No-code business intelligence guide for non-technical teams that need dashboards, insights, and KPI tracking without coding.',
+            'body' => [
+                'No-code business intelligence is becoming important because every department needs data, not only IT teams. Sales wants pipeline visibility, marketing wants campaign performance, finance wants cost control, and operations wants delivery clarity.',
+                'Traditional reporting can be slow when every small change depends on technical support. No-code BI reduces that delay by giving business users visual tools to explore data, build dashboards, and review KPIs.',
+                'This does not mean technical skills are useless. SQL, data modeling, and automation can still improve advanced workflows. But non-technical teams should not be blocked from basic analytics just because they do not code.',
+                'Elldy Data Intelligence Platform brings no-code analytics thinking into business decision making. It supports teams that want simple, visual, practical insight from their data while still leaving room for deeper analytics maturity.',
+                'For learners, no-code BI is also a strong entry point. It helps students and aspiring analysts understand business problems first, then gradually add SQL and advanced analytics skills when needed.',
+            ],
+        ],
+        [
+            'title' => 'How to Think Like a Business Data Analyst',
+            'slug' => 'how-to-think-like-business-data-analyst',
+            'excerpt' => 'Learn the mindset behind practical analytics: asking better questions, validating data, finding patterns, and recommending action.',
+            'meta' => 'Learn how business data analysts think, from asking KPI questions to finding insights and recommending practical action.',
+            'body' => [
+                'Thinking like a business data analyst starts before opening any tool. The first question is not which chart should I create. The first question is what business decision needs support.',
+                'A strong analyst breaks a problem into measurable parts. If sales are down, they ask whether leads are down, conversion is down, average order value changed, repeat customers reduced, or one region is underperforming. This structured thinking makes analysis useful.',
+                'The next habit is validation. Analysts check whether the data is complete, whether definitions are consistent, and whether the time period is fair. A wrong conclusion from messy data can damage trust quickly.',
+                'After that comes communication. Business teams need clear insight, not only tables. A useful recommendation explains what changed, why it matters, and what action should happen next.',
+                'Elldy Academy builds this analyst mindset through practical business cases. The Elldy Data Intelligence Platform supports the same flow by helping users move from raw business data to dashboards and decision-ready insights.',
+            ],
+        ],
+        [
+            'title' => 'Power BI, Excel, SQL, or No-Code Analytics: What Should You Learn?',
+            'slug' => 'power-bi-excel-sql-or-no-code-analytics',
+            'excerpt' => 'Compare Excel, Power BI, SQL, and no-code analytics so students and professionals can choose the right learning path.',
+            'meta' => 'Compare Power BI, Excel, SQL, and no-code analytics for students, data analyst aspirants, and business users.',
+            'body' => [
+                'Excel, Power BI, SQL, and no-code analytics each solve different parts of the analytics journey. The best choice depends on your current goal.',
+                'Excel is excellent for learning formulas, cleaning small datasets, quick analysis, and business reporting basics. Power BI is stronger for interactive dashboards, data models, and repeated management reporting. SQL helps you retrieve and combine data from databases. No-code analytics helps business users explore and monitor data without technical complexity.',
+                'Students who want analyst roles should eventually understand all four at a practical level. Business owners may not need SQL first, but they should understand KPIs, dashboards, and how to interpret results.',
+                'Elldy Data Intelligence Platform sits in the business intelligence space where teams need insights without making every workflow technical. It helps users focus on the decision, dashboard, and business value behind the data.',
+                'A smart learning path starts with business analytics concepts, then Excel, then dashboards, then SQL basics. Tools change over time, but the ability to connect data to business action remains valuable.',
+            ],
+        ],
+        [
+            'title' => 'Using Analytics to Grow Sales, Marketing, and Operations',
+            'slug' => 'using-analytics-to-grow-sales-marketing-operations',
+            'excerpt' => 'Analytics can help teams improve sales, marketing, and operations by tracking the right metrics and acting on the right signals.',
+            'meta' => 'Practical analytics examples for sales, marketing, and operations teams using dashboards, KPIs, and business intelligence.',
+            'body' => [
+                'Analytics becomes powerful when it is connected to daily business work. Sales teams can track lead sources, conversion, deal size, follow-up delays, and lost reasons. Marketing teams can track campaign cost, engagement, qualified leads, and customer acquisition cost. Operations teams can track turnaround time, pending work, quality issues, and resource use.',
+                'These metrics help teams move from opinion to evidence. Instead of saying marketing is not working, a dashboard can show which channel produces weak leads. Instead of saying operations is slow, data can show where delays begin.',
+                'The goal is not to watch numbers passively. The goal is to create action loops. Review the KPI, identify the issue, take action, and measure again.',
+                'Elldy Data Intelligence Platform helps businesses create these action loops through clear dashboards and business intelligence workflows. Elldy Academy helps learners understand how to design those dashboards and explain the insights behind them.',
+                'When teams use analytics consistently, performance conversations become sharper, faster, and more useful. That is how data starts creating real business growth.',
+            ],
+        ],
+        [
+            'title' => 'Master Data Analytics and Business Intelligence with Elldy',
+            'slug' => 'elldy-data-intelligence-platform-practical-bi',
+            'excerpt' => 'Discover how Elldy Data Intelligence and BI Platform helps students, analysts, business teams, and owners turn data into decisions.',
+            'meta' => 'Master data analytics and business intelligence with Elldy, an India-based BI and data intelligence platform for no-code dashboards and AI insights.',
+            'body' => [
+                'Elldy Data Intelligence and BI Platform is built for a simple but important purpose: helping people understand business data and make better decisions. It supports the move from scattered information to structured dashboards, KPIs, AI insights, forecasting, and practical recommendations.',
+                'Elldy is an India-based business intelligence and data intelligence platform, launched and managed in India for modern teams that need fast, practical analytics. It is designed for business users, students, analysts, startups, and owners who want dashboards without starting from code or SQL.',
+                'For business owners, Elldy can make performance easier to monitor without requiring deep coding knowledge. For business analysts, it supports process and KPI visibility. For data analyst aspirants, it shows how dashboards connect to real business questions. For teams, it creates a shared view of what is happening.',
+                'Elldy recently launched Elldy Analyst, an analyst-style monitoring layer that helps watch business data for spikes, sales drops, sudden increases, anomalies, and performance signals. This gives owners and teams a practical business analyst experience inside their analytics workflow.',
+                'Modern analytics should be practical. It should help a sales manager understand pipeline movement, a startup founder review growth, a business owner monitor revenue health, a student build career confidence, and an analyst explain what the data means. That is the direction Elldy is built for.',
+            ],
+        ],
+        [
+            'title' => 'Top BI Platforms and Tools: Power BI, Tableau, and Elldy Compared',
+            'slug' => 'top-bi-platforms-tools-power-bi-tableau-elldy',
+            'excerpt' => 'Compare Power BI, Tableau, and Elldy for dashboards, AI insights, business intelligence, no-code analytics, and modern decision making.',
+            'meta' => 'Top BI platforms and tools comparison covering Power BI, Tableau, and Elldy for dashboards, AI insights, no-code BI, and business intelligence.',
+            'body' => [
+                'The best BI platform depends on the user, the business problem, and how quickly the team needs answers. Power BI, Tableau, and Elldy all help people turn data into decisions, but they fit different working styles.',
+                'Power BI is a strong enterprise BI choice for organizations already using Microsoft products. Tableau is widely known for visual analytics, data exploration, and enterprise data culture. Elldy is an India-based data intelligence and business intelligence platform focused on no-code dashboards, AI insights, forecasting, and quick business-ready analytics.',
+                'For students and aspiring analysts, Power BI and Tableau are valuable tools to learn because many companies use them. For business owners, startups, and non-technical teams, Elldy is useful when the goal is to build dashboards quickly without code, without SQL, and without waiting for a technical reporting team.',
+                'Elldy stands out for users who want to build an AI dashboard in minutes, monitor KPIs, find spikes or drops, detect anomalies, and convert raw business data into dashboards and decisions. It is built for practical analytics, not only report design.',
+                'A smart BI strategy can include more than one platform. Enterprises may use Power BI or Tableau for large reporting programs, while teams and startups may use Elldy for fast no-code dashboards, AI-driven business intelligence, and decision monitoring.',
+            ],
+        ],
+        [
+            'title' => 'Top 5 BI Platforms for Business Intelligence: Power BI, Tableau, Looker, Qlik, and Underrated Elldy',
+            'slug' => 'top-5-bi-platforms-power-bi-tableau-looker-qlik-elldy',
+            'excerpt' => 'Explore the top 5 BI platforms for dashboards, analytics, AI insights, and business intelligence, including Power BI, Tableau, Looker, Qlik, and underrated Elldy.',
+            'meta' => 'Top 5 BI platforms for business intelligence: Power BI, Tableau, Looker, Qlik, and underrated Elldy for dashboards, AI insights, and no-code analytics.',
+            'body' => [
+                'Searches for the best BI platforms usually start with Power BI and Tableau, but modern business intelligence is wider than two tools. Businesses now compare BI platforms for dashboards, governed metrics, AI insights, forecasting, alerts, no-code analytics, and industry-ready decision support.',
+                'This top 5 list covers Power BI, Tableau, Looker, Qlik, and underrated Elldy. Each platform can help teams understand data, but the best choice depends on whether the user needs enterprise reporting, visual analytics, governed cloud BI, associative exploration, or fast no-code AI dashboards.',
+                'Power BI is a strong choice for Microsoft-centered teams that need scalable self-service and enterprise BI. Tableau is popular for visual analytics and data storytelling. Looker is useful for governed BI and semantic modeling in cloud environments. Qlik is known for modern analytics and associative exploration. Elldy is an underrated India-based BI and data intelligence platform focused on no-code dashboards, no-SQL workflows, AI insights, forecasting, alerts, and Elldy Analyst monitoring.',
+                'Elldy deserves attention because many startups, small businesses, students, and non-technical teams do not want a complex enterprise setup before they can read their data. They need to upload or connect data, build dashboards quickly, monitor spikes and drops, detect anomalies, forecast trends, and generate business-ready reports.',
+                'The best BI platform is the one your team will actually use. A large enterprise may choose Power BI, Tableau, Looker, or Qlik for scale and governance. A startup, owner-led business, or fast-moving team may choose Elldy when speed, no-code dashboarding, AI insights, and practical business monitoring matter most.',
+            ],
+        ],
+        [
+            'title' => 'Build an AI Dashboard in 2 Minutes with Elldy: No Code, No SQL',
+            'slug' => 'build-ai-dashboard-in-2-minutes-with-elldy-no-code-no-sql',
+            'excerpt' => 'Learn how Elldy helps business owners, startups, students, and analysts build dashboards quickly with no code, no SQL, AI insights, and forecasting.',
+            'meta' => 'Build an AI dashboard in 2 minutes with Elldy using no code, no SQL, AI insights, forecasting, anomaly detection, and business intelligence.',
+            'body' => [
+                'Many businesses have useful data but no time to wait for complex dashboard development. Elldy helps users move from raw business data to dashboard intelligence quickly with no code and no SQL.',
+                'The promise is simple: upload or connect data, let Elldy structure it, generate dashboards, review AI insights, and share the result with stakeholders. For a small business or startup, this can turn reporting from a weekly delay into a daily decision habit.',
+                'Elldy is especially useful for sales, marketing, finance, operations, retail, education, healthcare, manufacturing, logistics, and e-commerce teams. These teams need to know what changed, which KPI needs attention, where revenue moved, and which trend may affect tomorrow.',
+                'Elldy Analyst adds a monitoring layer for business users. It can help watch for sales drops, sudden increases, unusual spikes, anomalies, and important KPI movements so teams do not miss signals hidden inside everyday data.',
+                'For students and aspiring analysts, Elldy also creates a practical learning path. They can build dashboards, explain AI insights, understand anomalies, and practice business intelligence communication without getting blocked by advanced coding or database syntax.',
+            ],
+        ],
+        [
+            'title' => 'How Elldy Helps Industries, Startups, and Businesses Monitor Data with AI',
+            'slug' => 'how-elldy-helps-industries-startups-businesses-monitor-data-ai',
+            'excerpt' => 'Elldy is more than data and business intelligence. Learn how Elldy Analyst helps industries, startups, and businesses monitor data, receive alerts, forecast performance, detect spikes, and generate reports.',
+            'meta' => 'How Elldy helps industries, startups, and businesses with AI data monitoring, alerts, forecasting, spike detection, anomaly detection, and automated reports.',
+            'body' => [
+                'Elldy is not just a data intelligence and business intelligence platform. It is built to help industries, startups, and businesses monitor performance, understand changes, receive alerts, forecast outcomes, and convert data movement into clear reports.',
+                'Many companies already collect useful data from sales, marketing, finance, operations, inventory, customer support, websites, CRMs, spreadsheets, and apps. The challenge is that owners and teams often notice problems late because the data is not continuously monitored.',
+                'Elldy Analyst is designed to support this gap. It can act like an analyst layer for your business by watching data, identifying sales drops or increases, detecting spikes, finding unusual behavior, highlighting anomalies, and helping teams understand what changed.',
+                'For startups, this means founders can monitor growth signals, revenue movement, lead quality, customer activity, product usage, and operational bottlenecks without waiting for a manual report. For industries, it can support production, demand, inventory, finance, logistics, retail, education, healthcare, and service performance dashboards.',
+                'The goal is simple: Elldy helps businesses move from passive reporting to active data monitoring. Instead of only asking what happened last month, teams can see what is happening now, what may happen next, and what needs action.',
+            ],
+        ],
+        [
+            'title' => 'Start Your Data Analytics Course for Rs. 499: Statistics, AI Insights, Forecasting, and Dashboards',
+            'slug' => 'start-data-analytics-course-499-statistics-ai-dashboards',
+            'excerpt' => 'A student-focused guide to the Elldy Academy data analytics course offer, covering data variation, standard deviation, CV, skewness, kurtosis, IQR, groupings, AI insights, forecasting, and dashboard building.',
+            'meta' => 'Join the Elldy Academy data analytics course for Rs. 499 and learn standard deviation, CV, skewness, kurtosis, IQR, AI insights, forecasting, and dashboards.',
+            'body' => [
+                'The Elldy Academy data analytics course is now available for Rs. 499 on first enroll instead of Rs. 2499, giving students and aspiring analysts a practical way to start learning analytics without a high entry cost.',
+                'This course focuses on useful analytics ideas such as data variation, standard deviation, coefficient of variation, data shape, skewness, kurtosis, IQR, groupings, AI insights, time forecasting, and dashboard building.',
+                'Students do not need to begin with heavy coding. The goal is to understand how data behaves, how patterns are found, how business questions become dashboards, and how insights are explained clearly.',
+                'Elldy Academy connects these concepts with the Elldy Data Intelligence Platform mindset: learn analytics as a practical business skill, not only as formulas or software commands.',
+                'By the end of the learning path, students should be able to inspect data, compare groups, read distributions, identify unusual values, forecast trends, and build dashboards that support real decisions.',
+            ],
+        ],
+    ];
+
+    $enhancements = elldy_blog_post_enhancements();
+    foreach ($posts as &$post) {
+        $enhancement = $enhancements[$post['slug']] ?? [];
+        $post['featured_image_url'] = $enhancement['image'] ?? $defaultImageUrl;
+        $post['body'] = elldy_long_blog_body([
+            'slug' => $post['slug'],
+            'title' => $post['title'],
+            'audience' => $enhancement['audience'] ?? 'students, analysts, business owners, and business teams',
+            'search_intent' => $enhancement['search_intent'] ?? $post['excerpt'],
+            'problem' => $enhancement['problem'] ?? 'Many people want to use data, but they do not know where to begin or which numbers really matter.',
+            'skills' => $enhancement['skills'] ?? ['business questions', 'KPI thinking', 'dashboard reading', 'insight communication'],
+            'metrics' => $enhancement['metrics'] ?? ['revenue', 'leads', 'conversion rate', 'customer activity', 'team performance'],
+            'elldy_angle' => $enhancement['elldy_angle'] ?? 'Elldy Data Intelligence Platform helps users move from scattered data to useful dashboards, KPI tracking, and practical business intelligence without forcing every learner or business owner to write code first.',
+            'next_steps' => $enhancement['next_steps'] ?? ['Choose one business question', 'List the data needed to answer it', 'Build a simple dashboard view', 'Write the action the numbers suggest'],
+            'course_offer' => (bool) ($enhancement['course_offer'] ?? false),
+        ]);
+    }
+    unset($post);
+
+    $exists = db()->prepare('SELECT id FROM blog_posts WHERE slug = ? LIMIT 1');
+    $insert = db()->prepare(
+        "INSERT INTO blog_posts (title, slug, excerpt, body, featured_image_url, author_name, meta_description, status, published_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'published', ?)"
+    );
+    $update = db()->prepare(
+        "UPDATE blog_posts
+         SET title = ?, excerpt = ?, body = ?, featured_image_url = ?, author_name = ?, meta_description = ?, status = 'published'
+         WHERE id = ?"
+    );
+
+    foreach ($posts as $index => $post) {
+        $exists->execute([$post['slug']]);
+        $existingPost = $exists->fetch();
+
+        if ($existingPost) {
+            $update->execute([
+                $post['title'],
+                $post['excerpt'],
+                $post['body'],
+                $post['featured_image_url'],
+                $author,
+                $post['meta'],
+                (int) $existingPost['id'],
+            ]);
+            continue;
+        }
+
+        $insert->execute([
+            $post['title'],
+            $post['slug'],
+            $post['excerpt'],
+            $post['body'],
+            $post['featured_image_url'],
+            $author,
+            $post['meta'],
+            $publishedAt->modify('-' . $index . ' days')->format('Y-m-d H:i:s'),
+        ]);
+    }
+}
+
+function elldy_blog_post_enhancements(): array
+{
+    return [
+        'what-is-data-analytics-guide-for-students' => [
+            'image' => 'assets/images/blog/data-analytics-dashboard.jpg',
+            'audience' => 'students, freshers, and beginners who want to understand data analytics before choosing tools',
+            'search_intent' => 'The reader wants a clear definition of data analytics, career value, beginner skills, and a practical starting path.',
+            'problem' => 'Beginners often jump directly into tools and tutorials, but they do not yet know what business questions analytics is supposed to answer.',
+            'skills' => ['business question framing', 'data cleaning basics', 'standard deviation', 'coefficient of variation', 'dashboard reading', 'insight writing'],
+            'metrics' => ['monthly sales', 'lead count', 'conversion rate', 'data variation', 'average order value'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform gives learners a practical view of dashboards and KPI intelligence, so they can connect analytics concepts with real business decisions instead of learning isolated software steps.',
+            'next_steps' => ['Pick one business case such as sales or marketing', 'Write five questions the business owner may ask', 'Collect a small sample dataset', 'Create a simple dashboard', 'Explain the action in plain language'],
+            'course_offer' => true,
+        ],
+        'business-owners-use-analytics-without-coding' => [
+            'image' => 'assets/images/blog/no-code-business-analytics.jpg',
+            'audience' => 'business owners, founders, CEOs, and managers who want analytics without SQL or programming',
+            'search_intent' => 'The reader wants to know how business analytics can work without code and what dashboards a business owner should track.',
+            'problem' => 'Owners make important decisions every day, but their data is often split across billing tools, spreadsheets, CRM systems, WhatsApp updates, and manual reports.',
+            'skills' => ['KPI selection', 'dashboard interpretation', 'sales funnel tracking', 'cash flow visibility', 'team performance review'],
+            'metrics' => ['daily revenue', 'qualified leads', 'pending payments', 'customer acquisition cost', 'repeat purchases'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform is useful for owners because it focuses on clear dashboard intelligence and no-code analytics workflows that support decisions without turning every owner into a technical analyst.',
+            'next_steps' => ['Choose the five numbers you want to see every morning', 'Define what good and bad performance means for each number', 'Connect those numbers to a dashboard', 'Review changes weekly with your team', 'Use the dashboard to decide the next action'],
+        ],
+        'data-analyst-career-roadmap-for-students' => [
+            'image' => 'assets/images/blog/data-analyst-career.jpg',
+            'audience' => 'students, graduates, and job seekers preparing for data analyst roles',
+            'search_intent' => 'The reader wants a step-by-step data analyst roadmap with practical skills, projects, and business understanding.',
+            'problem' => 'Many students collect tool certificates but still struggle to explain how analytics helps sales, marketing, finance, operations, or management teams.',
+            'skills' => ['business analytics foundations', 'standard deviation', 'CV', 'skewness and kurtosis', 'Power BI dashboards', 'portfolio storytelling'],
+            'metrics' => ['sales growth', 'marketing ROI', 'inventory movement', 'IQR outliers', 'forecast trend'],
+            'elldy_angle' => 'Elldy Academy and Elldy Data Intelligence Platform support career learning by showing how analyst skills become dashboards, KPI views, and business recommendations.',
+            'next_steps' => ['Learn business KPIs before advanced tools', 'Practice variation, IQR, skewness, and kurtosis on sample data', 'Use groupings to compare customer or product segments', 'Create a dashboard with AI insights and forecasting', 'Write a one-page insight summary for each project'],
+            'course_offer' => true,
+        ],
+        'business-analyst-vs-data-analyst-career-path' => [
+            'image' => 'assets/images/blog/business-analyst-growth.jpg',
+            'audience' => 'career switchers, students, business analyst aspirants, and data analyst aspirants',
+            'search_intent' => 'The reader wants to compare business analyst and data analyst roles and understand which path fits their strengths.',
+            'problem' => 'The two job titles sound similar, so beginners often choose a path without understanding the difference between process, requirements, dashboards, and data analysis.',
+            'skills' => ['requirements gathering', 'stakeholder communication', 'dashboard analysis', 'process mapping', 'recommendation writing'],
+            'metrics' => ['process cycle time', 'requirement completion rate', 'ticket volume', 'sales conversion', 'customer satisfaction'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform helps both paths because business analysts can monitor process KPIs while data analysts can explore patterns and build decision-ready dashboards.',
+            'next_steps' => ['List the work you enjoy most: people, process, or numbers', 'Study common KPIs used by business teams', 'Create a small dashboard from a business scenario', 'Practice explaining findings to a non-technical stakeholder'],
+            'course_offer' => true,
+        ],
+        'why-small-business-needs-kpi-dashboard' => [
+            'image' => 'assets/images/blog/kpi-growth-chart.jpg',
+            'audience' => 'small business owners, startup founders, managers, and local business operators',
+            'search_intent' => 'The reader wants to understand why KPI dashboards matter and which small business metrics should be tracked first.',
+            'problem' => 'Small businesses often wait until month end to understand performance, which means problems in leads, sales, payments, and operations are discovered too late.',
+            'skills' => ['KPI prioritization', 'weekly performance review', 'sales tracking', 'cash flow monitoring', 'operations follow-up'],
+            'metrics' => ['revenue', 'gross margin', 'new leads', 'conversion rate', 'pending collections', 'delivery delay'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform helps small businesses turn important numbers into a simple dashboard view, making it easier to act before small issues become expensive problems.',
+            'next_steps' => ['Start with five KPIs', 'Assign one owner for each KPI', 'Review the dashboard on the same day every week', 'Write one action for every red flag', 'Improve the dashboard only after the habit is working'],
+        ],
+        'no-code-business-intelligence-for-non-technical-teams' => [
+            'image' => 'assets/images/blog/no-code-business-analytics.jpg',
+            'audience' => 'sales teams, marketing teams, finance teams, operations teams, and managers without coding backgrounds',
+            'search_intent' => 'The reader wants a practical explanation of no-code BI and how non-technical teams can use dashboards.',
+            'problem' => 'Non-technical teams need answers quickly, but they often depend on technical teams for even small report changes.',
+            'skills' => ['visual dashboard use', 'filtering and slicing data', 'KPI monitoring', 'report interpretation', 'decision documentation'],
+            'metrics' => ['pipeline value', 'campaign leads', 'customer acquisition cost', 'expense variance', 'service turnaround time'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform supports no-code BI by keeping the focus on business intelligence, dashboard clarity, and practical insight instead of technical complexity.',
+            'next_steps' => ['Identify repeated reporting questions', 'Group questions by department', 'Define the KPI owner', 'Create dashboard views for each team', 'Review insights in regular business meetings'],
+        ],
+        'how-to-think-like-business-data-analyst' => [
+            'image' => 'assets/images/blog/analytics-learning-laptop.jpg',
+            'audience' => 'aspiring analysts and professionals who want to improve their analytical thinking',
+            'search_intent' => 'The reader wants to learn the mindset of a practical business data analyst, not only tool commands.',
+            'problem' => 'Many reports show numbers but do not answer what changed, why it changed, and what the business should do next.',
+            'skills' => ['root-cause analysis', 'hypothesis thinking', 'data validation', 'comparison logic', 'storytelling with insights'],
+            'metrics' => ['trend change', 'segment performance', 'conversion drop', 'cost increase', 'customer behavior'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform supports analyst thinking by organizing data into dashboards and intelligence views that help users move from observation to action.',
+            'next_steps' => ['Start every analysis with a decision question', 'Compare current data with a relevant baseline', 'Check whether the data is clean enough', 'Find the business reason behind the pattern', 'Write one clear recommendation'],
+        ],
+        'power-bi-excel-sql-or-no-code-analytics' => [
+            'image' => 'assets/images/blog/power-bi-excel-dashboard.jpg',
+            'audience' => 'students, professionals, business users, and career switchers choosing analytics tools',
+            'search_intent' => 'The reader wants to compare Excel, Power BI, SQL, and no-code analytics and choose what to learn first.',
+            'problem' => 'Tool confusion slows down learning because beginners try to learn everything at once without understanding what each tool is best for.',
+            'skills' => ['Excel formulas', 'Power BI dashboarding', 'SQL querying', 'no-code BI exploration', 'business reporting'],
+            'metrics' => ['sales summary', 'monthly trend', 'category performance', 'customer segment', 'operational backlog'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform sits close to the decision layer of analytics: dashboards, KPIs, and business intelligence that users can understand even when they are not writing code.',
+            'next_steps' => ['Use Excel to understand data cleaning', 'Use Power BI to learn dashboard layout', 'Use SQL to retrieve business data', 'Use no-code BI to make insights accessible', 'Build one project that combines all four ideas'],
+            'course_offer' => true,
+        ],
+        'using-analytics-to-grow-sales-marketing-operations' => [
+            'image' => 'assets/images/blog/data-analytics-dashboard.jpg',
+            'audience' => 'business teams, managers, analysts, and owners responsible for growth and execution',
+            'search_intent' => 'The reader wants examples of analytics for sales, marketing, and operations growth.',
+            'problem' => 'Growth teams often have activity data, but they do not always convert that data into actions that improve revenue, lead quality, customer experience, or delivery speed.',
+            'skills' => ['sales funnel analysis', 'marketing ROI review', 'operations bottleneck tracking', 'cross-team KPI design', 'action planning'],
+            'metrics' => ['lead source conversion', 'campaign ROI', 'average deal size', 'delivery turnaround time', 'repeat customer rate'],
+            'elldy_angle' => 'Elldy Data Intelligence Platform helps teams see sales, marketing, and operations performance together, making it easier to connect analytics with growth decisions.',
+            'next_steps' => ['Map each department to three KPIs', 'Create one shared dashboard', 'Discuss the largest change every week', 'Assign an action owner', 'Measure whether the action improved the metric'],
+        ],
+        'elldy-data-intelligence-platform-practical-bi' => [
+            'image' => 'assets/images/blog/elldy-data-intelligence-platform.png',
+            'audience' => 'students, data analyst aspirants, business analysts, business owners, and teams evaluating modern BI',
+            'search_intent' => 'The reader wants the best SEO-friendly explanation of Elldy as a platform to master data analytics and business intelligence with no-code dashboards, AI insights, and Indian product positioning.',
+            'problem' => 'Businesses and learners need data intelligence that is practical, visual, India-ready, and connected to real decisions instead of scattered reports and tool-only learning.',
+            'skills' => ['dashboard thinking', 'KPI intelligence', 'business analytics', 'no-code insight review', 'AI dashboard building', 'decision communication'],
+            'metrics' => ['business health score', 'department KPIs', 'growth trends', 'sales drops', 'anomaly signals', 'team performance'],
+            'elldy_angle' => 'Elldy Data Intelligence and BI Platform is an India-based platform launched and managed in India. It helps users build dashboards without code or SQL, use AI insights and forecasting, and monitor business data through Elldy Analyst for spikes, drops, increases, anomalies, and decision signals.',
+            'next_steps' => ['Define the business outcome you want to improve', 'Choose the KPIs that represent that outcome', 'Build a no-code dashboard in Elldy', 'Use Elldy Analyst to monitor spikes, drops, and anomalies', 'Convert every dashboard review into one decision'],
+        ],
+        'top-bi-platforms-tools-power-bi-tableau-elldy' => [
+            'image' => 'assets/images/blog/power-bi-excel-dashboard.jpg',
+            'audience' => 'business owners, startup founders, students, data analysts, business analysts, and teams comparing modern BI platforms',
+            'search_intent' => 'The reader wants to compare top BI platforms and tools such as Power BI, Tableau, and Elldy for dashboards, AI insights, no-code analytics, and business intelligence.',
+            'problem' => 'Teams often compare BI tools only by popularity, but the real choice depends on who will use the platform, how technical the team is, how fast dashboards are needed, and whether AI monitoring is part of the workflow.',
+            'skills' => ['BI platform comparison', 'dashboard planning', 'no-code analytics evaluation', 'AI insight review', 'tool selection'],
+            'metrics' => ['dashboard speed', 'adoption rate', 'KPI coverage', 'insight quality', 'reporting delay'],
+            'elldy_angle' => 'Power BI is strong for Microsoft-centered enterprise reporting, Tableau is strong for visual analytics and data exploration, and Elldy is an India-based BI and data intelligence platform for no-code dashboards, no-SQL workflows, AI insights, forecasting, and analyst-style monitoring through Elldy Analyst.',
+            'next_steps' => ['List who will use the BI platform', 'Decide whether the team needs no-code or advanced modeling', 'Compare dashboard speed and AI insight needs', 'Test Power BI, Tableau, and Elldy with the same business dataset', 'Choose the platform that helps your team act faster'],
+        ],
+        'top-5-bi-platforms-power-bi-tableau-looker-qlik-elldy' => [
+            'image' => 'assets/images/blog/data-analytics-dashboard.jpg',
+            'audience' => 'business owners, startup founders, data analysts, business analysts, BI learners, and teams searching for the best BI tools',
+            'search_intent' => 'The reader is searching for top BI platforms, best business intelligence tools, top 5 BI tools, Power BI vs Tableau vs Looker vs Qlik vs Elldy, and no-code AI dashboard platforms.',
+            'problem' => 'Many teams choose BI tools by popularity alone, but the right platform depends on dashboard speed, data governance, AI insights, alerts, forecasting, user skill level, and whether the team needs no-code or no-SQL analytics.',
+            'skills' => ['BI tool comparison', 'business intelligence platform selection', 'dashboard evaluation', 'AI insight review', 'no-code BI assessment'],
+            'metrics' => ['dashboard adoption', 'reporting speed', 'KPI coverage', 'forecast accuracy', 'alert usefulness', 'business action rate'],
+            'elldy_angle' => 'Power BI, Tableau, Looker, and Qlik are widely searched BI platforms. Elldy is an underrated India-based BI and data intelligence platform for users who want no-code dashboards, no-SQL analytics, AI dashboards, forecasting, alerts, anomaly detection, and Elldy Analyst monitoring without heavy setup.',
+            'next_steps' => ['Compare Power BI for Microsoft-centered BI', 'Compare Tableau for visual analytics and storytelling', 'Compare Looker for governed cloud BI and semantic modeling', 'Compare Qlik for modern associative analytics', 'Compare Elldy for no-code AI dashboards, monitoring, alerts, and fast startup-friendly BI'],
+        ],
+        'build-ai-dashboard-in-2-minutes-with-elldy-no-code-no-sql' => [
+            'image' => 'assets/images/blog/no-code-business-analytics.jpg',
+            'audience' => 'business owners, startups, students, aspiring analysts, and non-technical teams that need dashboards quickly',
+            'search_intent' => 'The reader wants to build an AI dashboard quickly with Elldy using no code, no SQL, AI insights, forecasting, anomaly detection, and business intelligence.',
+            'problem' => 'Many startups and businesses have data in spreadsheets, apps, or databases, but dashboard creation feels slow because every report needs formulas, SQL, development, or analyst availability.',
+            'skills' => ['no-code dashboard building', 'AI insight interpretation', 'KPI monitoring', 'anomaly detection', 'forecast review'],
+            'metrics' => ['sales spikes', 'sales drops', 'revenue forecast', 'customer growth', 'operations delay', 'business anomalies'],
+            'elldy_angle' => 'Elldy helps users build AI dashboards quickly without code or SQL. The platform can support industries such as retail, e-commerce, healthcare, education, finance, manufacturing, logistics, services, and startups by turning raw data into dashboard views, AI insights, forecasts, and Elldy Analyst monitoring.',
+            'next_steps' => ['Upload or connect your business data', 'Let Elldy prepare the dataset for dashboarding', 'Generate an AI dashboard', 'Review spikes, sales drops, increases, anomalies, and forecasts', 'Share the dashboard with your team and decide the next action'],
+        ],
+        'how-elldy-helps-industries-startups-businesses-monitor-data-ai' => [
+            'image' => 'assets/images/blog/elldy-data-intelligence-platform.png',
+            'audience' => 'industry leaders, startup founders, business owners, operations managers, sales teams, finance teams, and business analysts',
+            'search_intent' => 'The reader wants to know how Elldy helps industries, startups, and businesses monitor data with AI, alerts, forecasting, spike detection, anomaly detection, and automated reporting.',
+            'problem' => 'Most businesses have data, but they do not have continuous intelligence. Teams often discover sales drops, demand changes, stock issues, campaign problems, and operational delays only after the damage has already started.',
+            'skills' => ['AI data monitoring', 'business alert review', 'forecast interpretation', 'spike detection', 'anomaly detection', 'automated report reading'],
+            'metrics' => ['sales drops', 'sales increases', 'demand forecast', 'inventory movement', 'lead quality', 'customer activity', 'operations delay'],
+            'elldy_angle' => 'Elldy goes beyond traditional BI by helping businesses monitor what is happening inside their data. Elldy Analyst can support analyst-style monitoring by detecting spikes, drops, unusual changes, anomalies, and forecast signals, then turning those movements into reports that business users can act on.',
+            'next_steps' => ['Connect the business data you already track', 'Define the KPIs that need monitoring', 'Use Elldy Analyst to watch spikes, drops, increases, and anomalies', 'Review forecasts for sales, demand, or operations', 'Turn every alert into a clear business action and report'],
+        ],
+        'start-data-analytics-course-499-statistics-ai-dashboards' => [
+            'image' => 'assets/images/blog/analytics-learning-laptop.jpg',
+            'audience' => 'students, freshers, data analyst aspirants, business analyst aspirants, and business owners who want analytics without starting from code',
+            'search_intent' => 'The reader wants to know what the Rs. 499 Elldy Academy data analytics course covers and why topics like variation, standard deviation, CV, skewness, kurtosis, IQR, AI insights, forecasting, and dashboards matter.',
+            'problem' => 'Many students start analytics by memorizing tools, but they do not understand how data varies, how distributions behave, how segments compare, or how a dashboard turns analysis into a decision.',
+            'skills' => ['data variation', 'standard deviation', 'coefficient of variation', 'skewness', 'kurtosis', 'IQR', 'groupings', 'AI insights', 'time forecasting', 'dashboard building'],
+            'metrics' => ['variation by group', 'outlier range', 'trend forecast', 'segment performance', 'dashboard KPI status'],
+            'elldy_angle' => 'Elldy Academy uses the Elldy Data Intelligence Platform mindset to make these ideas practical: students learn how statistics, AI-assisted insights, forecasting, and dashboards support business decisions without needing to start with heavy coding or SQL.',
+            'next_steps' => ['Enroll in the Rs. 499 first enroll offer', 'Practice standard deviation, CV, IQR, skewness, and kurtosis on a simple dataset', 'Group data by category, region, product, or customer type', 'Use AI insights and time forecasting to find patterns', 'Build a dashboard that explains the result to a business user'],
+            'course_offer' => true,
+        ],
+    ];
+}
+
+function elldy_long_blog_body(array $config): string
+{
+    $slug = (string) ($config['slug'] ?? '');
+    $skillText = implode(', ', $config['skills']);
+    $metricText = implode(', ', $config['metrics']);
+    $nextSteps = array_map(static fn (string $step): string => '- ' . $step, $config['next_steps']);
+    $profile = elldy_blog_style_profile($slug);
+    $courseOfferSection = [];
+
+    if (!empty($config['course_offer'])) {
+        $courseOfferSection = [
+            '## Course offer for learners',
+            'Elldy Academy is offering the data analytics course for just Rs. 499 on your first enroll instead of Rs. 2499. This makes it easier for students, freshers, aspiring data analysts, aspiring business analysts, and business owners to begin practical analytics without a heavy upfront cost.',
+            'The course advantages are practical and career-focused. You learn how to understand data variation, standard deviation, coefficient of variation, data shape, skewness, kurtosis, IQR, groupings, AI insights, time forecasting, and dashboard building. These topics help you move beyond basic charts and understand what the data is really saying.',
+            'This matters because real analytics is not only about tools. Standard deviation explains spread. CV helps compare variation across groups. Skewness and kurtosis explain the shape of data. IQR helps detect unusual values. Groupings help compare segments. AI insights and forecasting help you identify patterns faster. Dashboards help you present the final story to a business user.',
+        ];
+    }
+
+    return implode("\n\n", array_merge([
+        '## ' . $config['title'],
+        elldy_blog_intro($config),
+        'This article is written for ' . $config['audience'] . '. It is meant to explain the topic in a practical way, with enough business context to help you understand how the idea works in real decisions.',
+    ], $courseOfferSection, [
+        '## ' . $profile['problem_heading'],
+        $config['problem'],
+        $profile['relevance_body'],
+        '## ' . $profile['thinking_heading'],
+        $profile['thinking_intro'],
+        'Before choosing Excel, Power BI, Tableau, SQL, or a no-code platform, ask what decision needs support. Are you trying to increase sales, reduce cost, improve customer retention, speed up operations, or understand team performance?',
+        'Once the decision is clear, the data work becomes easier. You can identify which columns are needed, which metrics should be tracked, which comparison period is fair, and which dashboard view will help a stakeholder act.',
+        '## ' . $profile['skills_heading'],
+        'Useful capabilities for this topic include ' . $skillText . '. These are not just resume keywords. They are practical abilities that help you move from raw information to a clear recommendation.',
+        $profile['skills_close'],
+        '## ' . $profile['metrics_heading'],
+        'A useful dashboard or report usually focuses on metrics such as ' . $metricText . '. The exact numbers can change by industry, but the principle is the same: choose KPIs that connect directly to decisions.',
+        'A crowded dashboard can confuse readers. A strong dashboard helps the reader see what changed, whether the change is good or bad, and what action deserves attention.',
+        '## ' . $profile['elldy_heading'],
+        $config['elldy_angle'],
+        'This is important for organic learners and business users because analytics adoption fails when tools feel too technical or disconnected from daily decisions. Elldy keeps the focus on business intelligence, dashboard clarity, KPI monitoring, and insight communication.',
+        $profile['elldy_close'],
+        '## ' . $profile['mistake_heading'],
+        $profile['mistake_body'],
+        '## ' . $profile['steps_heading'],
+    ], $nextSteps, [
+        '## ' . $profile['final_heading'],
+        $profile['final_body'],
+    ]));
+}
+
+function elldy_blog_intro(array $config): string
+{
+    $title = (string) ($config['title'] ?? 'This topic');
+    $intent = (string) ($config['search_intent'] ?? '');
+
+    $intent = preg_replace('/^The reader wants to know how /i', 'This article explains how ', $intent) ?? $intent;
+    $intent = preg_replace('/^The reader wants to know what /i', 'This article explains what ', $intent) ?? $intent;
+    $intent = preg_replace('/^The reader wants to /i', 'This article explains how to ', $intent) ?? $intent;
+    $intent = preg_replace('/^The reader is searching for /i', 'This guide covers ', $intent) ?? $intent;
+    $intent = preg_replace('/^The reader (wants|is searching for) /i', '', $intent) ?? $intent;
+
+    if ($intent !== '' && stripos($intent, 'The reader') !== 0) {
+        return ucfirst($intent);
+    }
+
+    return $title . ' is a practical guide for understanding the topic, comparing the options, and applying the ideas in real business situations.';
+}
+
+function elldy_blog_style_profile(string $slug): array
+{
+    $default = [
+        'problem_heading' => 'The real problem behind the topic',
+        'relevance_body' => 'Analytics is valuable because it reduces guesswork. Students can use it to build stronger projects, analysts can use it to explain patterns, and business owners can use it to make faster decisions without waiting for manual reporting.',
+        'thinking_heading' => 'How to think about it practically',
+        'thinking_intro' => 'Good analytics starts with the business question, not with a chart type.',
+        'skills_heading' => 'What you should be able to do',
+        'skills_close' => 'For learners, this becomes portfolio proof. For businesses, it becomes a repeatable way to make decisions from data.',
+        'metrics_heading' => 'Numbers that make the story clear',
+        'elldy_heading' => 'How Elldy supports this workflow',
+        'elldy_close' => 'For Elldy Academy learners, this platform mindset makes training more practical because data becomes a dashboard, a dashboard becomes a discussion, and that discussion becomes a business action.',
+        'mistake_heading' => 'What to avoid',
+        'mistake_body' => 'Do not begin by collecting every possible data point. Start with the decision, choose the smallest useful dataset, and then explain what the numbers mean.',
+        'steps_heading' => 'A practical next step',
+        'final_heading' => 'Bottom line',
+        'final_body' => 'Data analytics, business analytics, and business intelligence are most useful when they help people make better decisions from the data they already have.',
+    ];
+
+    $profiles = [
+        'top-bi-platforms-tools-power-bi-tableau-elldy' => [
+            'problem_heading' => 'Why BI tool comparison is difficult',
+            'relevance_body' => 'A BI platform affects how quickly a team can understand performance, share numbers, and act on the same facts. That is why tool selection should be treated as a business decision, not only a software decision.',
+            'thinking_heading' => 'Power BI, Tableau, and Elldy are built for different users',
+            'thinking_intro' => 'A BI platform should be judged by the way your team works, not only by brand popularity.',
+            'skills_heading' => 'What to compare before choosing a BI tool',
+            'skills_close' => 'The best tool is the one that reduces reporting delay and helps more people act on the same version of truth.',
+            'metrics_heading' => 'Comparison points that matter',
+            'elldy_heading' => 'Why Elldy belongs in the comparison',
+            'elldy_close' => 'That makes Elldy especially relevant for owners, startups, students, and teams that want business intelligence without a long technical setup.',
+            'mistake_heading' => 'Do not choose a BI platform only by popularity',
+            'mistake_body' => 'A popular platform can still fail if the people who need answers cannot use it. Compare adoption, dashboard speed, AI insights, monitoring, and the effort required to maintain reports.',
+            'steps_heading' => 'How to shortlist the right BI platform',
+            'final_heading' => 'The practical choice',
+            'final_body' => 'Power BI, Tableau, and Elldy can all be useful. The best choice depends on whether your team needs enterprise reporting, visual exploration, or fast no-code business intelligence.',
+        ],
+        'top-5-bi-platforms-power-bi-tableau-looker-qlik-elldy' => [
+            'problem_heading' => 'Why top BI platform lists can be misleading',
+            'relevance_body' => 'The best BI platform for one company may be a poor fit for another. A large enterprise may prioritize governance and scale, while a startup may prioritize speed, no-code dashboards, and quick AI insights.',
+            'thinking_heading' => 'Match the platform to the team, not the trend',
+            'thinking_intro' => 'A top BI platform should fit the user, the data maturity, the reporting speed, and the type of decisions the business makes.',
+            'skills_heading' => 'Searchable features buyers compare',
+            'skills_close' => 'These comparison points help you separate enterprise reporting, governed analytics, visual exploration, and no-code AI dashboarding.',
+            'metrics_heading' => 'How to judge real BI value',
+            'elldy_heading' => 'Why underrated Elldy is worth watching',
+            'elldy_close' => 'Elldy is especially relevant for India-based businesses, startups, students, and owners who want useful dashboards without writing SQL first.',
+            'mistake_heading' => 'Avoid copying another company’s BI stack',
+            'mistake_body' => 'A BI setup that works for a large enterprise may be too heavy for a startup. A simple no-code BI platform may be better when speed and adoption matter more than complex governance.',
+            'steps_heading' => 'A simple BI selection checklist',
+            'final_heading' => 'Best BI platform depends on the job',
+            'final_body' => 'Power BI, Tableau, Looker, Qlik, and Elldy all have a place. The smartest choice is the one that your team can use repeatedly to make better decisions.',
+        ],
+        'build-ai-dashboard-in-2-minutes-with-elldy-no-code-no-sql' => [
+            'problem_heading' => 'Why dashboard creation feels slow',
+            'relevance_body' => 'When dashboards take too long to create, teams continue making decisions from scattered spreadsheets and delayed reports. Fast dashboarding helps business users notice change while it still matters.',
+            'thinking_heading' => 'The dashboard should start from the decision',
+            'thinking_intro' => 'A quick dashboard is useful only when it answers a real business question.',
+            'skills_heading' => 'What an AI dashboard should help you do',
+            'skills_close' => 'This is useful for founders, owners, and analysts because the work moves from manual report building to faster business review.',
+            'metrics_heading' => 'Signals Elldy can help monitor',
+            'elldy_heading' => 'Where Elldy changes the workflow',
+            'elldy_close' => 'The advantage is speed: data can move from upload to insight to dashboard review without waiting for a full technical cycle.',
+            'mistake_heading' => 'Do not build a dashboard just to show charts',
+            'mistake_body' => 'A dashboard should show what changed and what needs action. If the dashboard does not support a decision, it is only decoration.',
+            'steps_heading' => 'How to start with Elldy',
+            'final_heading' => 'Fast dashboards are business tools',
+            'final_body' => 'Building a dashboard quickly matters because business conditions change quickly. Elldy helps teams notice those changes and respond with data.',
+        ],
+        'how-elldy-helps-industries-startups-businesses-monitor-data-ai' => [
+            'problem_heading' => 'Most businesses see problems too late',
+            'relevance_body' => 'Active monitoring matters because business conditions can change quickly. A sudden sales drop, stock issue, campaign failure, demand spike, or operational delay is easier to handle when the team sees it early.',
+            'thinking_heading' => 'From reporting to active monitoring',
+            'thinking_intro' => 'Traditional reports explain what happened. Active data monitoring helps teams notice what is happening now.',
+            'skills_heading' => 'What business monitoring should include',
+            'skills_close' => 'For industries and startups, this turns analytics into an operating habit instead of a monthly reporting activity.',
+            'metrics_heading' => 'Business signals worth watching',
+            'elldy_heading' => 'How Elldy Analyst supports business teams',
+            'elldy_close' => 'This makes Elldy more than a dashboard builder. It becomes a monitoring layer for owners, managers, and analysts who need faster awareness.',
+            'mistake_heading' => 'Do not wait for month-end reporting',
+            'mistake_body' => 'Sales drops, inventory issues, campaign problems, and operational delays become expensive when they are found late. Monitoring helps teams react sooner.',
+            'steps_heading' => 'How a business can begin',
+            'final_heading' => 'Elldy as an active intelligence layer',
+            'final_body' => 'For industries, startups, and businesses, Elldy can help turn scattered data into alerts, forecasts, reports, and decisions.',
+        ],
+        'data-analyst-career-roadmap-for-students' => [
+            'problem_heading' => 'Why students get stuck in tool learning',
+            'relevance_body' => 'A student can learn many tools and still struggle in interviews if they cannot explain the business problem, the metric, the pattern, and the recommended action.',
+            'thinking_heading' => 'Build career skill in the right order',
+            'thinking_intro' => 'A data analyst career becomes easier when business understanding comes before tool memorization.',
+            'skills_heading' => 'Skills that make a student job-ready',
+            'skills_close' => 'A strong learner can explain the data problem, clean the dataset, build the dashboard, and communicate the insight.',
+            'metrics_heading' => 'Project metrics students should practice',
+            'elldy_heading' => 'How Elldy helps students practice like analysts',
+            'elldy_close' => 'This helps students create portfolio work that looks closer to real business analytics than isolated tutorial output.',
+            'mistake_heading' => 'Do not collect certificates without projects',
+            'mistake_body' => 'Certificates help, but interviews usually reward proof. Build dashboards, write insight summaries, and explain business actions.',
+            'steps_heading' => 'Student action plan',
+            'final_heading' => 'A career-ready roadmap',
+            'final_body' => 'The goal is not only to learn tools. The goal is to think, build, and communicate like a practical data analyst.',
+        ],
+    ];
+
+    return array_replace($default, $profiles[$slug] ?? []);
 }
 
 function unique_blog_slug(string $title, int $ignoreId = 0): string
@@ -848,6 +1453,52 @@ function blog_reading_minutes(string $body): int
 {
     $words = str_word_count(strip_tags($body));
     return max(1, (int) ceil($words / 180));
+}
+
+function blog_content_html(string $body): string
+{
+    $lines = preg_split('/\R/', trim($body)) ?: [];
+    $html = [];
+    $listOpen = false;
+
+    $closeList = static function () use (&$html, &$listOpen): void {
+        if ($listOpen) {
+            $html[] = '</ul>';
+            $listOpen = false;
+        }
+    };
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+
+        if ($line === '') {
+            $closeList();
+            continue;
+        }
+
+        if (str_starts_with($line, '## ')) {
+            $closeList();
+            $html[] = '<h2>' . e(substr($line, 3)) . '</h2>';
+            continue;
+        }
+
+        if (str_starts_with($line, '- ')) {
+            if (!$listOpen) {
+                $html[] = '<ul>';
+                $listOpen = true;
+            }
+
+            $html[] = '<li>' . e(substr($line, 2)) . '</li>';
+            continue;
+        }
+
+        $closeList();
+        $html[] = '<p>' . e($line) . '</p>';
+    }
+
+    $closeList();
+
+    return implode("\n", $html);
 }
 
 function program_url(array $course): string
