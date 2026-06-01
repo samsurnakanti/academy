@@ -171,7 +171,8 @@ if (isset($_GET['edit'])) {
                     <option value="material" <?= ($editingMaterial['material_type'] ?? '') === 'material' ? 'selected' : '' ?>>Download / material</option>
                 </select>
             </label>
-            <label>Student display order <input type="number" name="sort_order" min="0" step="1" value="<?= e((string) ($editingMaterial['sort_order'] ?? '')) ?>" placeholder="Example: 10"></label>
+            <label>Student display order <input type="number" name="sort_order" min="0" step="1" value="<?= e((string) ($editingMaterial['sort_order'] ?? '')) ?>" placeholder="Use 0 for free preview"></label>
+            <small>Use order 0 to make a video or live session available before payment.</small>
             <label>Title <input name="title" value="<?= e($editingMaterial['title'] ?? '') ?>" placeholder="Example: Video 1 - BI Foundations" required></label>
             <label>Description <textarea name="description" rows="4" placeholder="Short note for trainees"><?= e($editingMaterial['description'] ?? '') ?></textarea></label>
             <label>Video, meeting, or material URL <input name="file_url" id="material-file-url" value="<?= e($editingMaterial['file_url'] ?? '') ?>" placeholder="Paste Zoom or Google Meet link, or leave blank for auto Jitsi room"></label>

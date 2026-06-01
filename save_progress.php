@@ -12,7 +12,7 @@ $watchedSeconds = max(0, (float) ($_POST['watched_seconds'] ?? 0));
 $durationSeconds = max(0, (float) ($_POST['duration_seconds'] ?? 0));
 
 $stmt = db()->prepare(
-    "SELECT e.id, e.course_id, e.user_id, e.status, c.fee, c.discount_fee, m.material_type
+    "SELECT e.id, e.course_id, e.user_id, e.status, c.fee, c.discount_fee, m.material_type, m.file_url
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      JOIN materials m ON m.course_id = e.course_id
@@ -21,11 +21,20 @@ $stmt = db()->prepare(
 $stmt->execute([$enrollmentId, (int) $user['id'], $materialId]);
 $row = $stmt->fetch();
 
-if (!$row || ($row['material_type'] ?? 'video') !== 'video') {
+$isVideoProgressItem = $row && (
+    ($row['material_type'] ?? 'video') === 'video' ||
+    (($row['material_type'] ?? 'video') === 'live_session' && is_playable_video_url((string) ($row['file_url'] ?? '')))
+);
+
+if (!$isVideoProgressItem) {
     http_response_code(404);
     header('Content-Type: application/json');
     echo json_encode(['ok' => false]);
     exit;
+}
+
+if (($row['material_type'] ?? 'video') === 'live_session') {
+    clear_attendance_progress_for_video_session($row, ['id' => $materialId]);
 }
 
 $percent = $durationSeconds > 0 ? min(100, round(($watchedSeconds / $durationSeconds) * 100, 2)) : 0;

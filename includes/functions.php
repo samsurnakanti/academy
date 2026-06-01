@@ -317,6 +317,470 @@ function save_zoom_settings(array $data): void
     ]);
 }
 
+function ensure_elldy_bi_settings_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS elldy_bi_settings (
+            id TINYINT UNSIGNED PRIMARY KEY,
+            base_url VARCHAR(255) NOT NULL DEFAULT 'https://elldy.com',
+            api_token TEXT NULL,
+            default_business_id VARCHAR(80) NULL,
+            default_business_name VARCHAR(190) NULL,
+            default_department VARCHAR(190) NULL,
+            default_basket_name VARCHAR(190) NULL,
+            default_basket_id VARCHAR(80) NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )"
+    );
+
+    $database = db()->query('SELECT DATABASE()')->fetchColumn();
+    $columns = db()->prepare(
+        "SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'elldy_bi_settings'"
+    );
+    $columns->execute([$database]);
+    $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
+
+    if (!isset($existing['default_business_id'])) {
+        db()->exec("ALTER TABLE elldy_bi_settings ADD COLUMN default_business_id VARCHAR(80) NULL AFTER api_token");
+    }
+
+    $stmt = db()->prepare(
+        "INSERT INTO elldy_bi_settings (id, base_url, api_token, default_business_id, default_business_name, default_department, default_basket_name, default_basket_id)
+         VALUES (1, 'https://elldy.com', '', '', '', '', '', '')
+         ON DUPLICATE KEY UPDATE id = id"
+    );
+    $stmt->execute();
+}
+
+function elldy_bi_settings(): array
+{
+    ensure_elldy_bi_settings_table();
+    $settings = db()->query('SELECT * FROM elldy_bi_settings WHERE id = 1')->fetch() ?: [];
+
+    return [
+        'base_url' => rtrim(trim((string) ($settings['base_url'] ?? 'https://elldy.com')), '/') ?: 'https://elldy.com',
+        'api_token' => trim((string) ($settings['api_token'] ?? '')),
+        'default_business_id' => trim((string) ($settings['default_business_id'] ?? '')),
+        'default_business_name' => trim((string) ($settings['default_business_name'] ?? '')),
+        'default_department' => trim((string) ($settings['default_department'] ?? '')),
+        'default_basket_name' => trim((string) ($settings['default_basket_name'] ?? '')),
+        'default_basket_id' => trim((string) ($settings['default_basket_id'] ?? '')),
+    ];
+}
+
+function save_elldy_bi_settings(array $data): void
+{
+    ensure_elldy_bi_settings_table();
+    $stmt = db()->prepare(
+        "UPDATE elldy_bi_settings
+         SET base_url = ?, api_token = ?, default_business_id = ?, default_business_name = ?, default_department = ?, default_basket_name = ?, default_basket_id = ?
+         WHERE id = 1"
+    );
+    $stmt->execute([
+        rtrim(trim((string) ($data['base_url'] ?? 'https://elldy.com')), '/') ?: 'https://elldy.com',
+        trim((string) ($data['api_token'] ?? '')),
+        trim((string) ($data['default_business_id'] ?? '')),
+        trim((string) ($data['default_business_name'] ?? '')),
+        trim((string) ($data['default_department'] ?? '')),
+        trim((string) ($data['default_basket_name'] ?? '')),
+        trim((string) ($data['default_basket_id'] ?? '')),
+    ]);
+}
+
+function elldy_bi_api_url(string $path): string
+{
+    $settings = elldy_bi_settings();
+
+    return $settings['base_url'] . '/' . ltrim($path, '/');
+}
+
+function elldy_bi_require_configured(): array
+{
+    $settings = elldy_bi_settings();
+
+    if ($settings['api_token'] === '') {
+        throw new RuntimeException('Elldy BI API token is missing. Save it in Admin > Elldy BI.');
+    }
+
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('PHP cURL extension is not enabled on the server.');
+    }
+
+    return $settings;
+}
+
+function elldy_bi_decode_response(string|false $response, int $status, string $curlError): array
+{
+    if ($response === false) {
+        throw new RuntimeException('Unable to reach Elldy BI API. ' . $curlError);
+    }
+
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        throw new RuntimeException('Elldy BI API returned an invalid response.');
+    }
+
+    if ($status < 200 || $status >= 300) {
+        $message = (string) ($decoded['message'] ?? $decoded['error'] ?? 'Elldy BI API request failed.');
+        throw new RuntimeException($message);
+    }
+
+    return $decoded;
+}
+
+function elldy_bi_post_json(string $path, array $data): array
+{
+    $settings = elldy_bi_require_configured();
+    $ch = curl_init(elldy_bi_api_url($path));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'X-Elldy-API-Token: ' . $settings['api_token'],
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => json_encode($data),
+        CURLOPT_TIMEOUT => 30,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return elldy_bi_decode_response($response, $status, $curlError);
+}
+
+function elldy_bi_get_json(string $path, array $query = []): array
+{
+    $settings = elldy_bi_require_configured();
+    $url = elldy_bi_api_url($path);
+
+    if ($query) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ['X-Elldy-API-Token: ' . $settings['api_token']],
+        CURLOPT_TIMEOUT => 30,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return elldy_bi_decode_response($response, $status, $curlError);
+}
+
+function elldy_bi_summary(): array
+{
+    return elldy_bi_get_json('/api/workspace/summary/');
+}
+
+function elldy_bi_departments(string $businessId = ''): array
+{
+    return elldy_bi_get_json('/api/workspace/departments/', $businessId !== '' ? ['business_id' => $businessId] : []);
+}
+
+function elldy_bi_baskets(string $businessId = ''): array
+{
+    return elldy_bi_get_json('/api/workspace/baskets/', $businessId !== '' ? ['business_id' => $businessId] : []);
+}
+
+function elldy_bi_basket_data(string $basketId): array
+{
+    return elldy_bi_get_json('/api/workspace/basket-data/', ['basket_id' => $basketId]);
+}
+
+function elldy_bi_token_url(): string
+{
+    return elldy_bi_api_url('/api/workspace/token/?format=json');
+}
+
+function elldy_bi_business_payload(string $businessName, string $businessId = ''): array
+{
+    return $businessId !== '' ? ['business_id' => $businessId] : ['business_name' => $businessName];
+}
+
+function elldy_bi_create_department(string $departmentName, string $businessName, string $businessId = ''): array
+{
+    return elldy_bi_post_json('/api/workspace/departments/', array_merge(
+        ['department_name' => $departmentName],
+        elldy_bi_business_payload($businessName, $businessId)
+    ));
+}
+
+function elldy_bi_create_basket(string $basketName, string $businessName, string $businessId = ''): array
+{
+    return elldy_bi_post_json('/api/workspace/baskets/', array_merge(
+        ['basket_name' => $basketName],
+        elldy_bi_business_payload($businessName, $businessId)
+    ));
+}
+
+function elldy_bi_basket_id_from_response(array $response): string
+{
+    foreach ([
+        $response['basket']['id'] ?? null,
+        $response['id'] ?? null,
+        $response['data']['basket']['id'] ?? null,
+        $response['data']['id'] ?? null,
+    ] as $candidate) {
+        if ($candidate !== null && (string) $candidate !== '') {
+            return (string) $candidate;
+        }
+    }
+
+    return '';
+}
+
+function elldy_bi_database_tables(): array
+{
+    $database = (string) db()->query('SELECT DATABASE()')->fetchColumn();
+    $stmt = db()->prepare(
+        "SELECT TABLE_NAME
+         FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE'
+         ORDER BY TABLE_NAME"
+    );
+    $stmt->execute([$database]);
+
+    return array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+}
+
+function elldy_bi_assert_table_name(string $tableName): string
+{
+    $tableName = trim($tableName);
+    if ($tableName === '' || !in_array($tableName, elldy_bi_database_tables(), true)) {
+        throw new RuntimeException('Please choose a valid database table.');
+    }
+
+    return $tableName;
+}
+
+function elldy_bi_export_table_file(string $tableName, string $format): array
+{
+    $tableName = elldy_bi_assert_table_name($tableName);
+    $format = strtolower(trim($format));
+
+    if (!in_array($format, ['csv', 'json'], true)) {
+        throw new RuntimeException('This server can export database tables as CSV or JSON. Parquet needs an extra PHP library before it can be enabled.');
+    }
+
+    $stmt = db()->query('SELECT * FROM `' . str_replace('`', '``', $tableName) . '`');
+    $rows = $stmt->fetchAll();
+    $path = tempnam(sys_get_temp_dir(), 'elldy_bi_');
+    if ($path === false) {
+        throw new RuntimeException('Unable to create a temporary export file.');
+    }
+
+    $fileName = $tableName . '.' . $format;
+    $mime = $format === 'json' ? 'application/json' : 'text/csv';
+
+    if ($format === 'json') {
+        file_put_contents($path, json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    } else {
+        $handle = fopen($path, 'wb');
+        if (!$handle) {
+            throw new RuntimeException('Unable to write the CSV export file.');
+        }
+
+        if ($rows) {
+            fputcsv($handle, array_keys($rows[0]));
+            foreach ($rows as $row) {
+                fputcsv($handle, $row);
+            }
+        }
+
+        fclose($handle);
+    }
+
+    return ['path' => $path, 'name' => $fileName, 'mime' => $mime, 'rows' => count($rows)];
+}
+
+function elldy_bi_table_rows(string $tableName): array
+{
+    $tableName = elldy_bi_assert_table_name($tableName);
+    $stmt = db()->query('SELECT * FROM `' . str_replace('`', '``', $tableName) . '`');
+
+    return $stmt->fetchAll();
+}
+
+function elldy_bi_upload_json_rows(string $basketId, string $department, string $title, array $rows): array
+{
+    return elldy_bi_post_json('/api/workspace/basket-data/', [
+        'basket_id' => $basketId,
+        'department' => $department,
+        'title' => $title,
+        'rows' => $rows,
+    ]);
+}
+
+function elldy_bi_upload_basket_file(string $basketId, string $department, string $title, string $path, string $fileName, string $mime): array
+{
+    $settings = elldy_bi_require_configured();
+
+    if ($basketId === '' || $department === '' || $title === '') {
+        throw new RuntimeException('Basket, department, and data title are required.');
+    }
+
+    if (!is_file($path)) {
+        throw new RuntimeException('Export file was not created.');
+    }
+
+    $ch = curl_init(elldy_bi_api_url('/api/workspace/basket-data/'));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['X-Elldy-API-Token: ' . $settings['api_token']],
+        CURLOPT_POSTFIELDS => [
+            'basket_id' => $basketId,
+            'department' => $department,
+            'title' => $title,
+            'file' => new CURLFile($path, $mime, $fileName),
+        ],
+        CURLOPT_TIMEOUT => 120,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return elldy_bi_decode_response($response, $status, $curlError);
+}
+
+function elldy_bi_upload_table_to_basket(string $businessName, string $businessId, string $basketName, string $basketId, string $department, string $title, string $tableName, string $format): array
+{
+    $departmentResponse = elldy_bi_create_department($department, $businessName, $businessId);
+    $basketResponse = null;
+    $basketId = trim($basketId);
+
+    if ($basketId === '') {
+        $basketResponse = elldy_bi_create_basket($basketName, $businessName, $businessId);
+        $basketId = elldy_bi_basket_id_from_response($basketResponse);
+    }
+
+    if ($basketId === '') {
+        throw new RuntimeException('Elldy BI did not return a basket ID for this basket name.');
+    }
+
+    $format = strtolower(trim($format));
+    if ($format === 'json') {
+        $rows = elldy_bi_table_rows($tableName);
+        $uploadResponse = elldy_bi_upload_json_rows($basketId, $department, $title, $rows);
+        $exportedRows = count($rows);
+    } else {
+        $export = elldy_bi_export_table_file($tableName, $format);
+
+        try {
+            $uploadResponse = elldy_bi_upload_basket_file(
+                $basketId,
+                $department,
+                $title,
+                $export['path'],
+                $export['name'],
+                $export['mime']
+            );
+        } finally {
+            if (is_file($export['path'])) {
+                unlink($export['path']);
+            }
+        }
+
+        $exportedRows = (int) $export['rows'];
+    }
+
+    $settings = elldy_bi_settings();
+    $settings['default_business_id'] = $businessId;
+    $settings['default_business_name'] = $businessName;
+    $settings['default_department'] = $department;
+    $settings['default_basket_name'] = $basketName;
+    $settings['default_basket_id'] = $basketId;
+    save_elldy_bi_settings($settings);
+
+    return [
+        'basket_id' => $basketId,
+        'exported_rows' => $exportedRows,
+        'format' => $format,
+        'department_response' => $departmentResponse,
+        'basket_response' => $basketResponse ?? ['used_existing_basket_id' => $basketId],
+        'upload_response' => $uploadResponse,
+    ];
+}
+
+function elldy_bi_upload_tables_to_basket(string $businessName, string $businessId, string $basketName, string $basketId, string $department, array $tableNames, string $format): array
+{
+    $tableNames = array_values(array_filter(array_map('trim', $tableNames), fn (string $tableName): bool => $tableName !== ''));
+
+    if (!$tableNames) {
+        throw new RuntimeException('Please choose at least one database table.');
+    }
+
+    $results = [];
+    foreach ($tableNames as $tableName) {
+        $results[$tableName] = elldy_bi_upload_table_to_basket(
+            $businessName,
+            $businessId,
+            $basketName,
+            $basketId,
+            $department,
+            $tableName,
+            $tableName,
+            $format
+        );
+        $basketId = (string) ($results[$tableName]['basket_id'] ?? $basketId);
+    }
+
+    return $results;
+}
+
+function elldy_bi_upload_basket_data(string $basketId, string $department, string $title, array $file): array
+{
+    $settings = elldy_bi_require_configured();
+    $tmpName = (string) ($file['tmp_name'] ?? '');
+
+    if ($basketId === '' || $department === '' || $title === '') {
+        throw new RuntimeException('Basket ID, department, and title are required.');
+    }
+
+    if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+        throw new RuntimeException('Please choose a CSV file to upload.');
+    }
+
+    $originalName = (string) ($file['name'] ?? 'data.csv');
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if ($extension !== 'csv') {
+        throw new RuntimeException('Please upload a CSV file.');
+    }
+
+    $ch = curl_init(elldy_bi_api_url('/api/workspace/basket-data/'));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => ['X-Elldy-API-Token: ' . $settings['api_token']],
+        CURLOPT_POSTFIELDS => [
+            'basket_id' => $basketId,
+            'department' => $department,
+            'title' => $title,
+            'file' => new CURLFile($tmpName, 'text/csv', $originalName),
+        ],
+        CURLOPT_TIMEOUT => 120,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return elldy_bi_decode_response($response, $status, $curlError);
+}
+
 function zoom_base64_url(string $value): string
 {
     return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
@@ -412,11 +876,26 @@ function s3_object_key_from_url(string $url): ?string
     $path = ltrim((string) ($parts['path'] ?? ''), '/');
     $expectedHost = strtolower($settings['bucket_name'] . '.s3.' . $settings['region'] . '.amazonaws.com');
 
-    if ($path === '' || $host !== $expectedHost) {
+    if ($path === '') {
         return null;
     }
 
-    return rawurldecode($path);
+    if ($host === $expectedHost) {
+        return rawurldecode($path);
+    }
+
+    if ($settings['public_base_url'] !== '') {
+        $baseParts = parse_url($settings['public_base_url']);
+        $baseHost = strtolower((string) ($baseParts['host'] ?? ''));
+        $basePath = trim((string) ($baseParts['path'] ?? ''), '/');
+
+        if ($host === $baseHost && ($basePath === '' || str_starts_with($path, $basePath . '/'))) {
+            $objectPath = $basePath === '' ? $path : substr($path, strlen($basePath) + 1);
+            return rawurldecode($objectPath);
+        }
+    }
+
+    return null;
 }
 
 function s3_presigned_get_url(string $objectKey, int $expires = 3600): string
@@ -533,6 +1012,11 @@ function material_display_label(array $material): string
         'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif' => 'Image',
         default => 'Resource',
     };
+}
+
+function primary_material_types_for_delivery(string $deliveryType): array
+{
+    return $deliveryType === 'live_session' ? ['live_session', 'video'] : ['video'];
 }
 
 function is_allowed_material_mime(string $mime): bool
@@ -1611,11 +2095,28 @@ function is_embed_video_provider_url(string $url): bool
         str_contains($host, 'drive.google.com');
 }
 
+function is_playable_video_url(string $url): bool
+{
+    $url = trim($url);
+    if ($url === '') {
+        return false;
+    }
+
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+
+    return is_direct_video_url($url) ||
+        is_embed_video_provider_url($url) ||
+        s3_object_key_from_url($url) !== null ||
+        str_contains($host, '.s3.') ||
+        str_ends_with($host, '.amazonaws.com');
+}
+
 function should_use_native_video_player(string $url): bool
 {
     $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
 
     return is_direct_video_url($url) ||
+        s3_object_key_from_url($url) !== null ||
         str_contains($host, '.s3.') ||
         str_ends_with($host, '.amazonaws.com') ||
         (!is_embed_video_provider_url($url) && $url !== '');
@@ -1800,6 +2301,31 @@ function record_live_session_attendance(array $enrollment, array $material): voi
     $progress->execute([$enrollmentId, $userId, $courseId, $materialId]);
 }
 
+function clear_attendance_progress_for_video_session(array $enrollment, array $material): bool
+{
+    ensure_live_session_attendance_table();
+    ensure_learning_progress_table();
+
+    $enrollmentId = (int) $enrollment['id'];
+    $materialId = (int) $material['id'];
+
+    $attendance = db()->prepare('DELETE FROM live_session_attendance WHERE enrollment_id = ? AND material_id = ?');
+    $attendance->execute([$enrollmentId, $materialId]);
+
+    $progress = db()->prepare(
+        "DELETE FROM learning_progress
+         WHERE enrollment_id = ?
+            AND material_id = ?
+            AND watched_seconds = 0
+            AND duration_seconds = 0
+            AND progress_percent = 100
+            AND is_completed = 1"
+    );
+    $progress->execute([$enrollmentId, $materialId]);
+
+    return $progress->rowCount() > 0;
+}
+
 function enrollment_learning_completion(int $enrollmentId): array
 {
     ensure_learning_progress_table();
@@ -1821,16 +2347,17 @@ function enrollment_learning_completion(int $enrollmentId): array
         return ['total' => 1, 'completed' => 1, 'is_complete' => true];
     }
 
-    $primaryType = (($enrollment['delivery_type'] ?? 'video') === 'live_session') ? 'live_session' : 'video';
+    $primaryTypes = primary_material_types_for_delivery((string) ($enrollment['delivery_type'] ?? 'video'));
+    $placeholders = implode(',', array_fill(0, count($primaryTypes), '?'));
     $counts = db()->prepare(
         "SELECT COUNT(m.id) AS total,
             SUM(CASE WHEN lp.is_completed = 1 THEN 1 ELSE 0 END) AS completed
          FROM enrollments e
-         JOIN materials m ON m.course_id = e.course_id AND m.material_type = ?
+         JOIN materials m ON m.course_id = e.course_id AND m.material_type IN ({$placeholders})
          LEFT JOIN learning_progress lp ON lp.enrollment_id = e.id AND lp.material_id = m.id
          WHERE e.id = ?"
     );
-    $counts->execute([$primaryType, $enrollmentId]);
+    $counts->execute([...$primaryTypes, $enrollmentId]);
     $row = $counts->fetch() ?: [];
     $total = (int) ($row['total'] ?? 0);
     $completed = (int) ($row['completed'] ?? 0);
