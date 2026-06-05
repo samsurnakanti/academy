@@ -50,14 +50,32 @@ if ($type === 'program') {
 }
 
 if ($type === 'certificate') {
+    $enrollmentStmt = db()->prepare(
+        "SELECT e.id, e.user_id, e.course_id, e.status, c.fee, c.discount_fee
+         FROM enrollments e
+         JOIN courses c ON c.id = e.course_id
+         WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
+    );
+    $enrollmentStmt->execute([$id, $user['id']]);
+    $enrollment = $enrollmentStmt->fetch();
+
+    if (!$enrollment || (!in_array($enrollment['status'], ['paid', 'completed'], true) && course_fee_amount($enrollment) > 0)) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Complete program payment before certificate payment.']);
+        exit;
+    }
+
     $stmt = db()->prepare(
         "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status, payment_note)
-         SELECT e.id, e.user_id, e.course_id, 'requested', ?
-         FROM enrollments e
-         WHERE e.id = ? AND e.user_id = ?
-         ON DUPLICATE KEY UPDATE payment_note = VALUES(payment_note)"
+         VALUES (?, ?, ?, 'requested', ?)
+         ON DUPLICATE KEY UPDATE status = IF(status = 'issued', status, VALUES(status)), payment_note = VALUES(payment_note)"
     );
-    $stmt->execute(['Razorpay payment: ' . $paymentId, $id, $user['id']]);
+    $stmt->execute([
+        (int) $enrollment['id'],
+        (int) $enrollment['user_id'],
+        (int) $enrollment['course_id'],
+        'Razorpay payment: ' . $paymentId,
+    ]);
     ensure_instant_certificate_for_enrollment($id);
     echo json_encode(['ok' => true, 'redirect' => public_url('dashboard.php')]);
     exit;

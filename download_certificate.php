@@ -2,10 +2,12 @@
 require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
+ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name, c.title, c.certificate_title, c.certificate_details
+    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name,
+            c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
      FROM certificate_requests cr
      JOIN enrollments e ON e.id = cr.enrollment_id
      JOIN users u ON u.id = e.user_id
@@ -18,6 +20,16 @@ $certificate = $stmt->fetch();
 if (!$certificate) {
     http_response_code(404);
     exit('Certificate not found.');
+}
+
+if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_fee_amount($certificate) > 0) {
+    http_response_code(403);
+    exit('Please complete program payment before downloading your certificate.');
+}
+
+if (certificate_fee_amount($certificate) > 0 && !in_array($certificate['status'], ['requested', 'issued'], true)) {
+    http_response_code(403);
+    exit('Please complete certificate payment before downloading your certificate.');
 }
 
 $expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';

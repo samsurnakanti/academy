@@ -2028,6 +2028,60 @@ tbody tr:hover {
     font-size: 22px;
 }
 
+.certificate-lock-preview {
+    position: relative;
+    display: grid;
+    gap: 14px;
+    margin: 14px 0 16px;
+    padding: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(11, 107, 203, 0.2);
+    border-radius: 8px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(238, 247, 255, 0.96)),
+        #ffffff;
+}
+
+.certificate-lock-preview > div {
+    display: grid;
+    gap: 8px;
+    min-height: 140px;
+    place-items: center;
+    padding: 18px;
+    border: 1px solid rgba(217, 119, 6, 0.24);
+    border-radius: 8px;
+    text-align: center;
+    transition: filter 180ms ease;
+}
+
+.certificate-lock-preview.is-blurred > div {
+    filter: blur(7px);
+    user-select: none;
+}
+
+.certificate-lock-preview span {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.certificate-lock-preview strong {
+    color: var(--brand-dark);
+    font-family: Sora, Urbanist, "Segoe UI", sans-serif;
+    font-size: clamp(18px, 3vw, 28px);
+    line-height: 1.2;
+}
+
+.certificate-lock-preview small {
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.certificate-lock-preview .button {
+    justify-self: center;
+}
+
 @media (max-width: 720px) {
     .elldy-promo {
         align-items: flex-start;

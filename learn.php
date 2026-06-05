@@ -22,7 +22,9 @@ if (!$enrollment) {
     exit('Learning access not found.');
 }
 
-$hasFullAccess = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
+$programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
+$certificateFeeDue = certificate_fee_amount($enrollment) > 0;
+$hasFullAccess = $programPaid;
 $materialsStmt = db()->prepare(
     "SELECT *
      FROM materials
@@ -78,6 +80,24 @@ foreach ($materials as $material) {
 $certificateStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $certificateStmt->execute([(int) $enrollment['id']]);
 $certificate = $certificateStmt->fetch();
+
+if ($programPaid && (!$certificateFeeDue || in_array($certificate['status'] ?? '', ['requested', 'issued'], true))) {
+    if (!$certificate && !$certificateFeeDue) {
+        $request = db()->prepare(
+            "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE enrollment_id = enrollment_id"
+        );
+        $request->execute([
+            (int) $enrollment['id'],
+            (int) $user['id'],
+            (int) $enrollment['course_id'],
+            'requested',
+        ]);
+    }
+
+    $certificate = ensure_instant_certificate_for_enrollment((int) $enrollment['id']) ?? $certificate;
+}
 
 foreach ($materials as $material) {
     if ((int) $material['id'] === $materialId && $canAccessMaterial($material)) {
@@ -242,13 +262,27 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="certificate-action">
             <h2>Certificate</h2>
-            <?php if ($certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
+            <div class="certificate-lock-preview is-blurred" data-certificate-preview>
+                <div>
+                    <span>Certificate of Completion</span>
+                    <strong><?= e($enrollment['title']) ?></strong>
+                    <small><?= e($user['name']) ?></small>
+                </div>
+                <button class="button tiny" type="button" data-certificate-toggle>Show</button>
+            </div>
+            <?php if (!$programPaid): ?>
+                <p>Complete the program payment to unlock your certificate download.</p>
+                <a class="button primary" href="pay_redirect.php?type=program&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+            <?php elseif ($certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
                 <p>Your certificate is ready.</p>
                 <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
+            <?php elseif (($certificate['status'] ?? '') === 'payment_pending' || ($certificateFeeDue && !$certificate)): ?>
+                <p>Pay the certification charge to generate your downloadable certificate.</p>
+                <a class="button primary" href="pay_redirect.php?type=certificate&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
             <?php elseif ($certificate): ?>
                 <p>Status: <?= e(certificate_badge($certificate['status'])) ?></p>
             <?php else: ?>
-                <p>After watching the course videos, pay for certification if applicable. Admin will upload your certificate.</p>
+                <p>Your certificate will be generated after payment confirmation.</p>
                 <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Certificate Details</a>
             <?php endif; ?>
         </div>

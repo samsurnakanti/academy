@@ -31,7 +31,7 @@ if ($type === 'program') {
 
 if ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, e.course_id, c.certification_fee, c.certificate_discount_fee
+        "SELECT e.id, e.course_id, e.status, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -42,6 +42,10 @@ if ($type === 'certificate') {
     if (!$row) {
         http_response_code(404);
         exit('Payment not found.');
+    }
+
+    if (!in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
+        redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
     }
 
     $request = db()->prepare(
@@ -55,6 +59,11 @@ if ($type === 'certificate') {
         (int) $row['course_id'],
         certificate_fee_amount($row) > 0 ? 'payment_pending' : 'requested',
     ]);
+
+    if (certificate_fee_amount($row) <= 0) {
+        ensure_instant_certificate_for_enrollment((int) $row['id']);
+        redirect('dashboard.php');
+    }
 
     redirect('razorpay_checkout.php?type=certificate&id=' . (int) $row['id']);
 }

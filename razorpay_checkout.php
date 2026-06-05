@@ -9,25 +9,39 @@ $id = (int) ($_GET['id'] ?? 0);
 
 if ($type === 'program') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.title, c.fee, c.discount_fee
+        "SELECT e.id, e.status, c.title, c.fee, c.discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
     $stmt->execute([$id, $user['id']]);
     $row = $stmt->fetch();
+    if (!$row) {
+        http_response_code(404);
+        exit('Payment not found.');
+    }
+    if ($row && in_array($row['status'], ['paid', 'completed'], true)) {
+        redirect('dashboard.php');
+    }
     $amount = (int) round(course_fee_amount($row));
     $receipt = 'EA-PROGRAM-' . $id;
     $heading = 'Program Payment';
 } elseif ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.title, c.certification_fee, c.certificate_discount_fee
+        "SELECT e.id, e.status, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
     $stmt->execute([$id, $user['id']]);
     $row = $stmt->fetch();
+    if (!$row) {
+        http_response_code(404);
+        exit('Payment not found.');
+    }
+    if ($row && !in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
+        redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
+    }
     $amount = (int) round(certificate_fee_amount($row));
     $receipt = 'EA-CERT-' . $id;
     $heading = 'Certificate Payment';
@@ -35,7 +49,7 @@ if ($type === 'program') {
     $row = null;
 }
 
-if (!$row || $amount <= 0) {
+if ($amount <= 0) {
     http_response_code(404);
     exit('Payment not found.');
 }

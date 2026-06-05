@@ -212,6 +212,19 @@ if (isInstalledApp) {
     }
 }
 
+document.querySelectorAll('[data-certificate-preview]').forEach((preview) => {
+    const toggle = preview.querySelector('[data-certificate-toggle]');
+
+    if (!toggle) {
+        return;
+    }
+
+    toggle.addEventListener('click', () => {
+        const isBlurred = preview.classList.toggle('is-blurred');
+        toggle.textContent = isBlurred ? 'Show' : 'Blur';
+    });
+});
+
 document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const video = frame.querySelector('.academy-video');
     const toggle = frame.querySelector('.video-toggle');
