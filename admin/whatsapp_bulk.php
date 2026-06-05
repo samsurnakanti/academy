@@ -212,6 +212,43 @@ function bulk_invite_unique_contacts(array $contacts): array
     return $unique;
 }
 
+function bulk_invite_student_contacts(string $source, array $studentIds = []): array
+{
+    if (!in_array($source, ['all_students', 'selected_students'], true)) {
+        return [];
+    }
+
+    $params = [];
+    $idCondition = '';
+
+    if ($source === 'selected_students') {
+        $studentIds = array_values(array_filter(array_map('intval', $studentIds)));
+        if (!$studentIds) {
+            throw new RuntimeException('Select at least one existing student.');
+        }
+
+        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
+        $idCondition = " AND u.id IN ({$placeholders})";
+        $params = $studentIds;
+    }
+
+    $stmt = db()->prepare(
+        "SELECT u.name, u.phone
+         FROM users u
+         WHERE COALESCE(u.phone, '') != ''{$idCondition}
+         ORDER BY u.created_at DESC, u.name ASC"
+    );
+    $stmt->execute($params);
+
+    return array_map(
+        static fn (array $row): array => [
+            'name' => (string) $row['name'],
+            'phone' => (string) $row['phone'],
+        ],
+        $stmt->fetchAll()
+    );
+}
+
 function whatsapp_invite_status_label(string $status): string
 {
     return match ($status) {
@@ -228,9 +265,27 @@ $courses = active_courses(100);
 $results = [];
 $previewContacts = [];
 $selectedCourseId = (int) ($_POST['course_id'] ?? ($courses[0]['id'] ?? 0));
+$contactSource = (string) ($_POST['contact_source'] ?? 'imported');
+$selectedStudentIds = array_values(array_filter(array_map('intval', $_POST['student_ids'] ?? [])));
 $pastedContacts = (string) ($_POST['contacts'] ?? '');
 $inviteDescription = trim((string) ($_POST['invite_description'] ?? ''));
 $inviteDuration = trim((string) ($_POST['invite_duration'] ?? ''));
+$studentStmt = db()->query(
+    "SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        COUNT(e.id) AS enrollment_count,
+        MAX(e.created_at) AS last_enrolled_at
+     FROM users u
+     LEFT JOIN enrollments e ON e.user_id = u.id AND e.status != 'cancelled'
+     WHERE COALESCE(u.phone, '') != ''
+     GROUP BY u.id, u.name, u.email, u.phone
+     ORDER BY last_enrolled_at DESC, u.created_at DESC, u.name ASC
+     LIMIT 500"
+);
+$students = $studentStmt->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
     verify_csrf();
@@ -248,14 +303,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['ajax'])) {
 
             $description = $inviteDescription !== '' ? $inviteDescription : trim((string) ($course['short_description'] ?? ''));
             $duration = $inviteDuration !== '' ? $inviteDuration : trim((string) ($course['duration'] ?? ''));
-            $contacts = array_merge(
-                bulk_invite_parse_text($pastedContacts),
-                bulk_invite_uploaded_contacts($_FILES['contacts_file'] ?? [])
-            );
+            if ($contactSource === 'imported') {
+                $contacts = array_merge(
+                    bulk_invite_parse_text($pastedContacts),
+                    bulk_invite_uploaded_contacts($_FILES['contacts_file'] ?? [])
+                );
+            } else {
+                $contacts = bulk_invite_student_contacts($contactSource, $selectedStudentIds);
+            }
             $contacts = bulk_invite_unique_contacts($contacts);
 
             if (!$contacts) {
-                throw new RuntimeException('Add contacts by pasting phone numbers or uploading a CSV/XLSX file.');
+                throw new RuntimeException('No valid WhatsApp contacts found for this invite.');
             }
 
             $_SESSION['bulk_invite_job'] = [
@@ -359,14 +418,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $inviteDuration = trim((string) ($course['duration'] ?? ''));
         }
 
-        $contacts = array_merge(
-            bulk_invite_parse_text($pastedContacts),
-            bulk_invite_uploaded_contacts($_FILES['contacts_file'] ?? [])
-        );
+        if ($contactSource === 'imported') {
+            $contacts = array_merge(
+                bulk_invite_parse_text($pastedContacts),
+                bulk_invite_uploaded_contacts($_FILES['contacts_file'] ?? [])
+            );
+        } else {
+            $contacts = bulk_invite_student_contacts($contactSource, $selectedStudentIds);
+        }
         $contacts = bulk_invite_unique_contacts($contacts);
 
         if (!$contacts) {
-            throw new RuntimeException('Add contacts by pasting phone numbers or uploading a CSV/XLSX file.');
+            throw new RuntimeException('No valid WhatsApp contacts found for this invite.');
         }
 
         if (($_POST['action'] ?? '') === 'preview') {
@@ -441,6 +504,13 @@ require __DIR__ . '/_admin_header.php';
 
         <fieldset>
             <legend>Contacts</legend>
+            <label>Recipient source
+                <select name="contact_source" id="bulk-contact-source">
+                    <option value="imported" <?= $contactSource === 'imported' ? 'selected' : '' ?>>Pasted / imported contacts</option>
+                    <option value="selected_students" <?= $contactSource === 'selected_students' ? 'selected' : '' ?>>Selected existing students</option>
+                    <option value="all_students" <?= $contactSource === 'all_students' ? 'selected' : '' ?>>All existing students</option>
+                </select>
+            </label>
             <label>Paste contacts
                 <textarea name="contacts" rows="8" placeholder="name,phone&#10;Ravi,919876543210&#10;Sneha,919900112233"><?= e($pastedContacts) ?></textarea>
             </label>
@@ -486,6 +556,33 @@ require __DIR__ . '/_admin_header.php';
             <p>Check template quality, recipient opt-in, phone number validity, and your Meta WhatsApp Manager logs.</p>
         </div>
     </aside>
+</section>
+
+<section class="section" id="existing-students-section">
+    <div class="section-heading">
+        <h2>Existing Students</h2>
+        <small>Select students here when the invite source is selected students. The all existing students option uses every student account with a WhatsApp number.</small>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th><input type="checkbox" data-select-students aria-label="Select all existing students"></th><th>S.No</th><th>Student</th><th>Enrollments</th></tr>
+            </thead>
+            <tbody>
+                <?php if (!$students): ?>
+                    <tr><td colspan="4">No students with WhatsApp numbers found.</td></tr>
+                <?php endif; ?>
+                <?php foreach ($students as $index => $student): ?>
+                    <tr>
+                        <td><input type="checkbox" name="student_ids[]" value="<?= (int) $student['id'] ?>" form="bulk-invite-form" <?= in_array((int) $student['id'], $selectedStudentIds, true) ? 'checked' : '' ?> aria-label="Select <?= e($student['name']) ?>"></td>
+                        <td><?= $index + 1 ?></td>
+                        <td><?= e($student['name']) ?><br><small><?= e($student['email']) ?> | <?= e($student['phone']) ?></small></td>
+                        <td><?= (int) $student['enrollment_count'] ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
 </section>
 
 <section class="section compact-section">
@@ -604,6 +701,28 @@ require __DIR__ . '/_admin_header.php';
 
     if (description.value.trim() === '' && duration.value.trim() === '') {
         syncCourseDefaults();
+    }
+})();
+
+(() => {
+    const source = document.getElementById('bulk-contact-source');
+    const studentsSection = document.getElementById('existing-students-section');
+    const selectAll = document.querySelector('[data-select-students]');
+
+    if (source && studentsSection) {
+        const sync = () => {
+            studentsSection.hidden = source.value === 'imported';
+        };
+        source.addEventListener('change', sync);
+        sync();
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            document.querySelectorAll('input[name="student_ids[]"][form="bulk-invite-form"]').forEach((box) => {
+                box.checked = selectAll.checked;
+            });
+        });
     }
 })();
 

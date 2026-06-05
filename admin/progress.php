@@ -48,6 +48,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'bulk_send_certificate_whatsapp') {
+        $recipientMode = $_POST['recipient_mode'] ?? 'selected';
+        $selectedIds = array_values(array_filter(array_map('intval', $_POST['enrollment_ids'] ?? [])));
+        $params = [];
+        $idCondition = '';
+
+        if ($recipientMode !== 'all') {
+            if (!$selectedIds) {
+                flash('error', 'Select at least one learner or choose all learners.');
+                redirect('progress.php');
+            }
+
+            $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
+            $idCondition = " AND e.id IN ({$placeholders})";
+            $params = $selectedIds;
+        }
+
+        $stmt = db()->prepare(
+            "SELECT
+                e.id AS enrollment_id,
+                u.name,
+                u.phone,
+                c.title AS course_title,
+                COALESCE(video_counts.total_videos, 0) AS total_videos,
+                COALESCE(progress_counts.completed_videos, 0) AS completed_videos
+             FROM enrollments e
+             JOIN users u ON u.id = e.user_id
+             JOIN courses c ON c.id = e.course_id
+             LEFT JOIN (
+                SELECT course_id, COUNT(*) AS total_videos
+                FROM materials
+                WHERE material_type = 'video'
+                GROUP BY course_id
+             ) video_counts ON video_counts.course_id = e.course_id
+             LEFT JOIN (
+                SELECT enrollment_id, SUM(is_completed = 1) AS completed_videos
+                FROM learning_progress
+                GROUP BY enrollment_id
+             ) progress_counts ON progress_counts.enrollment_id = e.id
+             WHERE e.status != 'cancelled'{$idCondition}
+             ORDER BY e.created_at DESC"
+        );
+        $stmt->execute($params);
+        $certificateRows = $stmt->fetchAll();
+
+        $sent = 0;
+        $failed = 0;
+        $missingPhone = 0;
+        foreach ($certificateRows as $row) {
+            if (trim((string) $row['phone']) === '') {
+                $missingPhone++;
+                continue;
+            }
+
+            if (send_certificate_eligible_whatsapp($row)) {
+                $sent++;
+            } else {
+                $failed++;
+            }
+        }
+
+        $summary = "{$sent} certificate alert(s) sent.";
+        if ($failed > 0) {
+            $summary .= " {$failed} failed.";
+        }
+        if ($missingPhone > 0) {
+            $summary .= " {$missingPhone} skipped without phone.";
+        }
+        flash($sent > 0 ? 'success' : 'error', $summary);
+    }
+
     redirect('progress.php');
 }
 
@@ -92,11 +163,32 @@ $rows = db()->query(
     <p>Track watched videos, completed videos, and learners who finished all published course videos.</p>
 </section>
 
+<section class="section compact-section">
+    <form method="post" class="form-card" id="bulk-certificate-form">
+        <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+        <input type="hidden" name="action" value="bulk_send_certificate_whatsapp">
+        <h2>Send Certificate Alerts</h2>
+        <fieldset>
+            <legend>Recipients</legend>
+            <label>Send to
+                <select name="recipient_mode">
+                    <option value="selected">Selected students only</option>
+                    <option value="all">All listed learners</option>
+                </select>
+            </label>
+        </fieldset>
+        <div class="materials-form-actions">
+            <button class="button primary" type="submit" data-confirm="Send certificate eligibility WhatsApp alerts to the chosen learners?">Send Certificate Alerts</button>
+        </div>
+    </form>
+</section>
+
 <section class="section">
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
+                    <th><input type="checkbox" data-select-all="bulk-certificate-form" aria-label="Select all learners"></th>
                     <th>S.No</th>
                     <th>Trainee</th>
                     <th>Program</th>
@@ -122,6 +214,7 @@ $rows = db()->query(
                     }
                     ?>
                     <tr>
+                        <td><input type="checkbox" name="enrollment_ids[]" value="<?= (int) $row['enrollment_id'] ?>" form="bulk-certificate-form" aria-label="Select <?= e($row['name']) ?>"></td>
                         <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= e($row['course_title']) ?><br><small><?= e(enrollment_badge($row['status'])) ?></small></td>
@@ -144,10 +237,20 @@ $rows = db()->query(
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$rows): ?>
-                    <tr><td colspan="8">No progress records yet.</td></tr>
+                    <tr><td colspan="9">No progress records yet.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
     </div>
 </section>
+<script>
+document.querySelectorAll('[data-select-all]').forEach((toggle) => {
+    toggle.addEventListener('change', () => {
+        const formId = toggle.dataset.selectAll;
+        document.querySelectorAll('input[type="checkbox"][form="' + formId + '"]').forEach((box) => {
+            box.checked = toggle.checked;
+        });
+    });
+});
+</script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>

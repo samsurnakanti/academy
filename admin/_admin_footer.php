@@ -1,6 +1,14 @@
     </main>
 <script>
 (() => {
+    document.querySelectorAll('[data-confirm]').forEach((element) => {
+        element.addEventListener('click', (event) => {
+            if (!window.confirm(element.dataset.confirm)) {
+                event.preventDefault();
+            }
+        });
+    });
+
     const header = document.querySelector('.admin-header');
     const toggle = document.querySelector('.admin-header .menu-toggle');
     const nav = document.getElementById('admin-navigation');
