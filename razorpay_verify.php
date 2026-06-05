@@ -23,7 +23,8 @@ if ($type === 'program') {
     $stmt->execute(['Razorpay payment: ' . $paymentId, $id, $user['id']]);
 
     $courseStmt = db()->prepare(
-        "SELECT e.id, e.user_id, e.course_id, c.certification_fee, c.certificate_discount_fee, cr.status AS certificate_status
+        "SELECT e.id, e.user_id, e.course_id, c.certification_fee, c.certificate_discount_fee,
+                cr.status AS certificate_status, cr.payment_note AS certificate_payment_note
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
          LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
@@ -46,7 +47,7 @@ if ($type === 'program') {
             ]);
         }
 
-        if (certificate_fee_amount($enrollment) <= 0 || in_array($enrollment['certificate_status'] ?? '', ['requested', 'issued'], true)) {
+        if (certificate_fee_amount($enrollment) <= 0 || trim((string) ($enrollment['certificate_payment_note'] ?? '')) !== '') {
             ensure_instant_certificate_for_enrollment($id);
         }
     }

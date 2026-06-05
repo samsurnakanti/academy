@@ -27,7 +27,7 @@ if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) &&
     exit('Please complete program payment before downloading your certificate.');
 }
 
-if (certificate_fee_amount($certificate) > 0 && !in_array($certificate['status'], ['requested', 'issued'], true)) {
+if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
     http_response_code(403);
     exit('Please complete certificate payment before downloading your certificate.');
 }

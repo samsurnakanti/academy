@@ -2644,7 +2644,8 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
     ensure_certificate_requests_table();
 
     $stmt = db()->prepare(
-        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name, c.title, c.certificate_title, c.certificate_details
+        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name,
+                c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
          FROM certificate_requests cr
          JOIN enrollments e ON e.id = cr.enrollment_id
          JOIN users u ON u.id = cr.user_id
@@ -2656,6 +2657,14 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
 
     if (!$certificate) {
         return $certificate ?: null;
+    }
+
+    if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_fee_amount($certificate) > 0) {
+        return $certificate;
+    }
+
+    if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
+        return $certificate;
     }
 
     $downloadUrl = public_url('download_certificate.php?enrollment_id=' . $enrollmentId);

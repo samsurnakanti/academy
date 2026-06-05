@@ -80,7 +80,7 @@ foreach ($materials as $material) {
 $certificateStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $certificateStmt->execute([(int) $enrollment['id']]);
 $certificate = $certificateStmt->fetch();
-$certificatePaid = !$certificateFeeDue || in_array($certificate['status'] ?? '', ['requested', 'issued'], true);
+$certificatePaid = !$certificateFeeDue || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 
 if ($programPaid && $certificatePaid) {
     if (!$certificate && !$certificateFeeDue) {
@@ -277,7 +277,7 @@ require __DIR__ . '/includes/header.php';
             <?php elseif (!$programPaid): ?>
                 <p>Complete the program payment to unlock your certificate download.</p>
                 <a class="button primary" href="pay_redirect.php?type=program&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
-            <?php elseif ($certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
+            <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
                 <p>Your certificate is ready.</p>
                 <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
             <?php elseif ($certificate): ?>

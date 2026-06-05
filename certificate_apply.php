@@ -24,7 +24,7 @@ $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
 $programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
 $certificateAmount = certificate_fee_amount($enrollment);
-$certificatePaid = $certificateAmount <= 0 || in_array($certificate['status'] ?? '', ['requested', 'issued'], true);
+$certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 
 if (!$certificate) {
     $insert = db()->prepare(
@@ -38,7 +38,7 @@ if (!$certificate) {
     ]);
     $existingStmt->execute([$enrollmentId]);
     $certificate = $existingStmt->fetch();
-    $certificatePaid = $certificateAmount <= 0 || in_array($certificate['status'] ?? '', ['requested', 'issued'], true);
+    $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 }
 
 if ($programPaid && $certificatePaid) {
@@ -71,7 +71,7 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
         <?php elseif (!$programPaid): ?>
             <a class="button primary" href="<?= e($programPaymentUrl) ?>" target="_blank" rel="noopener">Pay Program Fee</a>
             <p><small>Program payment is required before certificate download.</small></p>
-        <?php elseif ($certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
+        <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
         <?php else: ?>
             <p>Your certificate charge is included. Once your program payment status is paid, the certificate becomes available automatically.</p>
