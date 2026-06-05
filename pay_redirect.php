@@ -44,10 +44,6 @@ if ($type === 'certificate') {
         exit('Payment not found.');
     }
 
-    if (!in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
-        redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
-    }
-
     $request = db()->prepare(
         "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status)
          VALUES (?, ?, ?, ?)
@@ -61,6 +57,10 @@ if ($type === 'certificate') {
     ]);
 
     if (certificate_fee_amount($row) <= 0) {
+        if (!in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
+            redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
+        }
+
         ensure_instant_certificate_for_enrollment((int) $row['id']);
         redirect('dashboard.php');
     }

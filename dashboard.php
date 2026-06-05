@@ -19,6 +19,7 @@ $enrollments = $stmt->fetchAll();
 foreach ($enrollments as &$enrollmentRow) {
     $programPaid = in_array($enrollmentRow['status'], ['paid', 'completed'], true) || course_fee_amount($enrollmentRow) <= 0;
     $certificateFeeDue = certificate_fee_amount($enrollmentRow) > 0;
+    $certificatePaid = !$certificateFeeDue || in_array($enrollmentRow['certificate_status'] ?? '', ['requested', 'issued'], true);
 
     if (($enrollmentRow['certificate_status'] ?? '') === 'issued') {
         $downloadUrl = public_url('download_certificate.php?enrollment_id=' . (int) $enrollmentRow['id']);
@@ -44,7 +45,7 @@ foreach ($enrollments as &$enrollmentRow) {
             ]);
         }
 
-        if (!$certificateFeeDue || in_array($enrollmentRow['certificate_status'] ?? '', ['requested', 'issued'], true)) {
+        if ($certificatePaid) {
             $certificate = ensure_instant_certificate_for_enrollment((int) $enrollmentRow['id']);
             if ($certificate) {
                 $enrollmentRow['certificate_status'] = $certificate['status'];
@@ -98,6 +99,7 @@ require __DIR__ . '/includes/header.php';
                     $courseTypeClass = $isLiveSession ? 'live-session' : 'video';
                     $programPaid = in_array($row['status'], ['paid', 'completed'], true) || course_fee_amount($row) <= 0;
                     $certificateFeeDue = certificate_fee_amount($row) > 0;
+                    $certificatePaid = !$certificateFeeDue || in_array($row['certificate_status'] ?? '', ['requested', 'issued'], true);
                     ?>
                     <tr>
                         <td data-label="Program">
@@ -126,12 +128,14 @@ require __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td data-label="Certificate">
-                            <?php if (!$programPaid && $row['status'] !== 'cancelled'): ?>
-                                <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
-                            <?php elseif ($programPaid && $row['certificate_url'] && $row['certificate_status'] === 'issued'): ?>
-                                <a class="button tiny" href="<?= e($row['certificate_url']) ?>" target="_blank" rel="noopener">Download</a>
-                            <?php elseif ($programPaid && (($row['certificate_status'] ?? '') === 'payment_pending' || ($certificateFeeDue && !$row['certificate_status']))): ?>
+                            <?php if ($row['status'] === 'cancelled'): ?>
+                                -
+                            <?php elseif ($certificateFeeDue && !$certificatePaid): ?>
                                 <a class="button tiny" href="pay_redirect.php?type=certificate&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Certificate Fee</a>
+                            <?php elseif (!$programPaid): ?>
+                                <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+                            <?php elseif ($row['certificate_url'] && $row['certificate_status'] === 'issued'): ?>
+                                <a class="button tiny" href="<?= e($row['certificate_url']) ?>" target="_blank" rel="noopener">Download</a>
                             <?php elseif ($row['certificate_status']): ?>
                                 <?= e(certificate_badge($row['certificate_status'])) ?>
                             <?php elseif ($row['status'] !== 'cancelled'): ?>

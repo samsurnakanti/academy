@@ -24,8 +24,9 @@ $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
 $programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
 $certificateAmount = certificate_fee_amount($enrollment);
+$certificatePaid = $certificateAmount <= 0 || in_array($certificate['status'] ?? '', ['requested', 'issued'], true);
 
-if ($programPaid && !$certificate) {
+if (!$certificate) {
     $insert = db()->prepare(
         'INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status) VALUES (?, ?, ?, ?)'
     );
@@ -37,9 +38,10 @@ if ($programPaid && !$certificate) {
     ]);
     $existingStmt->execute([$enrollmentId]);
     $certificate = $existingStmt->fetch();
+    $certificatePaid = $certificateAmount <= 0 || in_array($certificate['status'] ?? '', ['requested', 'issued'], true);
 }
 
-if ($programPaid && ($certificateAmount <= 0 || in_array($certificate['status'] ?? '', ['requested', 'issued'], true))) {
+if ($programPaid && $certificatePaid) {
     $certificate = ensure_instant_certificate_for_enrollment($enrollmentId) ?? $certificate;
 }
 
@@ -63,14 +65,14 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
             <button class="button tiny" type="button" data-certificate-toggle>Show</button>
         </div>
         <p>Once payment is confirmed, your official certificate from Arklytics Solutions and Innovations and Elldy Platform is generated instantly as a downloadable PDF.</p>
-        <?php if (!$programPaid): ?>
+        <?php if ($certificateAmount > 0 && !$certificatePaid): ?>
+            <a class="button primary" href="<?= e($certificatePaymentUrl) ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
+            <p><small>Certificate payment is separate from program payment.</small></p>
+        <?php elseif (!$programPaid): ?>
             <a class="button primary" href="<?= e($programPaymentUrl) ?>" target="_blank" rel="noopener">Pay Program Fee</a>
             <p><small>Program payment is required before certificate download.</small></p>
         <?php elseif ($certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
-        <?php elseif ($certificateAmount > 0): ?>
-            <a class="button primary" href="<?= e($certificatePaymentUrl) ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
-            <p><small>Certificate Payment ID: <?= e($certificateAppId) ?> | Secure payment powered by Razorpay.</small></p>
         <?php else: ?>
             <p>Your certificate charge is included. Once your program payment status is paid, the certificate becomes available automatically.</p>
         <?php endif; ?>

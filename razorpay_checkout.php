@@ -39,9 +39,6 @@ if ($type === 'program') {
         http_response_code(404);
         exit('Payment not found.');
     }
-    if ($row && !in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
-        redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
-    }
     $amount = (int) round(certificate_fee_amount($row));
     $receipt = 'EA-CERT-' . $id;
     $heading = 'Certificate Payment';

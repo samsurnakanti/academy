@@ -23,26 +23,32 @@ if ($type === 'program') {
     $stmt->execute(['Razorpay payment: ' . $paymentId, $id, $user['id']]);
 
     $courseStmt = db()->prepare(
-        "SELECT e.id, e.user_id, e.course_id, c.certification_fee, c.certificate_discount_fee
+        "SELECT e.id, e.user_id, e.course_id, c.certification_fee, c.certificate_discount_fee, cr.status AS certificate_status
          FROM enrollments e
          JOIN courses c ON c.id = e.course_id
+         LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
          WHERE e.id = ? AND e.user_id = ?"
     );
     $courseStmt->execute([$id, $user['id']]);
     $enrollment = $courseStmt->fetch();
 
-    if ($enrollment && certificate_fee_amount($enrollment) <= 0) {
-        $request = db()->prepare(
-            "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status)
-             VALUES (?, ?, ?, 'requested')
-             ON DUPLICATE KEY UPDATE enrollment_id = enrollment_id"
-        );
-        $request->execute([
-            (int) $enrollment['id'],
-            (int) $enrollment['user_id'],
-            (int) $enrollment['course_id'],
-        ]);
-        ensure_instant_certificate_for_enrollment($id);
+    if ($enrollment) {
+        if (certificate_fee_amount($enrollment) <= 0) {
+            $request = db()->prepare(
+                "INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status)
+                 VALUES (?, ?, ?, 'requested')
+                 ON DUPLICATE KEY UPDATE enrollment_id = enrollment_id"
+            );
+            $request->execute([
+                (int) $enrollment['id'],
+                (int) $enrollment['user_id'],
+                (int) $enrollment['course_id'],
+            ]);
+        }
+
+        if (certificate_fee_amount($enrollment) <= 0 || in_array($enrollment['certificate_status'] ?? '', ['requested', 'issued'], true)) {
+            ensure_instant_certificate_for_enrollment($id);
+        }
     }
 
     echo json_encode(['ok' => true, 'redirect' => public_url('dashboard.php')]);
@@ -59,9 +65,9 @@ if ($type === 'certificate') {
     $enrollmentStmt->execute([$id, $user['id']]);
     $enrollment = $enrollmentStmt->fetch();
 
-    if (!$enrollment || (!in_array($enrollment['status'], ['paid', 'completed'], true) && course_fee_amount($enrollment) > 0)) {
+    if (!$enrollment) {
         http_response_code(422);
-        echo json_encode(['ok' => false, 'message' => 'Complete program payment before certificate payment.']);
+        echo json_encode(['ok' => false, 'message' => 'Certificate payment not found.']);
         exit;
     }
 
@@ -76,7 +82,10 @@ if ($type === 'certificate') {
         (int) $enrollment['course_id'],
         'Razorpay payment: ' . $paymentId,
     ]);
-    ensure_instant_certificate_for_enrollment($id);
+    if (in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0) {
+        ensure_instant_certificate_for_enrollment($id);
+    }
+
     echo json_encode(['ok' => true, 'redirect' => public_url('dashboard.php')]);
     exit;
 }
