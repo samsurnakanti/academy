@@ -277,6 +277,12 @@ require __DIR__ . '/includes/header.php';
             <?php elseif (!$programPaid): ?>
                 <p>Complete the program payment to unlock your certificate download.</p>
                 <a class="button primary" href="pay_redirect.php?type=program&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+            <?php elseif (!$certificate || !certificate_dashboard_is_approved($certificate)): ?>
+                <p>Submit your public Elldy dashboard link for academy review before downloading your certificate.</p>
+                <?php if ($certificate): ?>
+                    <p>Status: <?= e(dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted')) ?></p>
+                <?php endif; ?>
+                <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Submit Dashboard Link</a>
             <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
                 <p>Your certificate is ready.</p>
                 <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>

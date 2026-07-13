@@ -32,6 +32,11 @@ if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['pay
     exit('Please complete certificate payment before downloading your certificate.');
 }
 
+if (!certificate_dashboard_is_approved($certificate)) {
+    http_response_code(403);
+    exit('Please submit a public Elldy dashboard link and wait for academy approval before downloading your certificate.');
+}
+
 $expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
 issue_certificate_for_enrollment($certificate);
 

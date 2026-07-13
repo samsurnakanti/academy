@@ -1580,6 +1580,21 @@ tbody tr:hover {
     align-items: center;
 }
 
+.certificate-dashboard-form,
+.certificate-review-form {
+    display: grid;
+    gap: 10px;
+    margin: 16px 0;
+}
+
+.certificate-review-form {
+    min-width: 220px;
+}
+
+.certificate-review-form input {
+    min-width: 0;
+}
+
 .inline-action-form {
     display: inline;
     margin-left: 12px;

@@ -2413,6 +2413,11 @@ function ensure_certificate_requests_table(): void
             course_id INT UNSIGNED NOT NULL,
             status ENUM('requested', 'payment_pending', 'approved', 'issued', 'rejected') NOT NULL DEFAULT 'requested',
             payment_note TEXT NULL,
+            dashboard_url VARCHAR(500) NULL,
+            dashboard_review_status ENUM('not_submitted', 'pending', 'approved', 'rejected') NOT NULL DEFAULT 'not_submitted',
+            dashboard_review_note TEXT NULL,
+            dashboard_submitted_at DATETIME NULL,
+            dashboard_reviewed_at DATETIME NULL,
             certificate_url VARCHAR(255) NULL,
             certificate_code VARCHAR(80) NULL,
             issued_at DATETIME NULL,
@@ -2442,6 +2447,26 @@ function ensure_certificate_requests_table(): void
     if (!isset($existing['issued_at'])) {
         db()->exec("ALTER TABLE certificate_requests ADD COLUMN issued_at DATETIME NULL AFTER certificate_code");
     }
+
+    if (!isset($existing['dashboard_url'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_url VARCHAR(500) NULL AFTER payment_note");
+    }
+
+    if (!isset($existing['dashboard_review_status'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_review_status ENUM('not_submitted', 'pending', 'approved', 'rejected') NOT NULL DEFAULT 'not_submitted' AFTER dashboard_url");
+    }
+
+    if (!isset($existing['dashboard_review_note'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_review_note TEXT NULL AFTER dashboard_review_status");
+    }
+
+    if (!isset($existing['dashboard_submitted_at'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_submitted_at DATETIME NULL AFTER dashboard_review_note");
+    }
+
+    if (!isset($existing['dashboard_reviewed_at'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_reviewed_at DATETIME NULL AFTER dashboard_submitted_at");
+    }
 }
 
 function certificate_badge(string $status): string
@@ -2454,6 +2479,63 @@ function certificate_badge(string $status): string
         'rejected' => 'Rejected',
         default => ucfirst(str_replace('_', ' ', $status)),
     };
+}
+
+function dashboard_review_badge(?string $status): string
+{
+    return match ($status) {
+        'pending' => 'Review Pending',
+        'approved' => 'Approved',
+        'rejected' => 'Needs Changes',
+        default => 'Not Submitted',
+    };
+}
+
+function normalize_elldy_dashboard_url(string $url): string
+{
+    $url = trim($url);
+    if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+        $url = 'https://' . $url;
+    }
+
+    return $url;
+}
+
+function is_elldy_dashboard_url(string $url): bool
+{
+    $url = normalize_elldy_dashboard_url($url);
+    $parts = parse_url($url);
+    $host = strtolower((string) ($parts['host'] ?? ''));
+
+    if ($host === '') {
+        return false;
+    }
+
+    if ($host === 'academy.elldy.com') {
+        return false;
+    }
+
+    return $host === 'elldy.com' || str_ends_with($host, '.elldy.com');
+}
+
+function certificate_dashboard_is_approved(array $certificate): bool
+{
+    return ($certificate['dashboard_review_status'] ?? '') === 'approved'
+        && is_elldy_dashboard_url((string) ($certificate['dashboard_url'] ?? ''));
+}
+
+function certificate_dashboard_url_exists(string $url, int $exceptEnrollmentId = 0): bool
+{
+    $normalized = normalize_elldy_dashboard_url($url);
+    $stmt = db()->prepare(
+        "SELECT COUNT(*)
+         FROM certificate_requests
+         WHERE dashboard_url = ?
+           AND (? = 0 OR enrollment_id != ?)"
+    );
+    $stmt->execute([$normalized, $exceptEnrollmentId, $exceptEnrollmentId]);
+
+    return (int) $stmt->fetchColumn() > 0;
 }
 
 function certificate_code_for_enrollment(int $enrollmentId): string
@@ -2614,6 +2696,10 @@ function issue_certificate_for_enrollment(array $row): ?string
 {
     ensure_certificate_requests_table();
 
+    if (!certificate_dashboard_is_approved($row)) {
+        return null;
+    }
+
     $certificateCode = trim((string) ($row['certificate_code'] ?? ''));
     if ($certificateCode === '') {
         $certificateCode = certificate_code_for_enrollment((int) $row['enrollment_id']);
@@ -2664,6 +2750,10 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
     }
 
     if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
+        return $certificate;
+    }
+
+    if (!certificate_dashboard_is_approved($certificate)) {
         return $certificate;
     }
 

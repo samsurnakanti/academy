@@ -6,7 +6,8 @@ ensure_course_detail_columns();
 
 $stmt = db()->prepare(
     "SELECT e.*, c.title, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type,
-            cr.status AS certificate_status, cr.certificate_url, cr.payment_note AS certificate_payment_note
+            cr.status AS certificate_status, cr.certificate_url, cr.payment_note AS certificate_payment_note,
+            cr.dashboard_url, cr.dashboard_review_status
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
@@ -134,6 +135,10 @@ require __DIR__ . '/includes/header.php';
                                 <a class="button tiny" href="pay_redirect.php?type=certificate&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Certificate Fee</a>
                             <?php elseif (!$programPaid): ?>
                                 <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+                            <?php elseif (($row['dashboard_review_status'] ?? 'not_submitted') !== 'approved'): ?>
+                                <a class="button tiny" href="certificate_apply.php?enrollment_id=<?= (int) $row['id'] ?>">
+                                    <?= ($row['dashboard_review_status'] ?? 'not_submitted') === 'pending' ? 'Review Pending' : 'Submit Dashboard' ?>
+                                </a>
                             <?php elseif ($certificatePaid && $programPaid && $row['certificate_url'] && $row['certificate_status'] === 'issued'): ?>
                                 <a class="button tiny" href="<?= e($row['certificate_url']) ?>" target="_blank" rel="noopener">Download</a>
                             <?php elseif ($row['certificate_status']): ?>

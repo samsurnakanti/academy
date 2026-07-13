@@ -41,6 +41,44 @@ if (!$certificate) {
     $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'submit_dashboard') {
+        $dashboardUrl = normalize_elldy_dashboard_url((string) ($_POST['dashboard_url'] ?? ''));
+
+        if ($dashboardUrl === '' || !filter_var($dashboardUrl, FILTER_VALIDATE_URL)) {
+            flash('error', 'Enter a valid public Elldy dashboard link.');
+        } elseif (!is_elldy_dashboard_url($dashboardUrl)) {
+            flash('error', 'Certificate review accepts only public Elldy dashboard links from elldy.com.');
+        } elseif (certificate_dashboard_url_exists($dashboardUrl, (int) $enrollment['id'])) {
+            flash('error', 'This dashboard link is already submitted for another certificate request.');
+        } elseif (($certificate['dashboard_review_status'] ?? '') === 'approved' && ($certificate['status'] ?? '') === 'issued') {
+            flash('error', 'This certificate is already issued.');
+        } else {
+            $status = $certificateAmount > 0 && !$certificatePaid ? 'payment_pending' : 'requested';
+            $update = db()->prepare(
+                "UPDATE certificate_requests
+                 SET dashboard_url = ?,
+                     dashboard_review_status = 'pending',
+                     dashboard_review_note = NULL,
+                     dashboard_submitted_at = NOW(),
+                     dashboard_reviewed_at = NULL,
+                     status = ?,
+                     certificate_url = NULL,
+                     certificate_code = NULL,
+                     issued_at = NULL
+                 WHERE enrollment_id = ?"
+            );
+            $update->execute([$dashboardUrl, $status, (int) $enrollment['id']]);
+            flash('success', 'Dashboard link submitted for review.');
+        }
+
+        redirect('certificate_apply.php?enrollment_id=' . (int) $enrollment['id']);
+    }
+}
+
 if ($programPaid && $certificatePaid) {
     $certificate = ensure_instant_certificate_for_enrollment($enrollmentId) ?? $certificate;
 }
@@ -64,17 +102,31 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
             </div>
             <button class="button tiny" type="button" data-certificate-toggle>Show</button>
         </div>
-        <p>Once payment is confirmed, your official certificate from Arklytics Solutions and Innovations and Elldy Platform is generated instantly as a downloadable PDF.</p>
+        <p>Create an Elldy account, import your dataset, build a dashboard, and submit the public Elldy dashboard link here. After academy review, your certificate can be downloaded.</p>
+        <form method="post" class="certificate-dashboard-form">
+            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="submit_dashboard">
+            <label>Public Elldy dashboard link
+                <input type="url" name="dashboard_url" value="<?= e((string) ($certificate['dashboard_url'] ?? '')) ?>" placeholder="https://elldy.com/..." required>
+            </label>
+            <button class="button primary" type="submit">Submit for Review</button>
+            <p><small>Status: <?= e(dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted')) ?></small></p>
+            <?php if (!empty($certificate['dashboard_review_note'])): ?>
+                <p><small>Review note: <?= e($certificate['dashboard_review_note']) ?></small></p>
+            <?php endif; ?>
+        </form>
         <?php if ($certificateAmount > 0 && !$certificatePaid): ?>
             <a class="button primary" href="<?= e($certificatePaymentUrl) ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
             <p><small>Certificate payment is separate from program payment.</small></p>
         <?php elseif (!$programPaid): ?>
             <a class="button primary" href="<?= e($programPaymentUrl) ?>" target="_blank" rel="noopener">Pay Program Fee</a>
             <p><small>Program payment is required before certificate download.</small></p>
+        <?php elseif (!certificate_dashboard_is_approved($certificate)): ?>
+            <p>Your public Elldy dashboard link must be reviewed and approved before certificate download.</p>
         <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
         <?php else: ?>
-            <p>Your certificate charge is included. Once your program payment status is paid, the certificate becomes available automatically.</p>
+            <p>Your dashboard is approved. Your certificate will be generated automatically.</p>
         <?php endif; ?>
     </div>
 </section>

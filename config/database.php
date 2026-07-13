@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const DB_HOST_DEFAULT = '127.0.0.1';
+const DB_HOST_DEFAULT = 'localhost';
 const DB_PORT_DEFAULT = 3307;
 const DB_NAME_DEFAULT = 'elldy_academy';
 const DB_USER_DEFAULT = 'root';
