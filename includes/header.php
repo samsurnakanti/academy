@@ -17,6 +17,20 @@ $admin = current_admin();
 
       gtag('config', 'G-1HCSRBVEC8');
     </script>
+    <!-- Meta Pixel Code -->
+    <script>
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)}(window, document,'script',
+      'https://connect.facebook.net/en_US/fbevents.js');
+      fbq('init', '3066061163585047');
+      fbq('track', 'PageView');
+    </script>
+    <!-- End Meta Pixel Code -->
     <?php if (!empty($canonicalUrl)): ?>
         <link rel="canonical" href="<?= e($canonicalUrl) ?>">
     <?php endif; ?>
@@ -37,6 +51,10 @@ $admin = current_admin();
     data-app-analytics-url="<?= e(public_url('track_app.php')) ?>"
     data-app-analytics-token="<?= e(csrf_token()) ?>"
 >
+<noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=3066061163585047&ev=PageView&noscript=1"
+    alt=""
+></noscript>
 <script>
 if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
     document.body.classList.add('is-installed-app-launch');
