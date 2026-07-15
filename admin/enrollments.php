@@ -1,9 +1,197 @@
 <?php
 $title = 'Enrollments';
-require __DIR__ . '/_admin_header.php';
+require_once __DIR__ . '/../includes/functions.php';
+$admin = require_admin();
 ensure_enrollment_detail_columns();
 ensure_course_detail_columns();
+ensure_certificate_requests_table();
 $dateFilter = admin_date_filter();
+$selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
+$courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
+
+if (!function_exists('enrollment_filter_where')) {
+    function enrollment_filter_where(array $dateFilter, int $courseId, array &$params): string
+    {
+        $conditions = [];
+        $dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
+
+        if ($dateCondition !== '') {
+            $conditions[] = $dateCondition;
+        }
+
+        if ($courseId > 0) {
+            $conditions[] = 'e.course_id = ?';
+            $params[] = $courseId;
+        }
+
+        return $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+    }
+}
+
+if (($_GET['export'] ?? '') === 'csv') {
+    $params = [];
+    $where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
+    $stmt = db()->prepare(
+        "SELECT
+            e.id AS enrollment_id,
+            e.created_at AS enrolled_at,
+            e.status AS enrollment_status,
+            e.payment_note AS enrollment_payment_note,
+            e.payment_requested_at,
+            e.student_background,
+            e.learning_goals,
+            e.completion_expectation,
+            e.daily_reminders_enabled,
+            e.last_reminder_sent_on,
+            u.id AS user_id,
+            u.name AS candidate_name,
+            u.email AS candidate_email,
+            u.phone AS candidate_phone,
+            u.created_at AS candidate_registered_at,
+            c.id AS course_id,
+            c.title AS programme,
+            c.duration,
+            c.delivery_type,
+            c.fee AS programme_fee,
+            c.discount_fee AS programme_discount_fee,
+            c.certification_fee,
+            c.certificate_discount_fee,
+            cr.status AS certificate_status,
+            cr.payment_note AS certificate_payment_note,
+            cr.dashboard_url,
+            cr.dashboard_review_status,
+            cr.dashboard_review_note,
+            cr.dashboard_submitted_at,
+            cr.certificate_url,
+            cr.certificate_code,
+            cr.issued_at,
+            COALESCE(progress.total_items, 0) AS learning_items_started,
+            COALESCE(progress.completed_items, 0) AS learning_items_completed,
+            COALESCE(progress.average_progress_percent, 0) AS average_progress_percent
+         FROM enrollments e
+         JOIN users u ON u.id = e.user_id
+         JOIN courses c ON c.id = e.course_id
+         LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
+         LEFT JOIN (
+            SELECT enrollment_id,
+                   COUNT(*) AS total_items,
+                   SUM(is_completed = 1) AS completed_items,
+                   ROUND(AVG(progress_percent), 2) AS average_progress_percent
+            FROM learning_progress
+            GROUP BY enrollment_id
+         ) progress ON progress.enrollment_id = e.id
+         {$where}
+         ORDER BY c.title ASC, e.created_at DESC"
+    );
+    $stmt->execute($params);
+    $exportRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $filenameParts = ['enrollments'];
+    if ($selectedCourseId > 0) {
+        foreach ($courses as $course) {
+            if ((int) $course['id'] === $selectedCourseId) {
+                $filenameParts[] = preg_replace('/[^a-z0-9]+/i', '-', strtolower((string) $course['title']));
+                break;
+            }
+        }
+    }
+    if ($dateFilter['from'] !== '' && $dateFilter['to'] !== '') {
+        $filenameParts[] = $dateFilter['from'] . '-to-' . $dateFilter['to'];
+    }
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . implode('-', array_filter($filenameParts)) . '.csv"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $handle = fopen('php://output', 'w');
+    fputcsv($handle, [
+        'Enrollment ID',
+        'Enrolled At',
+        'Enrollment Status',
+        'Enrollment Status Label',
+        'Payment Note',
+        'Payment Requested At',
+        'Candidate ID',
+        'Candidate Name',
+        'Candidate Email',
+        'Candidate Phone',
+        'Candidate Registered At',
+        'Programme ID',
+        'Programme',
+        'Duration',
+        'Delivery Type',
+        'Programme Fee',
+        'Programme Discount Fee',
+        'Effective Programme Fee',
+        'Certification Fee',
+        'Certificate Discount Fee',
+        'Effective Certificate Fee',
+        'Student Background',
+        'Learning Goals',
+        'Completion Expectation',
+        'Daily Reminders Enabled',
+        'Last Reminder Sent On',
+        'Certificate Status',
+        'Certificate Payment Note',
+        'Dashboard URL',
+        'Dashboard Review Status',
+        'Dashboard Review Note',
+        'Dashboard Submitted At',
+        'Certificate URL',
+        'Certificate Code',
+        'Certificate Issued At',
+        'Learning Items Started',
+        'Learning Items Completed',
+        'Average Progress Percent',
+    ]);
+
+    foreach ($exportRows as $row) {
+        fputcsv($handle, [
+            $row['enrollment_id'],
+            $row['enrolled_at'],
+            $row['enrollment_status'],
+            enrollment_badge((string) $row['enrollment_status']),
+            $row['enrollment_payment_note'],
+            $row['payment_requested_at'],
+            $row['user_id'],
+            $row['candidate_name'],
+            $row['candidate_email'],
+            $row['candidate_phone'],
+            $row['candidate_registered_at'],
+            $row['course_id'],
+            $row['programme'],
+            $row['duration'],
+            $row['delivery_type'],
+            $row['programme_fee'],
+            $row['programme_discount_fee'],
+            course_fee_amount(['fee' => $row['programme_fee'], 'discount_fee' => $row['programme_discount_fee']]),
+            $row['certification_fee'],
+            $row['certificate_discount_fee'],
+            certificate_fee_amount(['certification_fee' => $row['certification_fee'], 'certificate_discount_fee' => $row['certificate_discount_fee']]),
+            $row['student_background'],
+            $row['learning_goals'],
+            $row['completion_expectation'],
+            ((int) $row['daily_reminders_enabled'] === 1) ? 'Yes' : 'No',
+            $row['last_reminder_sent_on'],
+            $row['certificate_status'],
+            $row['certificate_payment_note'],
+            $row['dashboard_url'],
+            $row['dashboard_review_status'],
+            $row['dashboard_review_note'],
+            $row['dashboard_submitted_at'],
+            $row['certificate_url'],
+            $row['certificate_code'],
+            $row['issued_at'],
+            $row['learning_items_started'],
+            $row['learning_items_completed'],
+            $row['average_progress_percent'],
+        ]);
+    }
+
+    fclose($handle);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -116,9 +304,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('enrollments.php');
 }
 
+require __DIR__ . '/_admin_header.php';
+
 $params = [];
-$dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
-$where = $dateCondition === '' ? '' : "WHERE {$dateCondition}";
+$where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
 $stmt = db()->prepare(
     "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee
      FROM enrollments e
@@ -135,7 +324,29 @@ $rows = $stmt->fetchAll();
     <h1>Elldy Enrollments</h1>
 </section>
 <section class="section compact-section">
+    <?php $dateFilterHidden = $selectedCourseId > 0 ? ['course_id' => $selectedCourseId] : []; ?>
     <?php require __DIR__ . '/_date_filter.php'; ?>
+</section>
+<section class="section compact-section">
+    <form class="date-filter-form" method="get" action="enrollments.php">
+        <input type="hidden" name="range" value="<?= e($dateFilter['range']) ?>">
+        <?php if ($dateFilter['range'] === 'custom'): ?>
+            <input type="hidden" name="from" value="<?= e($dateFilter['from']) ?>">
+            <input type="hidden" name="to" value="<?= e($dateFilter['to']) ?>">
+        <?php endif; ?>
+        <label>Programme
+            <select name="course_id">
+                <option value="0">All programmes</option>
+                <?php foreach ($courses as $course): ?>
+                    <option value="<?= (int) $course['id'] ?>" <?= $selectedCourseId === (int) $course['id'] ? 'selected' : '' ?>>
+                        <?= e($course['title']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <button class="button small" type="submit">View</button>
+        <a class="button small" href="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'export' => 'csv'], $dateFilter)) ?>">Export CSV</a>
+    </form>
 </section>
 <section class="section compact-section">
     <form method="post" class="form-card" id="bulk-reminder-form">
