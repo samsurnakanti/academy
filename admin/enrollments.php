@@ -28,6 +28,15 @@ if (!function_exists('enrollment_filter_where')) {
     }
 }
 
+if (!function_exists('csv_excel_text')) {
+    function csv_excel_text(?string $value): string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? '' : "\t" . $value;
+    }
+}
+
 if (($_GET['export'] ?? '') === 'csv') {
     $params = [];
     $where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
@@ -157,7 +166,7 @@ if (($_GET['export'] ?? '') === 'csv') {
             $row['user_id'],
             $row['candidate_name'],
             $row['candidate_email'],
-            $row['candidate_phone'],
+            csv_excel_text($row['candidate_phone']),
             $row['candidate_registered_at'],
             $row['course_id'],
             $row['programme'],
