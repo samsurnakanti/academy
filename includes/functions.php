@@ -2476,7 +2476,7 @@ function certificate_badge(string $status): string
         'payment_pending' => 'Payment Pending',
         'approved' => 'Approved',
         'issued' => 'Issued',
-        'rejected' => 'Rejected',
+        'rejected' => 'Cancelled',
         default => ucfirst(str_replace('_', ' ', $status)),
     };
 }
@@ -2498,7 +2498,18 @@ function normalize_elldy_dashboard_url(string $url): string
         $url = 'https://' . $url;
     }
 
-    return $url;
+    $parts = parse_url($url);
+    if (!$parts || empty($parts['host'])) {
+        return $url;
+    }
+
+    $scheme = strtolower((string) ($parts['scheme'] ?? 'https'));
+    $host = strtolower((string) $parts['host']);
+    $port = isset($parts['port']) ? ':' . (int) $parts['port'] : '';
+    $path = rtrim((string) ($parts['path'] ?? ''), '/');
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+
+    return $scheme . '://' . $host . $port . $path . $query;
 }
 
 function is_elldy_dashboard_url(string $url): bool
@@ -2766,11 +2777,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
 
     $expectedIssuedPath = __DIR__ . '/../assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
 
-    if (
-        $certificate['status'] !== 'issued'
-        || empty($certificate['certificate_url'])
-        || !is_file($expectedIssuedPath)
-    ) {
+    if (($certificate['status'] ?? '') === 'issued' && (empty($certificate['certificate_url']) || !is_file($expectedIssuedPath))) {
         issue_certificate_for_enrollment($certificate);
         $stmt->execute([$enrollmentId]);
         $certificate = $stmt->fetch();

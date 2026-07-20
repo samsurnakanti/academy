@@ -11,9 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requestId = (int) ($_POST['id'] ?? 0);
 
     $stmt = db()->prepare(
-        "SELECT cr.*, e.status AS enrollment_status, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
+        "SELECT cr.*, e.status AS enrollment_status, u.name, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
          FROM certificate_requests cr
          JOIN enrollments e ON e.id = cr.enrollment_id
+         JOIN users u ON u.id = cr.user_id
          JOIN courses c ON c.id = cr.course_id
          WHERE cr.id = ?"
     );
@@ -27,13 +28,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $note = trim((string) ($_POST['dashboard_review_note'] ?? ''));
 
-    if ($action === 'approve_dashboard') {
+    if ($action === 'issue_certificate') {
         $dashboardUrl = normalize_elldy_dashboard_url((string) ($request['dashboard_url'] ?? ''));
+        $programPaid = in_array($request['enrollment_status'], ['paid', 'completed'], true) || course_fee_amount($request) <= 0;
+        $certificatePaid = certificate_fee_amount($request) <= 0 || trim((string) ($request['payment_note'] ?? '')) !== '';
 
         if ($dashboardUrl === '' || !is_elldy_dashboard_url($dashboardUrl)) {
-            flash('error', 'Only public Elldy dashboard links from elldy.com can be approved.');
+            flash('error', 'Only public Elldy dashboard links from elldy.com can be issued.');
         } elseif (certificate_dashboard_url_exists($dashboardUrl, (int) $request['enrollment_id'])) {
             flash('error', 'This dashboard link is already used by another certificate request.');
+        } elseif (!$programPaid) {
+            flash('error', 'Program payment must be completed before issuing this certificate.');
+        } elseif (!$certificatePaid) {
+            flash('error', 'Certificate payment must be completed before issuing this certificate.');
         } else {
             $update = db()->prepare(
                 "UPDATE certificate_requests
@@ -45,10 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  WHERE id = ?"
             );
             $update->execute([$dashboardUrl, $note, $requestId]);
-            ensure_instant_certificate_for_enrollment((int) $request['enrollment_id']);
-            flash('success', 'Dashboard approved. Certificate will be available when payment requirements are satisfied.');
+            $issuedUrl = issue_certificate_for_enrollment(array_merge($request, [
+                'dashboard_url' => $dashboardUrl,
+                'dashboard_review_status' => 'approved',
+                'dashboard_review_note' => $note,
+            ]));
+            flash($issuedUrl ? 'success' : 'error', $issuedUrl ? 'Certificate issued. Student can download it now.' : 'Unable to issue certificate.');
         }
-    } elseif ($action === 'reject_dashboard') {
+    } elseif ($action === 'cancel_certificate') {
         $update = db()->prepare(
             "UPDATE certificate_requests
              SET dashboard_review_status = 'rejected',
@@ -60,15 +71,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  issued_at = NULL
              WHERE id = ?"
         );
-        $update->execute([$note !== '' ? $note : 'Please submit a valid public Elldy dashboard link.', $requestId]);
-        flash('success', 'Dashboard submission rejected.');
+        $update->execute([$note !== '' ? $note : 'Certificate request cancelled by admin.', $requestId]);
+        flash('success', 'Certificate request cancelled.');
     }
 
     redirect('certificates.php');
 }
 
 $rows = db()->query(
-    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.certification_fee, c.certificate_discount_fee, e.status AS enrollment_status
+    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details, e.status AS enrollment_status
      FROM certificate_requests cr
      JOIN users u ON u.id = cr.user_id
      JOIN courses c ON c.id = cr.course_id
@@ -80,7 +91,7 @@ require __DIR__ . '/_admin_header.php';
 <section class="page-title">
     <p class="eyebrow">Admin</p>
     <h1>Certificate Control</h1>
-    <p>Certificates can be issued anytime for eligible learners. Course progress is shown for admin reference.</p>
+    <p>Review new Elldy dashboard submissions, then issue or cancel certificate requests.</p>
 </section>
 
 <section class="section">
@@ -113,9 +124,9 @@ require __DIR__ . '/_admin_header.php';
                                 <form method="post" class="inline-form certificate-review-form">
                                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                     <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
-                                    <input name="dashboard_review_note" placeholder="Review note">
-                                    <button class="button tiny" type="submit" name="action" value="approve_dashboard">Approve</button>
-                                    <button class="button tiny danger-action" type="submit" name="action" value="reject_dashboard">Reject</button>
+                                    <input name="dashboard_review_note" placeholder="Admin note">
+                                    <button class="button tiny" type="submit" name="action" value="issue_certificate">Issue</button>
+                                    <button class="button tiny danger-action" type="submit" name="action" value="cancel_certificate">Cancel</button>
                                 </form>
                             <?php endif; ?>
                         </td>

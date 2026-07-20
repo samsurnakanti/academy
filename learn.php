@@ -272,7 +272,7 @@ require __DIR__ . '/includes/header.php';
                 <button class="button tiny" type="button" data-certificate-toggle>Show</button>
             </div>
             <?php if ($certificateFeeDue && !$certificatePaid): ?>
-                <p>Pay the certification charge to generate your downloadable certificate.</p>
+                <p>Pay the certification charge before admin can issue your downloadable certificate.</p>
                 <a class="button primary" href="pay_redirect.php?type=certificate&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
             <?php elseif (!$programPaid): ?>
                 <p>Complete the program payment to unlock your certificate download.</p>
@@ -289,7 +289,7 @@ require __DIR__ . '/includes/header.php';
             <?php elseif ($certificate): ?>
                 <p>Status: <?= e(certificate_badge($certificate['status'])) ?></p>
             <?php else: ?>
-                <p>Your certificate will be generated after payment confirmation.</p>
+                <p>Submit your dashboard link after payment confirmation so admin can review and issue your certificate.</p>
                 <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Certificate Details</a>
             <?php endif; ?>
         </div>

@@ -79,10 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if ($programPaid && $certificatePaid) {
-    $certificate = ensure_instant_certificate_for_enrollment($enrollmentId) ?? $certificate;
-}
-
 $title = 'Apply Certificate | Elldy Academy';
 require __DIR__ . '/includes/header.php';
 $certificateAppId = 'EA-CERT-' . (int) $enrollment['id'];
@@ -102,7 +98,7 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
             </div>
             <button class="button tiny" type="button" data-certificate-toggle>Show</button>
         </div>
-        <p>Create an Elldy account, import your dataset, build a dashboard, and submit the public Elldy dashboard link here. After academy review, your certificate can be downloaded.</p>
+        <p>Create an Elldy account, import your dataset, build a dashboard, and submit the public Elldy dashboard link here. After admin review and issue approval, your certificate can be downloaded.</p>
         <form method="post" class="certificate-dashboard-form">
             <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
             <input type="hidden" name="action" value="submit_dashboard">
@@ -121,12 +117,14 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
         <?php elseif (!$programPaid): ?>
             <a class="button primary" href="<?= e($programPaymentUrl) ?>" target="_blank" rel="noopener">Pay Program Fee</a>
             <p><small>Program payment is required before certificate download.</small></p>
+        <?php elseif (($certificate['status'] ?? '') === 'rejected'): ?>
+            <p>Your certificate request was cancelled. Submit a corrected public Elldy dashboard link for review.</p>
         <?php elseif (!certificate_dashboard_is_approved($certificate)): ?>
-            <p>Your public Elldy dashboard link must be reviewed and approved before certificate download.</p>
+            <p>Your public Elldy dashboard link must be reviewed before certificate download.</p>
         <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['certificate_url'] && $certificate['status'] === 'issued'): ?>
             <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
         <?php else: ?>
-            <p>Your dashboard is approved. Your certificate will be generated automatically.</p>
+            <p>Your dashboard is approved. Please wait for admin to issue your certificate.</p>
         <?php endif; ?>
     </div>
 </section>

@@ -34,11 +34,18 @@ if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['pay
 
 if (!certificate_dashboard_is_approved($certificate)) {
     http_response_code(403);
-    exit('Please submit a public Elldy dashboard link and wait for academy approval before downloading your certificate.');
+    exit('Please submit a public Elldy dashboard link and wait for admin review before downloading your certificate.');
+}
+
+if (($certificate['status'] ?? '') !== 'issued') {
+    http_response_code(403);
+    exit('Your certificate is not issued yet.');
 }
 
 $expectedPath = __DIR__ . '/assets/certificates/issued/certificate-' . $enrollmentId . '.pdf';
-issue_certificate_for_enrollment($certificate);
+if (!is_file($expectedPath)) {
+    issue_certificate_for_enrollment($certificate);
+}
 
 if (!is_file($expectedPath)) {
     http_response_code(404);
