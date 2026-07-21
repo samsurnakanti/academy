@@ -1931,6 +1931,25 @@ function unique_blog_slug(string $title, int $ignoreId = 0): string
     }
 }
 
+function unique_course_slug(string $title, int $ignoreId = 0): string
+{
+    $baseSlug = slugify($title);
+    $slug = $baseSlug;
+    $suffix = 2;
+
+    while (true) {
+        $stmt = db()->prepare('SELECT id FROM courses WHERE slug = ? AND id != ? LIMIT 1');
+        $stmt->execute([$slug, $ignoreId]);
+
+        if (!$stmt->fetch()) {
+            return $slug;
+        }
+
+        $slug = $baseSlug . '-' . $suffix;
+        $suffix++;
+    }
+}
+
 function blog_url(array $post): string
 {
     return public_url('blog.php?slug=' . rawurlencode((string) ($post['slug'] ?? '')));

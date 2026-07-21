@@ -35,16 +35,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
 }
 
 $title = 'Analytics Programs';
-require __DIR__ . '/_admin_header.php';
+require_admin();
 ensure_course_detail_columns();
 ensure_s3_settings_table();
-
-$edit = null;
-if (isset($_GET['edit'])) {
-    $stmt = db()->prepare('SELECT * FROM courses WHERE id = ?');
-    $stmt->execute([(int) $_GET['edit']]);
-    $edit = $stmt->fetch();
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -92,8 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect($id > 0 ? 'courses.php?edit=' . $id : 'courses.php');
     }
 
+    $courseTitle = trim((string) ($_POST['title'] ?? ''));
+    $duration = trim((string) ($_POST['duration'] ?? ''));
+
     $data = [
-        trim($_POST['title'] ?? ''),
+        $courseTitle,
         trim($_POST['short_description'] ?? ''),
         trim($_POST['description'] ?? ''),
         trim($_POST['learning_plan'] ?? ''),
@@ -116,26 +112,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         isset($_POST['is_active']) ? 1 : 0,
     ];
 
-    if ($data[0] === '' || $data[10] === '') {
+    if ($courseTitle === '' || $duration === '') {
         flash('error', 'Program title and duration are required.');
-    } elseif ($id > 0) {
+        redirect($id > 0 ? 'courses.php?edit=' . $id : 'courses.php');
+    }
+
+    try {
+        if ($id > 0) {
+            $stmt = db()->prepare(
+                'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, promo_video_url=?, duration=?, fee=?, discount_fee=?, certification_fee=?, certificate_discount_fee=?, show_fee_details=?, delivery_type=?, certificate_details=?, certificate_title=?, first_class_link=?, is_active=? WHERE id=?'
+            );
+            $stmt->execute([...$data, $id]);
+            flash('success', 'Program updated.');
+            redirect('courses.php');
+        }
+
+        $slug = unique_course_slug($courseTitle);
         $stmt = db()->prepare(
-            'UPDATE courses SET title=?, short_description=?, description=?, learning_plan=?, completion_benefits=?, expert_name=?, expert_title=?, expert_bio=?, expert_photo=?, promo_video_url=?, duration=?, fee=?, discount_fee=?, certification_fee=?, certificate_discount_fee=?, show_fee_details=?, delivery_type=?, certificate_details=?, certificate_title=?, first_class_link=?, is_active=? WHERE id=?'
+            'INSERT INTO courses (title, slug, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, promo_video_url, duration, fee, discount_fee, certification_fee, certificate_discount_fee, show_fee_details, delivery_type, certificate_details, certificate_title, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([...$data, $id]);
-        flash('success', 'Program updated.');
-        redirect('courses.php');
-    } else {
-        $stmt = db()->prepare(
-            'INSERT INTO courses (title, short_description, description, learning_plan, completion_benefits, expert_name, expert_title, expert_bio, expert_photo, promo_video_url, duration, fee, discount_fee, certification_fee, certificate_discount_fee, show_fee_details, delivery_type, certificate_details, certificate_title, first_class_link, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->execute($data);
+        $stmt->execute([$data[0], $slug, ...array_slice($data, 1)]);
         flash('success', 'Program added.');
         redirect('courses.php');
+    } catch (PDOException $exception) {
+        $message = str_contains($exception->getMessage(), 'Duplicate entry')
+            ? 'A program with this title already exists. Please use a different title.'
+            : 'Program could not be saved. Please check the entered details and try again.';
+        flash('error', $message);
+        redirect($id > 0 ? 'courses.php?edit=' . $id : 'courses.php');
     }
 }
 
+$edit = null;
+if (isset($_GET['edit'])) {
+    $stmt = db()->prepare('SELECT * FROM courses WHERE id = ?');
+    $stmt->execute([(int) $_GET['edit']]);
+    $edit = $stmt->fetch();
+}
+
 $courses = db()->query('SELECT * FROM courses ORDER BY created_at DESC')->fetchAll();
+require __DIR__ . '/_admin_header.php';
 ?>
 <section class="page-title">
     <p class="eyebrow">Admin</p>
