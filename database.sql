@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS courses (
     discount_fee DECIMAL(10,2) NULL DEFAULT NULL,
     certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0,
     certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL,
+    show_fee_details TINYINT(1) NOT NULL DEFAULT 1,
     delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video',
     certificate_details TEXT NULL,
     certificate_title VARCHAR(220) NULL,

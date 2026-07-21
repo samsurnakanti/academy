@@ -3836,6 +3836,7 @@ function ensure_course_detail_columns(): void
         'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
         'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
         'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
+        'first_class_link' => 'ADD COLUMN first_class_link VARCHAR(255) NULL AFTER certificate_title',
     ];
 
     foreach ($missing as $column => $definition) {

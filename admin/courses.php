@@ -135,9 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'Program added.');
         redirect('courses.php');
     } catch (PDOException $exception) {
-        $message = str_contains($exception->getMessage(), 'Duplicate entry')
+        $error = $exception->getMessage();
+        $message = str_contains($error, 'Duplicate entry')
             ? 'A program with this title already exists. Please use a different title.'
-            : 'Program could not be saved. Please check the entered details and try again.';
+            : 'Program could not be saved: ' . $error;
         flash('error', $message);
         redirect($id > 0 ? 'courses.php?edit=' . $id : 'courses.php');
     }
