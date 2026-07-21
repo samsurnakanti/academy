@@ -106,7 +106,7 @@ require __DIR__ . '/includes/header.php';
             <?php elseif ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php elseif ($isLiveSessionCourse): ?>
-                <span><strong>First session</strong>Free access</span>
+                <span><strong>Access</strong>Payment required</span>
             <?php else: ?>
                 <span><strong>Access</strong>Full video course</span>
             <?php endif; ?>
@@ -138,7 +138,7 @@ require __DIR__ . '/includes/header.php';
         <?php if ($resourceRows || $liveSessionRows): ?>
             <div class="info-block">
                 <h2>Program Resources</h2>
-                <p>These learning items are included in the program and become available inside the learning workspace after enrollment.</p>
+                <p>These learning items are included in the program and become available inside the learning workspace after required payment.</p>
                 <div class="material-outline">
                     <?php foreach ($resourceRows as $resource): ?>
                         <article>
@@ -170,7 +170,7 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div class="material-item">
             <strong>Enrolled learner access</strong>
-            <p>Video links, live-session links, and downloadable resources are opened from the protected learning workspace after enrollment.</p>
+            <p>Video links, live-session links, and downloadable resources are opened from the protected learning workspace after required payment.</p>
         </div>
     </aside>
 </section>

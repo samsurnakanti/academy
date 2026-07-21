@@ -52,15 +52,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  SET status = ?, student_background = ?, daily_reminders_enabled = ?
                  WHERE id = ?'
             );
-            $update->execute(['free_access', $studentBackground, $isFreeProgram ? 0 : 1, (int) $enrollment['id']]);
-            flash('success', $isFreeProgram ? 'Your free program enrollment has been updated. Our team will contact you soon.' : 'Your free first-session registration has been updated. Our team will contact you soon.');
+            $enrollmentStatus = $isFreeProgram ? 'free_access' : 'payment_pending';
+            $update->execute([$enrollmentStatus, $studentBackground, 0, (int) $enrollment['id']]);
+            flash('success', $isFreeProgram ? 'Your free program enrollment has been updated. You can watch the videos from your dashboard.' : 'Your registration has been saved. Please complete the program payment to watch videos or join sessions.');
         } else {
             $insert = db()->prepare(
                 'INSERT INTO enrollments (user_id, course_id, status, student_background, daily_reminders_enabled)
                  VALUES (?, ?, ?, ?, ?)'
             );
-            $insert->execute([$userId, $courseId, 'free_access', $studentBackground, $isFreeProgram ? 0 : 1]);
-            flash('success', $isFreeProgram ? 'Free program enrollment successful. Our team will contact you soon.' : 'Free first-session registration successful. Our team will contact you soon.');
+            $enrollmentStatus = $isFreeProgram ? 'free_access' : 'payment_pending';
+            $insert->execute([$userId, $courseId, $enrollmentStatus, $studentBackground, 0]);
+            flash('success', $isFreeProgram ? 'Free program enrollment successful. You can watch the videos from your dashboard.' : 'Registration successful. Please complete the program payment to watch videos or join sessions.');
         }
 
         $enrolledUser = ['name' => $name, 'phone' => $phone];
@@ -74,12 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$title = $isFreeProgram ? 'Free Program Enrollment | Elldy Academy' : 'Free Analytics Session Registration | Elldy Academy';
+$title = $isFreeProgram ? 'Free Program Enrollment | Elldy Academy' : 'Program Enrollment | Elldy Academy';
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="enroll-layout">
     <aside class="enroll-intro">
-        <p class="eyebrow"><?= $isFreeProgram ? 'Free program' : 'Free analytics session' ?></p>
+        <p class="eyebrow"><?= $isFreeProgram ? 'Free program' : 'Paid program' ?></p>
         <h1><?= e($course['title']) ?></h1>
         <p>Join Elldy Academy and learn how business cases become dashboards, KPIs, insight notes, and decision-ready BI reports for the Elldy intelligence ecosystem.</p>
         <div class="stats-row">
@@ -92,7 +94,7 @@ require __DIR__ . '/includes/header.php';
             <?php elseif ($isFreeProgram): ?>
                 <span><strong>Access</strong>Entire program free</span>
             <?php else: ?>
-                <span><strong>First session</strong>Free access</span>
+                <span><strong>Access</strong>Payment required</span>
             <?php endif; ?>
         </div>
 
@@ -132,8 +134,8 @@ require __DIR__ . '/includes/header.php';
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="course_id" value="<?= (int) $course['id'] ?>">
         <p class="eyebrow">No login required</p>
-        <h1><?= $isFreeProgram ? 'Enroll Now' : 'Reserve Your Free Session' ?></h1>
-        <p><?= $isFreeProgram ? 'Share your trainee details to enroll in this free program. Our team will contact you with access and guidance.' : 'Share your trainee details. Our team will contact you with the first session access and program guidance.' ?></p>
+        <h1>Enroll Now</h1>
+        <p><?= $isFreeProgram ? 'Share your trainee details to enroll in this free program and watch the available videos.' : 'Share your trainee details. Program videos and live sessions unlock after payment.' ?></p>
 
         <fieldset>
             <legend>Trainee Information</legend>

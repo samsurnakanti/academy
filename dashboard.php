@@ -63,7 +63,7 @@ require __DIR__ . '/includes/header.php';
 <section class="page-title">
     <p class="eyebrow">Trainee dashboard</p>
     <h1>Welcome, <?= e($user['name']) ?></h1>
-    <p>Track your live sessions, first session access, and payment status.</p>
+    <p>Track your program access, certificate status, and payment status.</p>
     <a class="button small" href="profile.php">Update Profile</a>
 </section>
 <section class="section dashboard-install-section">
@@ -113,19 +113,21 @@ require __DIR__ . '/includes/header.php';
                         <td data-label="Status">
                             <span class="status">
                                 <?php if ($row['status'] === 'free_access'): ?>
-                                    <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'First Session Free' : 'First Video Free' ?>
+                                    Free Access
                                 <?php else: ?>
                                     <?= e(enrollment_badge($row['status'])) ?>
                                 <?php endif; ?>
                             </span>
                         </td>
                         <td data-label="Learn">
-                            <?php if ($row['status'] !== 'cancelled'): ?>
+                            <?php if ($row['status'] === 'cancelled'): ?>
+                                -
+                            <?php elseif (!$programPaid): ?>
+                                <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
+                            <?php else: ?>
                                 <a class="button tiny" href="learn.php?enrollment_id=<?= (int) $row['id'] ?>">
                                     <?= ($row['delivery_type'] ?? 'video') === 'live_session' ? 'Join Live Sessions' : 'Watch Videos' ?>
                                 </a>
-                            <?php else: ?>
-                                -
                             <?php endif; ?>
                         </td>
                         <td data-label="Certificate">

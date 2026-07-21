@@ -35,38 +35,9 @@ $materialsStmt->execute([(int) $enrollment['course_id']]);
 $materials = $materialsStmt->fetchAll();
 $progressByMaterial = learning_progress_for_enrollment((int) $enrollment['id']);
 $primaryType = ($enrollment['delivery_type'] ?? 'video') === 'live_session' ? 'live_session' : 'video';
-$primaryMaterialTypes = primary_material_types_for_delivery($primaryType);
-$freePreviewMaterialTypes = ['video', 'live_session'];
-$freePreviewItemIds = [];
-$firstPrimaryItemId = null;
-foreach ($materials as $material) {
-    if (
-        (int) ($material['sort_order'] ?? 0) <= 0 &&
-        in_array($material['material_type'] ?? 'video', $freePreviewMaterialTypes, true)
-    ) {
-        $freePreviewItemIds[] = (int) $material['id'];
-    }
 
-    if (in_array($material['material_type'] ?? 'video', $primaryMaterialTypes, true)) {
-        if ($firstPrimaryItemId === null) {
-            $firstPrimaryItemId = (int) $material['id'];
-        }
-    }
-}
-
-$canAccessMaterial = static function (array $material) use ($hasFullAccess, $firstPrimaryItemId, $freePreviewItemIds, $primaryMaterialTypes): bool {
-    if ($hasFullAccess) {
-        return true;
-    }
-
-    $materialId = (int) $material['id'];
-
-    if ($freePreviewItemIds) {
-        return in_array($materialId, $freePreviewItemIds, true);
-    }
-
-    return in_array($material['material_type'] ?? 'video', $primaryMaterialTypes, true) &&
-        $materialId === $firstPrimaryItemId;
+$canAccessMaterial = static function (array $material) use ($hasFullAccess): bool {
+    return $hasFullAccess;
 };
 
 $activeMaterial = null;
@@ -128,7 +99,7 @@ require __DIR__ . '/includes/header.php';
 <section class="page-title">
     <p class="eyebrow">Learning workspace</p>
     <h1><?= e($enrollment['title']) ?></h1>
-    <p><?= $primaryType === 'live_session' ? 'Join live sessions, watch session videos, and open supporting materials after enrollment.' : 'Watch course videos one by one and open supporting materials after enrollment.' ?></p>
+    <p><?= $primaryType === 'live_session' ? 'Join live sessions, watch session videos, and open supporting materials after program payment.' : 'Watch course videos one by one and open supporting materials after program payment.' ?></p>
 </section>
 
 <section class="learning-layout">
@@ -136,7 +107,7 @@ require __DIR__ . '/includes/header.php';
         <?php if (!$activeMaterial): ?>
             <div class="empty-state">
                 <h2>Learning items are locked</h2>
-                <p>This is a paid program. Free preview videos or sessions are available before payment; complete payment to unlock the remaining sessions, videos, and materials.</p>
+                <p>Program payment is required before videos, live sessions, and materials can be opened.</p>
                 <a class="button primary" href="payment.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Continue Payment</a>
             </div>
         <?php elseif ($activeMaterial): ?>
