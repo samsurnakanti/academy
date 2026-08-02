@@ -2554,20 +2554,6 @@ function certificate_dashboard_is_approved(array $certificate): bool
         && is_elldy_dashboard_url((string) ($certificate['dashboard_url'] ?? ''));
 }
 
-function certificate_dashboard_url_exists(string $url, int $exceptEnrollmentId = 0): bool
-{
-    $normalized = normalize_elldy_dashboard_url($url);
-    $stmt = db()->prepare(
-        "SELECT COUNT(*)
-         FROM certificate_requests
-         WHERE dashboard_url = ?
-           AND (? = 0 OR enrollment_id != ?)"
-    );
-    $stmt->execute([$normalized, $exceptEnrollmentId, $exceptEnrollmentId]);
-
-    return (int) $stmt->fetchColumn() > 0;
-}
-
 function certificate_code_for_enrollment(int $enrollmentId): string
 {
     return 'ELD-DA-' . date('Y') . '-' . str_pad((string) $enrollmentId, 4, '0', STR_PAD_LEFT);

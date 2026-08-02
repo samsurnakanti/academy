@@ -380,7 +380,7 @@ $rows = $stmt->fetchAll();
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th><input type="checkbox" data-select-all="bulk-reminder-form" aria-label="Select all students"></th><th>S.No</th><th>Trainee</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
+                <tr><th><input type="checkbox" data-select-all="bulk-reminder-form" aria-label="Select all students"></th><th>S.No</th><th>Trainee</th><th>Current Profile</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($rows as $index => $row): ?>
@@ -392,6 +392,7 @@ $rows = $stmt->fetchAll();
                         </td>
                         <td><?= $index + 1 ?></td>
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
+                        <td><?= nl2br(e($row['student_background'] ?: '-')) ?></td>
                         <td><?= e($row['title']) ?></td>
                         <td><?= price_html($row, 'fee', 'discount_fee') ?></td>
                         <td><?= e($row['payment_note'] ?: '-') ?></td>

@@ -52,8 +52,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', 'Enter a valid public Elldy dashboard link.');
         } elseif (!is_elldy_dashboard_url($dashboardUrl)) {
             flash('error', 'Certificate review accepts only public Elldy dashboard links from elldy.com.');
-        } elseif (certificate_dashboard_url_exists($dashboardUrl, (int) $enrollment['id'])) {
-            flash('error', 'This dashboard link is already submitted for another certificate request.');
         } elseif (($certificate['dashboard_review_status'] ?? '') === 'approved' && ($certificate['status'] ?? '') === 'issued') {
             flash('error', 'This certificate is already issued.');
         } else {
