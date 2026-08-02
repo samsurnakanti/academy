@@ -76,7 +76,6 @@ $awaitingOtp = !empty($_SESSION['otp_user_id']) && !empty($_SESSION['otp_phone']
             <button class="button primary" type="submit">Send WhatsApp OTP</button>
         <?php endif; ?>
         <p>New trainee? <a href="register.php">Create account</a></p>
-        <p>Admin? <a href="admin/login.php">Open admin login</a></p>
     </form>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
