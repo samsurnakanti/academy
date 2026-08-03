@@ -2432,6 +2432,7 @@ function ensure_certificate_requests_table(): void
             course_id INT UNSIGNED NOT NULL,
             status ENUM('requested', 'payment_pending', 'approved', 'issued', 'rejected') NOT NULL DEFAULT 'requested',
             payment_note TEXT NULL,
+            applied_at DATETIME NULL,
             dashboard_url VARCHAR(500) NULL,
             dashboard_review_status ENUM('not_submitted', 'pending', 'approved', 'rejected') NOT NULL DEFAULT 'not_submitted',
             dashboard_review_note TEXT NULL,
@@ -2440,6 +2441,8 @@ function ensure_certificate_requests_table(): void
             certificate_url VARCHAR(255) NULL,
             certificate_code VARCHAR(80) NULL,
             issued_at DATETIME NULL,
+            downloaded_at DATETIME NULL,
+            download_count INT UNSIGNED NOT NULL DEFAULT 0,
             admin_note TEXT NULL,
             requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -2471,6 +2474,10 @@ function ensure_certificate_requests_table(): void
         db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_url VARCHAR(500) NULL AFTER payment_note");
     }
 
+    if (!isset($existing['applied_at'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN applied_at DATETIME NULL AFTER payment_note");
+    }
+
     if (!isset($existing['dashboard_review_status'])) {
         db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_review_status ENUM('not_submitted', 'pending', 'approved', 'rejected') NOT NULL DEFAULT 'not_submitted' AFTER dashboard_url");
     }
@@ -2485,6 +2492,14 @@ function ensure_certificate_requests_table(): void
 
     if (!isset($existing['dashboard_reviewed_at'])) {
         db()->exec("ALTER TABLE certificate_requests ADD COLUMN dashboard_reviewed_at DATETIME NULL AFTER dashboard_submitted_at");
+    }
+
+    if (!isset($existing['downloaded_at'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN downloaded_at DATETIME NULL AFTER issued_at");
+    }
+
+    if (!isset($existing['download_count'])) {
+        db()->exec("ALTER TABLE certificate_requests ADD COLUMN download_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER downloaded_at");
     }
 }
 
@@ -3772,6 +3787,7 @@ function ensure_enrollment_detail_columns(): void
     $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
 
     $missing = [
+        'program_payment_attempted_at' => 'ADD COLUMN program_payment_attempted_at DATETIME NULL AFTER payment_requested_at',
         'student_background' => 'ADD COLUMN student_background TEXT NULL AFTER payment_requested_at',
         'learning_goals' => 'ADD COLUMN learning_goals TEXT NULL AFTER student_background',
         'completion_expectation' => 'ADD COLUMN completion_expectation TEXT NULL AFTER learning_goals',

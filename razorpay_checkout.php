@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
 ensure_course_detail_columns();
+ensure_enrollment_detail_columns();
 
 $type = $_GET['type'] ?? '';
 $id = (int) ($_GET['id'] ?? 0);
@@ -23,6 +24,8 @@ if ($type === 'program') {
     if ($row && in_array($row['status'], ['paid', 'completed'], true)) {
         redirect('dashboard.php');
     }
+    $attempt = db()->prepare('UPDATE enrollments SET program_payment_attempted_at = NOW() WHERE id = ? AND user_id = ?');
+    $attempt->execute([(int) $row['id'], (int) $user['id']]);
     $amount = (int) round(course_fee_amount($row));
     $receipt = 'EA-PROGRAM-' . $id;
     $heading = 'Program Payment';

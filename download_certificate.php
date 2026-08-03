@@ -52,6 +52,13 @@ if (!is_file($expectedPath)) {
     exit('Certificate file not found.');
 }
 
+$downloadUpdate = db()->prepare(
+    "UPDATE certificate_requests
+     SET downloaded_at = NOW(), download_count = download_count + 1
+     WHERE enrollment_id = ?"
+);
+$downloadUpdate->execute([$enrollmentId]);
+
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="certificate-' . $enrollmentId . '.pdf"');
 readfile($expectedPath);

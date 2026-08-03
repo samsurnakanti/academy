@@ -28,7 +28,7 @@ $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payme
 
 if (!$certificate) {
     $insert = db()->prepare(
-        'INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status) VALUES (?, ?, ?, ?)'
+        'INSERT INTO certificate_requests (enrollment_id, user_id, course_id, status, applied_at) VALUES (?, ?, ?, ?, NOW())'
     );
     $insert->execute([
         (int) $enrollment['id'],
@@ -39,6 +39,11 @@ if (!$certificate) {
     $existingStmt->execute([$enrollmentId]);
     $certificate = $existingStmt->fetch();
     $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
+} elseif (empty($certificate['applied_at'])) {
+    $applied = db()->prepare('UPDATE certificate_requests SET applied_at = NOW() WHERE enrollment_id = ?');
+    $applied->execute([(int) $enrollment['id']]);
+    $existingStmt->execute([$enrollmentId]);
+    $certificate = $existingStmt->fetch();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -59,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update = db()->prepare(
                 "UPDATE certificate_requests
                  SET dashboard_url = ?,
+                     applied_at = COALESCE(applied_at, NOW()),
                      dashboard_review_status = 'pending',
                      dashboard_review_note = NULL,
                      dashboard_submitted_at = NOW(),

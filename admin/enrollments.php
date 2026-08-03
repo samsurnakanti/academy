@@ -5,6 +5,8 @@ $admin = require_admin();
 ensure_enrollment_detail_columns();
 ensure_course_detail_columns();
 ensure_certificate_requests_table();
+ensure_learning_progress_table();
+ensure_live_session_attendance_table();
 $dateFilter = admin_date_filter();
 $selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
 $courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
@@ -37,6 +39,15 @@ if (!function_exists('csv_excel_text')) {
     }
 }
 
+if (!function_exists('admin_enrollment_short_datetime')) {
+    function admin_enrollment_short_datetime(?string $value): string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? '-' : date('d M Y, h:i A', strtotime($value));
+    }
+}
+
 if (($_GET['export'] ?? '') === 'csv') {
     $params = [];
     $where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
@@ -47,6 +58,7 @@ if (($_GET['export'] ?? '') === 'csv') {
             e.status AS enrollment_status,
             e.payment_note AS enrollment_payment_note,
             e.payment_requested_at,
+            e.program_payment_attempted_at,
             e.student_background,
             e.learning_goals,
             e.completion_expectation,
@@ -74,6 +86,12 @@ if (($_GET['export'] ?? '') === 'csv') {
             cr.certificate_url,
             cr.certificate_code,
             cr.issued_at,
+            cr.applied_at AS certificate_applied_at,
+            cr.requested_at AS certificate_requested_at,
+            cr.downloaded_at AS certificate_downloaded_at,
+            COALESCE(cr.download_count, 0) AS certificate_download_count,
+            COALESCE(attendance.live_sessions_attended, 0) AS live_sessions_attended,
+            attendance.last_live_session_at,
             COALESCE(progress.total_items, 0) AS learning_items_started,
             COALESCE(progress.completed_items, 0) AS learning_items_completed,
             COALESCE(progress.average_progress_percent, 0) AS average_progress_percent
@@ -81,6 +99,13 @@ if (($_GET['export'] ?? '') === 'csv') {
          JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
          LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
+         LEFT JOIN (
+            SELECT enrollment_id,
+                   COUNT(*) AS live_sessions_attended,
+                   MAX(last_seen_at) AS last_live_session_at
+            FROM live_session_attendance
+            GROUP BY enrollment_id
+         ) attendance ON attendance.enrollment_id = e.id
          LEFT JOIN (
             SELECT enrollment_id,
                    COUNT(*) AS total_items,
@@ -121,6 +146,7 @@ if (($_GET['export'] ?? '') === 'csv') {
         'Enrollment Status Label',
         'Payment Note',
         'Payment Requested At',
+        'Course Payment Attempted',
         'Candidate ID',
         'Candidate Name',
         'Candidate Email',
@@ -150,6 +176,12 @@ if (($_GET['export'] ?? '') === 'csv') {
         'Certificate URL',
         'Certificate Code',
         'Certificate Issued At',
+        'Certificate Applied At',
+        'Certificate Requested At',
+        'Certificate Downloaded At',
+        'Certificate Download Count',
+        'Live Sessions Attended',
+        'Last Live Session At',
         'Learning Items Started',
         'Learning Items Completed',
         'Average Progress Percent',
@@ -163,6 +195,7 @@ if (($_GET['export'] ?? '') === 'csv') {
             enrollment_badge((string) $row['enrollment_status']),
             $row['enrollment_payment_note'],
             $row['payment_requested_at'],
+            $row['program_payment_attempted_at'],
             $row['user_id'],
             $row['candidate_name'],
             $row['candidate_email'],
@@ -192,6 +225,12 @@ if (($_GET['export'] ?? '') === 'csv') {
             $row['certificate_url'],
             $row['certificate_code'],
             $row['issued_at'],
+            $row['certificate_applied_at'],
+            $row['certificate_requested_at'],
+            $row['certificate_downloaded_at'],
+            $row['certificate_download_count'],
+            $row['live_sessions_attended'],
+            $row['last_live_session_at'],
             $row['learning_items_started'],
             $row['learning_items_completed'],
             $row['average_progress_percent'],
@@ -318,10 +357,38 @@ require __DIR__ . '/_admin_header.php';
 $params = [];
 $where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
 $stmt = db()->prepare(
-    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee
+    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee,
+            cr.status AS certificate_status,
+            cr.applied_at AS certificate_applied_at,
+            cr.requested_at AS certificate_requested_at,
+            cr.dashboard_submitted_at,
+            cr.dashboard_review_status,
+            cr.downloaded_at AS certificate_downloaded_at,
+            COALESCE(cr.download_count, 0) AS certificate_download_count,
+            COALESCE(attendance.live_sessions_attended, 0) AS live_sessions_attended,
+            attendance.last_live_session_at,
+            COALESCE(progress.total_items, 0) AS learning_items_started,
+            COALESCE(progress.completed_items, 0) AS learning_items_completed,
+            COALESCE(progress.average_progress_percent, 0) AS average_progress_percent
      FROM enrollments e
      JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
+     LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
+     LEFT JOIN (
+        SELECT enrollment_id,
+               COUNT(*) AS live_sessions_attended,
+               MAX(last_seen_at) AS last_live_session_at
+        FROM live_session_attendance
+        GROUP BY enrollment_id
+     ) attendance ON attendance.enrollment_id = e.id
+     LEFT JOIN (
+        SELECT enrollment_id,
+               COUNT(*) AS total_items,
+               SUM(is_completed = 1) AS completed_items,
+               ROUND(AVG(progress_percent), 2) AS average_progress_percent
+        FROM learning_progress
+        GROUP BY enrollment_id
+     ) progress ON progress.enrollment_id = e.id
      {$where}
      ORDER BY e.created_at DESC"
 );
@@ -380,10 +447,16 @@ $rows = $stmt->fetchAll();
     <div class="table-wrap">
         <table>
             <thead>
-                <tr><th><input type="checkbox" data-select-all="bulk-reminder-form" aria-label="Select all students"></th><th>S.No</th><th>Trainee</th><th>Current Profile</th><th>Program</th><th>Fee</th><th>Payment Note</th><th>Status</th><th>Action</th></tr>
+                <tr><th><input type="checkbox" data-select-all="bulk-reminder-form" aria-label="Select all students"></th><th>S.No</th><th>Trainee</th><th>Current Profile</th><th>Program</th><th>Fee</th><th>Class / Live</th><th>Course Payment</th><th>Certificate</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
                 <?php foreach ($rows as $index => $row): ?>
+                    <?php
+                    $coursePaid = in_array($row['status'], ['paid', 'completed'], true) || course_fee_amount($row) <= 0;
+                    $courseAttempted = trim((string) ($row['program_payment_attempted_at'] ?? '')) !== '';
+                    $certificateApplied = trim((string) ($row['certificate_applied_at'] ?? '')) !== '';
+                    $certificateDownloaded = (int) ($row['certificate_download_count'] ?? 0) > 0;
+                    ?>
                     <tr>
                         <td>
                             <?php if ($row['status'] !== 'cancelled' && $row['status'] !== 'completed'): ?>
@@ -395,7 +468,45 @@ $rows = $stmt->fetchAll();
                         <td><?= nl2br(e($row['student_background'] ?: '-')) ?></td>
                         <td><?= e($row['title']) ?></td>
                         <td><?= price_html($row, 'fee', 'discount_fee') ?></td>
-                        <td><?= e($row['payment_note'] ?: '-') ?></td>
+                        <td>
+                            <?php if ((int) $row['live_sessions_attended'] > 0): ?>
+                                Attended <?= (int) $row['live_sessions_attended'] ?> live session(s)<br>
+                                <small><?= e(admin_enrollment_short_datetime($row['last_live_session_at'])) ?></small>
+                            <?php elseif ((int) $row['learning_items_started'] > 0): ?>
+                                Started class / video<br>
+                                <small><?= (int) $row['learning_items_completed'] ?> completed, <?= e((string) $row['average_progress_percent']) ?>% avg</small>
+                            <?php else: ?>
+                                Not attended
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($coursePaid): ?>
+                                Paid<br>
+                                <small><?= e(admin_enrollment_short_datetime($row['payment_requested_at'] ?? null)) ?></small>
+                            <?php elseif ($courseAttempted): ?>
+                                Attempted<br>
+                                <small><?= e(admin_enrollment_short_datetime($row['program_payment_attempted_at'])) ?></small>
+                            <?php else: ?>
+                                Not paid
+                            <?php endif; ?>
+                            <?php if (!empty($row['payment_note'])): ?>
+                                <br><small><?= e($row['payment_note']) ?></small>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if ($certificateDownloaded): ?>
+                                Downloaded <?= (int) $row['certificate_download_count'] ?> time(s)<br>
+                                <small><?= e(admin_enrollment_short_datetime($row['certificate_downloaded_at'])) ?></small>
+                            <?php elseif ($certificateApplied): ?>
+                                Applied<br>
+                                <small><?= e(admin_enrollment_short_datetime($row['certificate_applied_at'])) ?> | <?= e(certificate_badge((string) ($row['certificate_status'] ?? 'requested'))) ?></small>
+                            <?php else: ?>
+                                Not applied
+                            <?php endif; ?>
+                            <?php if (!empty($row['dashboard_submitted_at'])): ?>
+                                <br><small>Dashboard <?= e(dashboard_review_badge($row['dashboard_review_status'] ?? 'not_submitted')) ?></small>
+                            <?php endif; ?>
+                        </td>
                         <td><?= e(enrollment_badge($row['status'])) ?></td>
                         <td>
                             <form method="post" class="inline-form">
