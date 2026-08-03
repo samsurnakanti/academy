@@ -9,10 +9,15 @@ ensure_learning_progress_table();
 ensure_live_session_attendance_table();
 $dateFilter = admin_date_filter();
 $selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
+$selectedActivity = (string) ($_GET['activity'] ?? '');
+$allowedActivities = ['paid_course', 'attempted_fee', 'started_classes', 'applied_certificate', 'downloaded_certificate'];
+if (!in_array($selectedActivity, $allowedActivities, true)) {
+    $selectedActivity = '';
+}
 $courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
 
 if (!function_exists('enrollment_filter_where')) {
-    function enrollment_filter_where(array $dateFilter, int $courseId, array &$params): string
+    function enrollment_filter_where(array $dateFilter, int $courseId, string $activity, array &$params): string
     {
         $conditions = [];
         $dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
@@ -24,6 +29,18 @@ if (!function_exists('enrollment_filter_where')) {
         if ($courseId > 0) {
             $conditions[] = 'e.course_id = ?';
             $params[] = $courseId;
+        }
+
+        if ($activity === 'paid_course') {
+            $conditions[] = "e.status IN ('paid', 'completed')";
+        } elseif ($activity === 'attempted_fee') {
+            $conditions[] = 'e.program_payment_attempted_at IS NOT NULL';
+        } elseif ($activity === 'started_classes') {
+            $conditions[] = "(EXISTS (SELECT 1 FROM learning_progress lp_filter WHERE lp_filter.enrollment_id = e.id) OR EXISTS (SELECT 1 FROM live_session_attendance lsa_filter WHERE lsa_filter.enrollment_id = e.id))";
+        } elseif ($activity === 'applied_certificate') {
+            $conditions[] = 'EXISTS (SELECT 1 FROM certificate_requests cr_filter WHERE cr_filter.enrollment_id = e.id AND cr_filter.applied_at IS NOT NULL)';
+        } elseif ($activity === 'downloaded_certificate') {
+            $conditions[] = 'EXISTS (SELECT 1 FROM certificate_requests cr_filter WHERE cr_filter.enrollment_id = e.id AND cr_filter.download_count > 0)';
         }
 
         return $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
@@ -50,7 +67,7 @@ if (!function_exists('admin_enrollment_short_datetime')) {
 
 if (($_GET['export'] ?? '') === 'csv') {
     $params = [];
-    $where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
+    $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
     $stmt = db()->prepare(
         "SELECT
             e.id AS enrollment_id,
@@ -128,6 +145,9 @@ if (($_GET['export'] ?? '') === 'csv') {
                 break;
             }
         }
+    }
+    if ($selectedActivity !== '') {
+        $filenameParts[] = $selectedActivity;
     }
     if ($dateFilter['from'] !== '' && $dateFilter['to'] !== '') {
         $filenameParts[] = $dateFilter['from'] . '-to-' . $dateFilter['to'];
@@ -355,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require __DIR__ . '/_admin_header.php';
 
 $params = [];
-$where = enrollment_filter_where($dateFilter, $selectedCourseId, $params);
+$where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
 $stmt = db()->prepare(
     "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee,
             cr.status AS certificate_status,
@@ -400,7 +420,15 @@ $rows = $stmt->fetchAll();
     <h1>Elldy Enrollments</h1>
 </section>
 <section class="section compact-section">
-    <?php $dateFilterHidden = $selectedCourseId > 0 ? ['course_id' => $selectedCourseId] : []; ?>
+    <?php
+    $dateFilterHidden = [];
+    if ($selectedCourseId > 0) {
+        $dateFilterHidden['course_id'] = $selectedCourseId;
+    }
+    if ($selectedActivity !== '') {
+        $dateFilterHidden['activity'] = $selectedActivity;
+    }
+    ?>
     <?php require __DIR__ . '/_date_filter.php'; ?>
 </section>
 <section class="section compact-section">
@@ -420,8 +448,18 @@ $rows = $stmt->fetchAll();
                 <?php endforeach; ?>
             </select>
         </label>
+        <label>Filter
+            <select name="activity">
+                <option value="">All students</option>
+                <option value="paid_course" <?= $selectedActivity === 'paid_course' ? 'selected' : '' ?>>Paid course</option>
+                <option value="attempted_fee" <?= $selectedActivity === 'attempted_fee' ? 'selected' : '' ?>>Attempted fee payment</option>
+                <option value="started_classes" <?= $selectedActivity === 'started_classes' ? 'selected' : '' ?>>Started classes</option>
+                <option value="applied_certificate" <?= $selectedActivity === 'applied_certificate' ? 'selected' : '' ?>>Applied certificate</option>
+                <option value="downloaded_certificate" <?= $selectedActivity === 'downloaded_certificate' ? 'selected' : '' ?>>Downloaded certificate</option>
+            </select>
+        </label>
         <button class="button small" type="submit">View</button>
-        <a class="button small" href="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'export' => 'csv'], $dateFilter)) ?>">Export CSV</a>
+        <a class="button small" href="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity, 'export' => 'csv'], $dateFilter)) ?>">Export CSV</a>
     </form>
 </section>
 <section class="section compact-section">
