@@ -10,7 +10,7 @@ ensure_live_session_attendance_table();
 $dateFilter = admin_date_filter();
 $selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
 $selectedActivity = (string) ($_GET['activity'] ?? '');
-$allowedActivities = ['paid_course', 'attempted_fee', 'started_classes', 'applied_certificate', 'downloaded_certificate'];
+$allowedActivities = ['paid_course', 'attempted_fee', 'started_classes', 'not_attended', 'applied_certificate', 'downloaded_certificate'];
 if (!in_array($selectedActivity, $allowedActivities, true)) {
     $selectedActivity = '';
 }
@@ -37,6 +37,8 @@ if (!function_exists('enrollment_filter_where')) {
             $conditions[] = 'e.program_payment_attempted_at IS NOT NULL';
         } elseif ($activity === 'started_classes') {
             $conditions[] = "(EXISTS (SELECT 1 FROM learning_progress lp_filter WHERE lp_filter.enrollment_id = e.id) OR EXISTS (SELECT 1 FROM live_session_attendance lsa_filter WHERE lsa_filter.enrollment_id = e.id))";
+        } elseif ($activity === 'not_attended') {
+            $conditions[] = "NOT EXISTS (SELECT 1 FROM learning_progress lp_filter WHERE lp_filter.enrollment_id = e.id) AND NOT EXISTS (SELECT 1 FROM live_session_attendance lsa_filter WHERE lsa_filter.enrollment_id = e.id)";
         } elseif ($activity === 'applied_certificate') {
             $conditions[] = 'EXISTS (SELECT 1 FROM certificate_requests cr_filter WHERE cr_filter.enrollment_id = e.id AND cr_filter.applied_at IS NOT NULL)';
         } elseif ($activity === 'downloaded_certificate') {
@@ -454,6 +456,7 @@ $rows = $stmt->fetchAll();
                 <option value="paid_course" <?= $selectedActivity === 'paid_course' ? 'selected' : '' ?>>Paid course</option>
                 <option value="attempted_fee" <?= $selectedActivity === 'attempted_fee' ? 'selected' : '' ?>>Attempted fee payment</option>
                 <option value="started_classes" <?= $selectedActivity === 'started_classes' ? 'selected' : '' ?>>Started classes</option>
+                <option value="not_attended" <?= $selectedActivity === 'not_attended' ? 'selected' : '' ?>>Not attended</option>
                 <option value="applied_certificate" <?= $selectedActivity === 'applied_certificate' ? 'selected' : '' ?>>Applied certificate</option>
                 <option value="downloaded_certificate" <?= $selectedActivity === 'downloaded_certificate' ? 'selected' : '' ?>>Downloaded certificate</option>
             </select>
@@ -463,7 +466,7 @@ $rows = $stmt->fetchAll();
     </form>
 </section>
 <section class="section compact-section">
-    <form method="post" class="form-card" id="bulk-reminder-form">
+    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-reminder-form" action="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter)) ?>">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="bulk_send_reminders">
         <h2>Send Class Reminders</h2>

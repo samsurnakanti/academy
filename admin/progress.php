@@ -3,6 +3,28 @@ $title = 'Learning Progress';
 require_once __DIR__ . '/../includes/functions.php';
 require_admin();
 ensure_learning_progress_table();
+$dateFilter = admin_date_filter();
+$selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
+$courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
+
+if (!function_exists('progress_filter_where')) {
+    function progress_filter_where(array $dateFilter, int $courseId, array &$params): string
+    {
+        $conditions = ["e.status != 'cancelled'"];
+
+        if ($courseId > 0) {
+            $conditions[] = 'e.course_id = ?';
+            $params[] = $courseId;
+        }
+
+        $dateCondition = admin_date_condition('progress_counts.last_activity', $dateFilter, $params);
+        if ($dateCondition !== '') {
+            $conditions[] = $dateCondition;
+        }
+
+        return 'WHERE ' . implode(' AND ', $conditions);
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -52,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recipientMode = $_POST['recipient_mode'] ?? 'selected';
         $selectedIds = array_values(array_filter(array_map('intval', $_POST['enrollment_ids'] ?? [])));
         $params = [];
-        $idCondition = '';
+        $where = progress_filter_where($dateFilter, $selectedCourseId, $params);
 
         if ($recipientMode !== 'all') {
             if (!$selectedIds) {
@@ -61,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
-            $idCondition = " AND e.id IN ({$placeholders})";
-            $params = $selectedIds;
+            $where .= " AND e.id IN ({$placeholders})";
+            $params = array_merge($params, $selectedIds);
         }
 
         $stmt = db()->prepare(
@@ -87,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 FROM learning_progress
                 GROUP BY enrollment_id
              ) progress_counts ON progress_counts.enrollment_id = e.id
-             WHERE e.status != 'cancelled'{$idCondition}
+             {$where}
              ORDER BY e.created_at DESC"
         );
         $stmt->execute($params);
@@ -124,7 +146,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 require __DIR__ . '/_admin_header.php';
 
-$rows = db()->query(
+$params = [];
+$where = progress_filter_where($dateFilter, $selectedCourseId, $params);
+$stmt = db()->prepare(
     "SELECT
         e.id AS enrollment_id,
         e.status,
@@ -153,9 +177,11 @@ $rows = db()->query(
         FROM learning_progress
         GROUP BY enrollment_id
      ) progress_counts ON progress_counts.enrollment_id = e.id
-     WHERE e.status != 'cancelled'
+     {$where}
      ORDER BY progress_counts.last_activity DESC, e.created_at DESC"
-)->fetchAll();
+);
+$stmt->execute($params);
+$rows = $stmt->fetchAll();
 ?>
 <section class="page-title">
     <p class="eyebrow">Admin</p>
@@ -164,7 +190,40 @@ $rows = db()->query(
 </section>
 
 <section class="section compact-section">
-    <form method="post" class="form-card" id="bulk-certificate-form">
+    <form class="date-filter-form" method="get" action="progress.php">
+        <label>Programme
+            <select name="course_id">
+                <option value="0">All programmes</option>
+                <?php foreach ($courses as $course): ?>
+                    <option value="<?= (int) $course['id'] ?>" <?= $selectedCourseId === (int) $course['id'] ? 'selected' : '' ?>>
+                        <?= e($course['title']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+        <label>Range
+            <select name="range" id="date-filter-range">
+                <option value="all" <?= $dateFilter['range'] === 'all' ? 'selected' : '' ?>>All time</option>
+                <option value="today" <?= $dateFilter['range'] === 'today' ? 'selected' : '' ?>>Today</option>
+                <option value="yesterday" <?= $dateFilter['range'] === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
+                <option value="this_week" <?= $dateFilter['range'] === 'this_week' ? 'selected' : '' ?>>This week</option>
+                <option value="this_month" <?= $dateFilter['range'] === 'this_month' ? 'selected' : '' ?>>This month</option>
+                <option value="custom" <?= $dateFilter['range'] === 'custom' ? 'selected' : '' ?>>Custom dates</option>
+            </select>
+        </label>
+        <label>From
+            <input type="date" name="from" value="<?= e($dateFilter['from']) ?>">
+        </label>
+        <label>To
+            <input type="date" name="to" value="<?= e($dateFilter['to']) ?>">
+        </label>
+        <button class="button small" type="submit">Apply</button>
+        <a class="button small" href="progress.php">Clear</a>
+    </form>
+</section>
+
+<section class="section compact-section">
+    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-certificate-form" action="<?= e(admin_date_filter_url('progress.php', ['course_id' => $selectedCourseId], $dateFilter)) ?>">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="bulk_send_certificate_whatsapp">
         <h2>Send Certificate Alerts</h2>

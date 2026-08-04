@@ -1811,6 +1811,28 @@ tbody tr:hover {
     min-height: 42px;
 }
 
+.admin-bulk-action-form h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.admin-bulk-action-form fieldset {
+    display: contents;
+}
+
+.admin-bulk-action-form legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.admin-bulk-action-form .materials-form-actions {
+    margin: 0;
+}
+
 .video-frame.native-player {
     border-color: rgba(37, 99, 235, 0.18);
     background:
