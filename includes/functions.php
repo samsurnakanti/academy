@@ -2992,7 +2992,7 @@ function save_whatsapp_settings(array $data): void
     ]);
 }
 
-function send_whatsapp_template_message_result(string $phone, string $templateName, array $bodyParameters = []): array
+function send_whatsapp_template_message_result(string $phone, string $templateName, array $bodyParameters = [], array $options = []): array
 {
     $settings = whatsapp_settings();
     unset($_SESSION['whatsapp_send_error']);
@@ -3027,14 +3027,38 @@ function send_whatsapp_template_message_result(string $phone, string $templateNa
         ],
     ];
 
+    $components = [];
+    $headerType = strtolower(trim((string) ($options['header_type'] ?? '')));
+    $headerValue = trim((string) ($options['header_value'] ?? ''));
+
+    if ($headerType !== '' && $headerType !== 'none' && $headerValue !== '') {
+        if ($headerType === 'text') {
+            $headerParameter = ['type' => 'text', 'text' => $headerValue];
+        } elseif (in_array($headerType, ['image', 'video', 'document'], true)) {
+            $headerParameter = ['type' => $headerType, $headerType => ['link' => $headerValue]];
+        } else {
+            $_SESSION['whatsapp_send_error'] = 'Unsupported WhatsApp template header type.';
+            return ['ok' => false, 'message_id' => '', 'error' => $_SESSION['whatsapp_send_error']];
+        }
+
+        $components[] = [
+            'type' => 'header',
+            'parameters' => [$headerParameter],
+        ];
+    }
+
     if ($bodyParameters) {
-        $payload['template']['components'] = [[
+        $components[] = [
             'type' => 'body',
             'parameters' => array_map(
                 fn (string $value): array => ['type' => 'text', 'text' => $value],
                 array_map('strval', $bodyParameters)
             ),
-        ]];
+        ];
+    }
+
+    if ($components) {
+        $payload['template']['components'] = $components;
     }
 
     $url = 'https://graph.facebook.com/' . $settings['graph_version'] . '/' . $settings['phone_number_id'] . '/messages';
@@ -3074,9 +3098,9 @@ function send_whatsapp_template_message_result(string $phone, string $templateNa
     return ['ok' => true, 'message_id' => $messageId, 'error' => ''];
 }
 
-function send_whatsapp_template_message(string $phone, string $templateName, array $bodyParameters = []): bool
+function send_whatsapp_template_message(string $phone, string $templateName, array $bodyParameters = [], array $options = []): bool
 {
-    return send_whatsapp_template_message_result($phone, $templateName, $bodyParameters)['ok'];
+    return send_whatsapp_template_message_result($phone, $templateName, $bodyParameters, $options)['ok'];
 }
 
 function send_enrollment_whatsapp(array $user, array $course): bool

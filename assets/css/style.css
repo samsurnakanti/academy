@@ -1803,12 +1803,21 @@ tbody tr:hover {
 }
 
 .date-filter-form select,
-.date-filter-form input {
+.date-filter-form input,
+.date-filter-form textarea {
     min-height: 42px;
 }
 
 .date-filter-form .button {
     min-height: 42px;
+}
+
+.admin-template-form .wide-field {
+    flex: 1 1 320px;
+}
+
+.admin-template-form textarea {
+    resize: vertical;
 }
 
 .admin-bulk-action-form h2 {
