@@ -9,15 +9,22 @@ ensure_learning_progress_table();
 ensure_live_session_attendance_table();
 $dateFilter = admin_date_filter();
 $selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
+$searchTerm = trim((string) ($_GET['search'] ?? ''));
 $selectedActivity = (string) ($_GET['activity'] ?? '');
 $allowedActivities = ['paid_course', 'attempted_fee', 'started_classes', 'not_attended', 'applied_certificate', 'downloaded_certificate'];
 if (!in_array($selectedActivity, $allowedActivities, true)) {
     $selectedActivity = '';
 }
 $courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
+$enrollmentFilterParams = ['course_id' => $selectedCourseId, 'activity' => $selectedActivity];
+if ($searchTerm !== '') {
+    $enrollmentFilterParams['search'] = $searchTerm;
+}
+$enrollmentListUrl = admin_date_filter_url('enrollments.php', $enrollmentFilterParams, $dateFilter);
+$enrollmentExportUrl = admin_date_filter_url('enrollments.php', array_merge($enrollmentFilterParams, ['export' => 'csv']), $dateFilter);
 
 if (!function_exists('enrollment_filter_where')) {
-    function enrollment_filter_where(array $dateFilter, int $courseId, string $activity, array &$params): string
+    function enrollment_filter_where(array $dateFilter, int $courseId, string $activity, string $searchTerm, array &$params): string
     {
         $conditions = [];
         $dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
@@ -29,6 +36,26 @@ if (!function_exists('enrollment_filter_where')) {
         if ($courseId > 0) {
             $conditions[] = 'e.course_id = ?';
             $params[] = $courseId;
+        }
+
+        if ($searchTerm !== '') {
+            $searchLike = '%' . $searchTerm . '%';
+            $searchDigits = preg_replace('/\D+/', '', $searchTerm) ?? '';
+            $searchConditions = [
+                'u.name LIKE ?',
+                'u.email LIKE ?',
+                'u.phone LIKE ?',
+            ];
+            $params[] = $searchLike;
+            $params[] = $searchLike;
+            $params[] = $searchLike;
+
+            if ($searchDigits !== '') {
+                $searchConditions[] = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.phone, ' ', ''), '+', ''), '-', ''), '(', ''), ')', '') LIKE ?";
+                $params[] = '%' . $searchDigits . '%';
+            }
+
+            $conditions[] = '(' . implode(' OR ', $searchConditions) . ')';
         }
 
         if ($activity === 'paid_course') {
@@ -104,7 +131,7 @@ if (!function_exists('admin_enrollment_template_parameters')) {
 
 if (($_GET['export'] ?? '') === 'csv') {
     $params = [];
-    $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
+    $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $searchTerm, $params);
     $stmt = db()->prepare(
         "SELECT
             e.id AS enrollment_id,
@@ -185,6 +212,9 @@ if (($_GET['export'] ?? '') === 'csv') {
     }
     if ($selectedActivity !== '') {
         $filenameParts[] = $selectedActivity;
+    }
+    if ($searchTerm !== '') {
+        $filenameParts[] = preg_replace('/[^a-z0-9]+/i', '-', strtolower($searchTerm));
     }
     if ($dateFilter['from'] !== '' && $dateFilter['to'] !== '') {
         $filenameParts[] = $dateFilter['from'] . '-to-' . $dateFilter['to'];
@@ -319,20 +349,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('error', $_SESSION['whatsapp_send_error'] ?? 'Unable to send class reminder.');
         }
 
-        redirect('enrollments.php');
+        redirect($enrollmentListUrl);
     }
 
     if ($action === 'bulk_send_reminders') {
         $recipientMode = $_POST['recipient_mode'] ?? 'selected';
         $selectedIds = array_values(array_filter(array_map('intval', $_POST['enrollment_ids'] ?? [])));
         $params = [];
-        $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
+        $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $searchTerm, $params);
         $where = $where === '' ? "WHERE e.status NOT IN ('cancelled', 'completed')" : $where . " AND e.status NOT IN ('cancelled', 'completed')";
 
         if ($recipientMode !== 'all') {
             if (!$selectedIds) {
                 flash('error', 'Select at least one enrollment or choose all students.');
-                redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+                redirect($enrollmentListUrl);
             }
 
             $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
@@ -375,7 +405,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $summary .= " {$missingPhone} skipped without phone.";
         }
         flash($sent > 0 ? 'success' : 'error', $summary);
-        redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+        redirect($enrollmentListUrl);
     }
 
     if ($action === 'bulk_send_template') {
@@ -386,28 +416,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $headerType = strtolower(trim((string) ($_POST['header_type'] ?? 'none')));
         $headerValueInput = trim((string) ($_POST['header_value'] ?? ''));
         $params = [];
-        $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
+        $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $searchTerm, $params);
         $where = $where === '' ? "WHERE e.status != 'cancelled'" : $where . " AND e.status != 'cancelled'";
 
         if ($templateName === '') {
             flash('error', 'Enter the approved WhatsApp template name.');
-            redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+            redirect($enrollmentListUrl);
         }
 
         if (!in_array($headerType, ['none', 'text', 'image', 'video', 'document'], true)) {
             flash('error', 'Choose a valid WhatsApp header type.');
-            redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+            redirect($enrollmentListUrl);
         }
 
         if ($headerType !== 'none' && $headerValueInput === '') {
             flash('error', 'Add the header text or public media URL for this template.');
-            redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+            redirect($enrollmentListUrl);
         }
 
         if ($recipientMode !== 'all') {
             if (!$selectedIds) {
                 flash('error', 'Select at least one enrollment or choose all listed students.');
-                redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+                redirect($enrollmentListUrl);
             }
 
             $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
@@ -460,7 +490,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $summary .= " {$missingPhone} skipped without phone.";
         }
         flash($sent > 0 ? 'success' : 'error', $summary);
-        redirect(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter));
+        redirect($enrollmentListUrl);
     }
 
     if ($action === 'mark_first_session_completed') {
@@ -472,7 +502,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([(int) $_POST['id']]);
 
         flash('success', 'First session completed. Enrollment moved to payment pending.');
-        redirect('enrollments.php');
+        redirect($enrollmentListUrl);
     }
 
     $status = $_POST['status'] ?? 'free_access';
@@ -492,13 +522,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     flash('success', 'Enrollment status updated.');
-    redirect('enrollments.php');
+    redirect($enrollmentListUrl);
 }
 
 require __DIR__ . '/_admin_header.php';
 
 $params = [];
-$where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $params);
+$where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $searchTerm, $params);
 $stmt = db()->prepare(
     "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee,
             cr.status AS certificate_status,
@@ -543,25 +573,15 @@ $whatsappSettings = whatsapp_settings();
     <p class="eyebrow">Admin</p>
     <h1>Elldy Enrollments</h1>
 </section>
-<section class="section compact-section">
-    <?php
-    $dateFilterHidden = [];
-    if ($selectedCourseId > 0) {
-        $dateFilterHidden['course_id'] = $selectedCourseId;
-    }
-    if ($selectedActivity !== '') {
-        $dateFilterHidden['activity'] = $selectedActivity;
-    }
-    ?>
-    <?php require __DIR__ . '/_date_filter.php'; ?>
-</section>
-<section class="section compact-section">
-    <form class="date-filter-form" method="get" action="enrollments.php">
-        <input type="hidden" name="range" value="<?= e($dateFilter['range']) ?>">
-        <?php if ($dateFilter['range'] === 'custom'): ?>
-            <input type="hidden" name="from" value="<?= e($dateFilter['from']) ?>">
-            <input type="hidden" name="to" value="<?= e($dateFilter['to']) ?>">
-        <?php endif; ?>
+<section class="section compact-section enrollment-toolbar">
+    <form class="date-filter-form enrollment-filter-form" method="get" action="enrollments.php">
+        <div class="enrollment-filter-heading">
+            <h2>Filters</h2>
+            <span><?= count($rows) ?> result<?= count($rows) === 1 ? '' : 's' ?></span>
+        </div>
+        <label class="enrollment-search-field">Search student
+            <input type="search" name="search" value="<?= e($searchTerm) ?>" placeholder="Name, email, or phone number">
+        </label>
         <label>Programme
             <select name="course_id">
                 <option value="0">All programmes</option>
@@ -572,7 +592,7 @@ $whatsappSettings = whatsapp_settings();
                 <?php endforeach; ?>
             </select>
         </label>
-        <label>Filter
+        <label>Activity
             <select name="activity">
                 <option value="">All students</option>
                 <option value="paid_course" <?= $selectedActivity === 'paid_course' ? 'selected' : '' ?>>Paid course</option>
@@ -583,12 +603,31 @@ $whatsappSettings = whatsapp_settings();
                 <option value="downloaded_certificate" <?= $selectedActivity === 'downloaded_certificate' ? 'selected' : '' ?>>Downloaded certificate</option>
             </select>
         </label>
-        <button class="button small" type="submit">View</button>
-        <a class="button small" href="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity, 'export' => 'csv'], $dateFilter)) ?>">Export CSV</a>
+        <label>Range
+            <select name="range" id="date-filter-range">
+                <option value="all" <?= $dateFilter['range'] === 'all' ? 'selected' : '' ?>>All time</option>
+                <option value="today" <?= $dateFilter['range'] === 'today' ? 'selected' : '' ?>>Today</option>
+                <option value="yesterday" <?= $dateFilter['range'] === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
+                <option value="this_week" <?= $dateFilter['range'] === 'this_week' ? 'selected' : '' ?>>This week</option>
+                <option value="this_month" <?= $dateFilter['range'] === 'this_month' ? 'selected' : '' ?>>This month</option>
+                <option value="custom" <?= $dateFilter['range'] === 'custom' ? 'selected' : '' ?>>Custom dates</option>
+            </select>
+        </label>
+        <label>From
+            <input type="date" name="from" value="<?= e($dateFilter['from']) ?>">
+        </label>
+        <label>To
+            <input type="date" name="to" value="<?= e($dateFilter['to']) ?>">
+        </label>
+        <div class="enrollment-filter-actions">
+            <button class="button primary small" type="submit">Apply Filters</button>
+            <a class="button small" href="enrollments.php">Clear</a>
+            <a class="button small" href="<?= e($enrollmentExportUrl) ?>">Export CSV</a>
+        </div>
     </form>
 </section>
-<section class="section compact-section">
-    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-reminder-form" action="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter)) ?>">
+<section class="section compact-section enrollment-bulk-grid">
+    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-reminder-form" action="<?= e($enrollmentListUrl) ?>">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="bulk_send_reminders">
         <h2>Send Class Reminders</h2>
@@ -606,8 +645,8 @@ $whatsappSettings = whatsapp_settings();
         </div>
     </form>
 </section>
-<section class="section compact-section">
-    <form method="post" class="date-filter-form admin-bulk-action-form admin-template-form" id="bulk-template-form" data-copy-selected-from="bulk-reminder-form" action="<?= e(admin_date_filter_url('enrollments.php', ['course_id' => $selectedCourseId, 'activity' => $selectedActivity], $dateFilter)) ?>">
+<section class="section compact-section enrollment-bulk-grid">
+    <form method="post" class="date-filter-form admin-bulk-action-form admin-template-form" id="bulk-template-form" data-copy-selected-from="bulk-reminder-form" action="<?= e($enrollmentListUrl) ?>">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="bulk_send_template">
         <h2>Bulk Template Message</h2>
@@ -744,17 +783,53 @@ $whatsappSettings = whatsapp_settings();
 </section>
 <script>
 document.querySelectorAll('[data-select-all]').forEach((toggle) => {
+    const formId = toggle.dataset.selectAll;
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"][form="' + formId + '"]'));
+    const form = document.getElementById(formId);
+    const recipientMode = form?.querySelector('select[name="recipient_mode"]');
+
+    const updateToggleState = () => {
+        const checkedCount = boxes.filter((box) => box.checked).length;
+        toggle.checked = boxes.length > 0 && checkedCount === boxes.length;
+        toggle.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+    };
+
     toggle.addEventListener('change', () => {
-        const formId = toggle.dataset.selectAll;
-        document.querySelectorAll('input[type="checkbox"][form="' + formId + '"]').forEach((box) => {
+        boxes.forEach((box) => {
             box.checked = toggle.checked;
         });
+        if (recipientMode) {
+            recipientMode.value = toggle.checked ? 'all' : 'selected';
+        }
+        updateToggleState();
     });
+
+    boxes.forEach((box) => {
+        box.addEventListener('change', () => {
+            if (recipientMode && !box.checked) {
+                recipientMode.value = 'selected';
+            }
+            updateToggleState();
+        });
+    });
+
+    form?.addEventListener('submit', () => {
+        if (recipientMode && boxes.length > 0 && boxes.every((box) => box.checked)) {
+            recipientMode.value = 'all';
+        }
+    });
+
+    updateToggleState();
 });
 document.querySelectorAll('[data-copy-selected-from]').forEach((form) => {
     form.addEventListener('submit', () => {
         form.querySelectorAll('input[data-copied-selection]').forEach((input) => input.remove());
-        document.querySelectorAll('input[name="enrollment_ids[]"][form="' + form.dataset.copySelectedFrom + '"]:checked').forEach((box) => {
+        const sourceBoxes = Array.from(document.querySelectorAll('input[name="enrollment_ids[]"][form="' + form.dataset.copySelectedFrom + '"]'));
+        const recipientMode = form.querySelector('select[name="recipient_mode"]');
+        if (recipientMode && sourceBoxes.length > 0 && sourceBoxes.every((box) => box.checked)) {
+            recipientMode.value = 'all';
+        }
+        sourceBoxes.filter((box) => box.checked).forEach((box) => {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'enrollment_ids[]';

@@ -1842,6 +1842,98 @@ tbody tr:hover {
     margin: 0;
 }
 
+.enrollment-toolbar {
+    padding-bottom: 10px;
+}
+
+.enrollment-filter-form {
+    display: grid;
+    grid-template-columns: minmax(240px, 1.4fr) repeat(5, minmax(140px, 1fr)) auto;
+    align-items: end;
+}
+
+.enrollment-filter-heading {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 4px;
+}
+
+.enrollment-filter-heading h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 18px;
+}
+
+.enrollment-filter-heading span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.enrollment-filter-form label {
+    min-width: 0;
+}
+
+.enrollment-search-field {
+    min-width: 240px;
+}
+
+.enrollment-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.enrollment-filter-actions .button {
+    white-space: nowrap;
+}
+
+.enrollment-bulk-grid .admin-bulk-action-form {
+    width: 100%;
+}
+
+.enrollment-bulk-grid + .enrollment-bulk-grid {
+    padding-top: 10px;
+}
+
+.enrollment-bulk-grid .admin-template-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.9fr) minmax(190px, 1fr) minmax(150px, 0.75fr) minmax(220px, 1fr) minmax(260px, 1.4fr) auto;
+    align-items: end;
+}
+
+.enrollment-bulk-grid .admin-template-form h2 {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1180px) {
+    .enrollment-filter-form,
+    .enrollment-bulk-grid .admin-template-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .enrollment-filter-actions {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 700px) {
+    .enrollment-filter-form,
+    .enrollment-bulk-grid .admin-template-form {
+        grid-template-columns: 1fr;
+    }
+
+    .enrollment-filter-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
 .video-frame.native-player {
     border-color: rgba(37, 99, 235, 0.18);
     background:

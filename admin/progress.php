@@ -6,6 +6,7 @@ ensure_learning_progress_table();
 $dateFilter = admin_date_filter();
 $selectedCourseId = max(0, (int) ($_GET['course_id'] ?? 0));
 $courses = db()->query('SELECT id, title FROM courses ORDER BY title ASC')->fetchAll();
+$progressFilterUrl = admin_date_filter_url('progress.php', ['course_id' => $selectedCourseId], $dateFilter);
 
 if (!function_exists('progress_filter_where')) {
     function progress_filter_where(array $dateFilter, int $courseId, array &$params): string
@@ -79,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($recipientMode !== 'all') {
             if (!$selectedIds) {
                 flash('error', 'Select at least one learner or choose all learners.');
-                redirect('progress.php');
+                redirect($progressFilterUrl);
             }
 
             $placeholders = implode(',', array_fill(0, count($selectedIds), '?'));
@@ -138,10 +139,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($missingPhone > 0) {
             $summary .= " {$missingPhone} skipped without phone.";
         }
+        if (!$certificateRows) {
+            $summary .= ' No matching learners were found.';
+        }
         flash($sent > 0 ? 'success' : 'error', $summary);
     }
 
-    redirect('progress.php');
+    redirect($progressFilterUrl);
 }
 
 require __DIR__ . '/_admin_header.php';
@@ -223,7 +227,7 @@ $rows = $stmt->fetchAll();
 </section>
 
 <section class="section compact-section">
-    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-certificate-form" action="<?= e(admin_date_filter_url('progress.php', ['course_id' => $selectedCourseId], $dateFilter)) ?>">
+    <form method="post" class="date-filter-form admin-bulk-action-form" id="bulk-certificate-form" action="<?= e($progressFilterUrl) ?>">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="bulk_send_certificate_whatsapp">
         <h2>Send Certificate Alerts</h2>
@@ -304,12 +308,43 @@ $rows = $stmt->fetchAll();
 </section>
 <script>
 document.querySelectorAll('[data-select-all]').forEach((toggle) => {
+    const formId = toggle.dataset.selectAll;
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"][form="' + formId + '"]'));
+    const form = document.getElementById(formId);
+    const recipientMode = form?.querySelector('select[name="recipient_mode"]');
+
+    const updateToggleState = () => {
+        const checkedCount = boxes.filter((box) => box.checked).length;
+        toggle.checked = boxes.length > 0 && checkedCount === boxes.length;
+        toggle.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+    };
+
     toggle.addEventListener('change', () => {
-        const formId = toggle.dataset.selectAll;
-        document.querySelectorAll('input[type="checkbox"][form="' + formId + '"]').forEach((box) => {
+        boxes.forEach((box) => {
             box.checked = toggle.checked;
         });
+        if (recipientMode) {
+            recipientMode.value = toggle.checked ? 'all' : 'selected';
+        }
+        updateToggleState();
     });
+
+    boxes.forEach((box) => {
+        box.addEventListener('change', () => {
+            if (recipientMode && !box.checked) {
+                recipientMode.value = 'selected';
+            }
+            updateToggleState();
+        });
+    });
+
+    form?.addEventListener('submit', () => {
+        if (recipientMode && boxes.length > 0 && boxes.every((box) => box.checked)) {
+            recipientMode.value = 'all';
+        }
+    });
+
+    updateToggleState();
 });
 </script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>
