@@ -781,6 +781,346 @@ function elldy_bi_upload_basket_data(string $basketId, string $department, strin
     return elldy_bi_decode_response($response, $status, $curlError);
 }
 
+function ensure_crm_settings_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS crm_settings (
+            id TINYINT UNSIGNED PRIMARY KEY,
+            base_url VARCHAR(255) NOT NULL DEFAULT 'https://elldy.com',
+            api_key TEXT NULL,
+            default_business_id VARCHAR(80) NULL,
+            default_parent_group_id VARCHAR(80) NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )"
+    );
+
+    $database = db()->query('SELECT DATABASE()')->fetchColumn();
+    $columns = db()->prepare(
+        "SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'crm_settings'"
+    );
+    $columns->execute([$database]);
+    $existing = array_flip($columns->fetchAll(PDO::FETCH_COLUMN));
+
+    if (!isset($existing['default_business_id'])) {
+        db()->exec("ALTER TABLE crm_settings ADD COLUMN default_business_id VARCHAR(80) NULL AFTER api_key");
+    }
+
+    if (!isset($existing['default_parent_group_id'])) {
+        db()->exec("ALTER TABLE crm_settings ADD COLUMN default_parent_group_id VARCHAR(80) NULL AFTER default_business_id");
+    }
+
+    $stmt = db()->prepare(
+        "INSERT INTO crm_settings (id, base_url, api_key, default_business_id, default_parent_group_id)
+         VALUES (1, 'https://elldy.com', '', '', '')
+         ON DUPLICATE KEY UPDATE id = id"
+    );
+    $stmt->execute();
+}
+
+function crm_settings(): array
+{
+    ensure_crm_settings_table();
+    $settings = db()->query('SELECT * FROM crm_settings WHERE id = 1')->fetch() ?: [];
+
+    return [
+        'base_url' => rtrim(trim((string) ($settings['base_url'] ?? 'https://elldy.com')), '/') ?: 'https://elldy.com',
+        'api_key' => trim((string) ($settings['api_key'] ?? '')),
+        'default_business_id' => trim((string) ($settings['default_business_id'] ?? '')),
+        'default_parent_group_id' => trim((string) ($settings['default_parent_group_id'] ?? '')),
+    ];
+}
+
+function save_crm_settings(array $data): void
+{
+    ensure_crm_settings_table();
+    $stmt = db()->prepare(
+        "UPDATE crm_settings
+         SET base_url = ?, api_key = ?, default_business_id = ?, default_parent_group_id = ?
+         WHERE id = 1"
+    );
+    $stmt->execute([
+        rtrim(trim((string) ($data['base_url'] ?? 'https://elldy.com')), '/') ?: 'https://elldy.com',
+        trim((string) ($data['api_key'] ?? '')),
+        trim((string) ($data['default_business_id'] ?? '')),
+        trim((string) ($data['default_parent_group_id'] ?? '')),
+    ]);
+}
+
+function crm_api_url(string $path): string
+{
+    $settings = crm_settings();
+
+    return $settings['base_url'] . '/' . ltrim($path, '/');
+}
+
+function crm_require_configured(): array
+{
+    $settings = crm_settings();
+
+    if ($settings['api_key'] === '') {
+        throw new RuntimeException('CRM API key is missing. Save it in Admin > CRM Sync first.');
+    }
+
+    if (!function_exists('curl_init')) {
+        throw new RuntimeException('PHP cURL extension is not enabled on the server.');
+    }
+
+    return $settings;
+}
+
+function crm_decode_response(string|false $response, int $status, string $curlError): array
+{
+    if ($response === false) {
+        throw new RuntimeException('Unable to reach CRM API. ' . $curlError);
+    }
+
+    $decoded = json_decode($response, true);
+    if (!is_array($decoded)) {
+        throw new RuntimeException('CRM API returned an invalid response.');
+    }
+
+    if ($status < 200 || $status >= 300) {
+        $message = (string) ($decoded['message'] ?? $decoded['error'] ?? 'CRM API request failed.');
+        throw new RuntimeException($message);
+    }
+
+    return $decoded;
+}
+
+function crm_json_payload(array $data, array $settings): array
+{
+    if (($settings['default_business_id'] ?? '') !== '' && !isset($data['biz_id'])) {
+        $data['biz_id'] = $settings['default_business_id'];
+    }
+
+    return $data;
+}
+
+function crm_get_json(string $path, array $query = []): array
+{
+    $settings = crm_require_configured();
+    if (($settings['default_business_id'] ?? '') !== '' && !isset($query['biz_id'])) {
+        $query['biz_id'] = $settings['default_business_id'];
+    }
+
+    $url = crm_api_url($path);
+    if ($query) {
+        $url .= '?' . http_build_query($query);
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $settings['api_key'],
+            'X-API-KEY: ' . $settings['api_key'],
+        ],
+        CURLOPT_TIMEOUT => 30,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return crm_decode_response($response, $status, $curlError);
+}
+
+function crm_post_json(string $path, array $data): array
+{
+    $settings = crm_require_configured();
+    $ch = curl_init(crm_api_url($path));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Authorization: Bearer ' . $settings['api_key'],
+            'X-API-KEY: ' . $settings['api_key'],
+            'Content-Type: application/json',
+        ],
+        CURLOPT_POSTFIELDS => json_encode(crm_json_payload($data, $settings)),
+        CURLOPT_TIMEOUT => 60,
+    ]);
+
+    $response = curl_exec($ch);
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    return crm_decode_response($response, $status, $curlError);
+}
+
+function crm_groups(): array
+{
+    return crm_get_json('/api/groups');
+}
+
+function crm_create_group(string $groupName, string $parentId = ''): array
+{
+    $groupName = trim($groupName);
+    if ($groupName === '') {
+        throw new RuntimeException('Group name is required.');
+    }
+
+    $payload = ['group_name' => $groupName];
+    if ($parentId !== '') {
+        $payload['parent_id'] = ctype_digit($parentId) ? (int) $parentId : $parentId;
+    }
+
+    return crm_post_json('/api/groups', $payload);
+}
+
+function crm_group_id_from_response(array $response): string
+{
+    foreach ([
+        $response['group']['id'] ?? null,
+        $response['id'] ?? null,
+        $response['data']['group']['id'] ?? null,
+        $response['data']['id'] ?? null,
+        $response['subgroup']['id'] ?? null,
+        $response['data']['subgroup']['id'] ?? null,
+    ] as $candidate) {
+        if ($candidate !== null && (string) $candidate !== '') {
+            return (string) $candidate;
+        }
+    }
+
+    return '';
+}
+
+function crm_flatten_groups(array $response): array
+{
+    $candidates = [
+        $response['groups'] ?? null,
+        $response['data']['groups'] ?? null,
+        $response['data'] ?? null,
+    ];
+
+    $groups = [];
+    $walk = static function (array $items) use (&$walk, &$groups): void {
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $id = $item['id'] ?? $item['group_id'] ?? null;
+            if ($id !== null) {
+                $groups[] = $item;
+            }
+            foreach (['subgroups', 'children', 'groups'] as $childKey) {
+                if (isset($item[$childKey]) && is_array($item[$childKey])) {
+                    $walk($item[$childKey]);
+                }
+            }
+        }
+    };
+
+    foreach ($candidates as $candidate) {
+        if (is_array($candidate)) {
+            $walk(array_is_list($candidate) ? $candidate : [$candidate]);
+            break;
+        }
+    }
+
+    return $groups;
+}
+
+function crm_parent_groups(array $response): array
+{
+    return array_values(array_filter(crm_flatten_groups($response), static function (array $group): bool {
+        $parent = $group['parent_id'] ?? $group['parentId'] ?? null;
+        return $parent === null || (string) $parent === '' || (string) $parent === '0';
+    }));
+}
+
+function crm_program_contacts(int $courseId): array
+{
+    if ($courseId <= 0) {
+        throw new RuntimeException('Please choose a programme to sync.');
+    }
+
+    $stmt = db()->prepare(
+        "SELECT e.id AS enrollment_id,
+                e.status,
+                e.created_at,
+                u.name,
+                u.email,
+                u.phone,
+                c.title AS course_title
+         FROM enrollments e
+         JOIN users u ON u.id = e.user_id
+         JOIN courses c ON c.id = e.course_id
+         WHERE e.course_id = ?
+           AND COALESCE(u.phone, '') != ''
+           AND e.status != 'cancelled'
+         ORDER BY e.created_at DESC"
+    );
+    $stmt->execute([$courseId]);
+
+    $contacts = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $contacts[] = [
+            'full_name' => (string) ($row['name'] ?: 'Academy Learner'),
+            'phone_number' => (string) $row['phone'],
+            'email' => (string) ($row['email'] ?? ''),
+            'lead_stage' => 'academy',
+            'lead_status' => (string) ($row['status'] ?: 'new'),
+            'source' => 'Elldy Academy - ' . (string) $row['course_title'],
+            'whatsapp_opt_in' => true,
+            'notes' => 'Programme: ' . (string) $row['course_title'] . '; Enrollment ID: ' . (string) $row['enrollment_id'],
+        ];
+    }
+
+    return $contacts;
+}
+
+function crm_import_contacts(string $subgroupId, array $contacts): array
+{
+    $subgroupId = trim($subgroupId);
+    if ($subgroupId === '') {
+        throw new RuntimeException('Subgroup ID is required before importing contacts.');
+    }
+
+    if (!$contacts) {
+        throw new RuntimeException('No contacts with phone numbers found for this programme.');
+    }
+
+    return crm_post_json('/api/contacts/import', [
+        'subgroup_id' => ctype_digit($subgroupId) ? (int) $subgroupId : $subgroupId,
+        'contacts' => $contacts,
+    ]);
+}
+
+function crm_sync_program_contacts(int $courseId, string $parentGroupId, string $subgroupName): array
+{
+    $parentGroupId = trim($parentGroupId);
+    if ($parentGroupId === '') {
+        throw new RuntimeException('Please select a parent group.');
+    }
+
+    $subgroupResponse = crm_create_group($subgroupName, $parentGroupId);
+    $subgroupId = crm_group_id_from_response($subgroupResponse);
+    if ($subgroupId === '') {
+        throw new RuntimeException('CRM created the subgroup request, but did not return a subgroup ID.');
+    }
+
+    $contacts = crm_program_contacts($courseId);
+    $importResponse = crm_import_contacts($subgroupId, $contacts);
+
+    $settings = crm_settings();
+    $settings['default_parent_group_id'] = $parentGroupId;
+    save_crm_settings($settings);
+
+    return [
+        'parent_group_id' => $parentGroupId,
+        'subgroup_id' => $subgroupId,
+        'contacts_prepared' => count($contacts),
+        'subgroup_response' => $subgroupResponse,
+        'import_response' => $importResponse,
+    ];
+}
+
 function zoom_base64_url(string $value): string
 {
     return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');

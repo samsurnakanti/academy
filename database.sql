@@ -246,6 +246,15 @@ CREATE TABLE IF NOT EXISTS s3_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS crm_settings (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    base_url VARCHAR(255) NOT NULL DEFAULT 'https://elldy.com',
+    api_key TEXT NULL,
+    default_business_id VARCHAR(80) NULL,
+    default_parent_group_id VARCHAR(80) NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS certificate_requests (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     enrollment_id INT UNSIGNED NOT NULL,
@@ -275,6 +284,10 @@ CREATE TABLE IF NOT EXISTS certificate_requests (
 
 INSERT INTO whatsapp_settings (id, business_account_id, phone_number_id, template_name, template_language, graph_version)
 VALUES (1, '467530709787499', '886937197845294', 'elldy_academy_otp', 'en', 'v20.0')
+ON DUPLICATE KEY UPDATE id = VALUES(id);
+
+INSERT INTO crm_settings (id, base_url, api_key, default_business_id, default_parent_group_id)
+VALUES (1, 'https://elldy.com', '', '', '')
 ON DUPLICATE KEY UPDATE id = VALUES(id);
 
 INSERT INTO admins (username, password_hash)

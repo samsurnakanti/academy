@@ -49,6 +49,7 @@ $admin = require_admin();
             <span class="nav-dropdown-menu">
                 <a href="insights.php">App & Login Insights</a>
                 <a href="elldy_bi.php">Elldy BI</a>
+                <a href="crm_sync.php">CRM Sync</a>
             </span>
         </span>
         <span class="nav-dropdown">
