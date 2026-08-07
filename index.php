@@ -19,6 +19,7 @@ require __DIR__ . '/includes/header.php';
         </div>
         <div class="hero-actions">
             <a class="button primary" href="<?= e(public_url('programs')) ?>">Explore Data Programs</a>
+            <a class="button platform" href="https://elldy.com/" target="_blank" rel="noopener">Elldy Data &amp; BI</a>
             <a class="button secondary" href="<?= e(public_url('certification')) ?>">View BI Certification</a>
         </div>
     </div>
