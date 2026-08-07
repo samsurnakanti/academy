@@ -1,7 +1,8 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 
-$title = 'Elldy Academy | Official BI Platform Learning';
+$title = 'Elldy Cloud Data & BI Platform Training | Elldy Academy';
+$metaDescription = 'Elldy Academy trains learners and teams to use Elldy Cloud Data and BI platform thinking for dashboards, business cases, KPI reporting, and practical data expertise.';
 $canonicalUrl = public_url();
 $courses = active_courses(6);
 $blogPosts = published_blog_posts(3);
@@ -9,26 +10,30 @@ require __DIR__ . '/includes/header.php';
 ?>
 <section class="hero">
     <div class="hero-copy">
-        <p class="eyebrow">Official learning initiative of Elldy BI</p>
-        <h1>Elldy Academy</h1>
-        <p>Elldy Academy is the official learning initiative of the Elldy Business Intelligence platform, created to help students, analysts, business leaders, and teams build practical data expertise through analytics, dashboards, and real business-case learning.</p>
+        <p class="eyebrow">Elldy Cloud Data and BI Platform</p>
+        <h1>Build industry-ready data expertise with Elldy.</h1>
+        <p>Elldy Cloud helps industries turn business data into dashboards, KPI reports, and decision-ready BI. Elldy Academy trains learners and teams to work inside that data ecosystem with practical business cases.</p>
+        <div class="hero-definition">
+            <strong>What is Elldy Academy?</strong>
+            <span>An industry-trained learning platform for data expertise, BI workflows, dashboard building, and real business problem solving with the Elldy Cloud Data and BI platform.</span>
+        </div>
         <div class="hero-actions">
-            <a class="button primary" href="<?= e(public_url('programs')) ?>">Start Learning with Elldy</a>
-            <a class="button secondary" href="<?= e(public_url('certification')) ?>">View Certification</a>
+            <a class="button primary" href="<?= e(public_url('programs')) ?>">Explore Data Programs</a>
+            <a class="button secondary" href="<?= e(public_url('certification')) ?>">View BI Certification</a>
         </div>
     </div>
     <div class="hero-panel">
         <div>
-            <span>Analytics trial</span>
-            <strong>Free</strong>
+            <span>Platform focus</span>
+            <strong>Cloud Data</strong>
         </div>
         <div>
-            <span>Business teams</span>
-            <strong>BI Skills</strong>
+            <span>Industry outcome</span>
+            <strong>BI Dashboards</strong>
         </div>
         <div>
-            <span>Platform outcome</span>
-            <strong>Dashboards</strong>
+            <span>Academy path</span>
+            <strong>Trained Talent</strong>
         </div>
     </div>
 </section>
@@ -36,8 +41,8 @@ require __DIR__ . '/includes/header.php';
 <section class="section certificate-band">
     <div>
         <p class="eyebrow">Official certification</p>
-        <h2>Learn analytics from the official academy of a BI platform</h2>
-        <p>Elldy Academy provides certification from Arklytics Solutions and Innovations and Elldy Platform, showing that your learning is connected to a real data intelligence and business intelligence ecosystem.</p>
+        <h2>Train for Elldy Cloud Data and BI platform work</h2>
+        <p>Elldy Academy provides certification from Arklytics Solutions and Innovations and Elldy Platform, showing that your learning is connected to a real cloud data intelligence and business intelligence ecosystem.</p>
     </div>
     <div class="certificate-mini">
         <span>Issued by</span>
@@ -51,7 +56,7 @@ require __DIR__ . '/includes/header.php';
 <section class="section intelligence-strip">
     <div>
         <p class="eyebrow">Education for the Elldy ecosystem</p>
-        <h2>Build the data skills needed by modern businesses</h2>
+        <h2>Build the data skills industries need from BI teams</h2>
     </div>
     <div class="capability-grid">
         <article>
@@ -60,7 +65,7 @@ require __DIR__ . '/includes/header.php';
         </article>
         <article>
             <strong>BI Platform Thinking</strong>
-            <p>Learn how BI platforms such as Elldy help companies monitor performance, create dashboards, and act on data.</p>
+            <p>Learn how Elldy Cloud Data and BI helps companies monitor performance, create dashboards, and act on data.</p>
         </article>
         <article>
             <strong>Business Cases</strong>
