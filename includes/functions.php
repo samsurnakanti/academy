@@ -1034,12 +1034,90 @@ function crm_parent_groups(array $response): array
     }));
 }
 
-function crm_program_contacts(int $courseId): array
+function crm_date_filter_from_data(array $data): array
 {
-    if ($courseId <= 0) {
-        throw new RuntimeException('Please choose a programme to sync.');
+    $range = (string) ($data['range'] ?? 'all');
+    $allowed = ['all', 'today', 'yesterday', 'this_week', 'this_month', 'custom'];
+
+    if (!in_array($range, $allowed, true)) {
+        $range = 'all';
     }
 
+    $today = new DateTimeImmutable('today');
+    $from = null;
+    $to = null;
+
+    if ($range === 'today') {
+        $from = $today;
+        $to = $today;
+    } elseif ($range === 'yesterday') {
+        $from = $today->modify('-1 day');
+        $to = $from;
+    } elseif ($range === 'this_week') {
+        $from = $today->modify('monday this week');
+        $to = $today;
+    } elseif ($range === 'this_month') {
+        $from = $today->modify('first day of this month');
+        $to = $today;
+    } elseif ($range === 'custom') {
+        $fromInput = trim((string) ($data['from'] ?? ''));
+        $toInput = trim((string) ($data['to'] ?? ''));
+        $from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromInput) ? new DateTimeImmutable($fromInput) : null;
+        $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', $toInput) ? new DateTimeImmutable($toInput) : null;
+    }
+
+    if ($from && !$to) {
+        $to = $today;
+    } elseif (!$from && $to) {
+        $from = $to;
+    }
+
+    return [
+        'range' => $range,
+        'from' => $from ? $from->format('Y-m-d') : '',
+        'to' => $to ? $to->format('Y-m-d') : '',
+        'from_datetime' => $from ? $from->format('Y-m-d 00:00:00') : '',
+        'to_datetime' => $to ? $to->format('Y-m-d 23:59:59') : '',
+    ];
+}
+
+function crm_contact_filter_where(int $courseId, array $dateFilter, string $activity, array &$params): string
+{
+    $conditions = [
+        "COALESCE(u.phone, '') != ''",
+        "e.status != 'cancelled'",
+    ];
+    $dateCondition = admin_date_condition('e.created_at', $dateFilter, $params);
+
+    if ($dateCondition !== '') {
+        $conditions[] = $dateCondition;
+    }
+
+    if ($courseId > 0) {
+        $conditions[] = 'e.course_id = ?';
+        $params[] = $courseId;
+    }
+
+    if ($activity === 'attended_classes' || $activity === 'started_classes') {
+        $conditions[] = "(EXISTS (SELECT 1 FROM learning_progress lp_filter WHERE lp_filter.enrollment_id = e.id) OR EXISTS (SELECT 1 FROM live_session_attendance lsa_filter WHERE lsa_filter.enrollment_id = e.id))";
+    } elseif ($activity === 'not_attended') {
+        $conditions[] = "NOT EXISTS (SELECT 1 FROM learning_progress lp_filter WHERE lp_filter.enrollment_id = e.id) AND NOT EXISTS (SELECT 1 FROM live_session_attendance lsa_filter WHERE lsa_filter.enrollment_id = e.id)";
+    } elseif ($activity === 'downloaded_certificate') {
+        $conditions[] = 'EXISTS (SELECT 1 FROM certificate_requests cr_filter WHERE cr_filter.enrollment_id = e.id AND cr_filter.download_count > 0)';
+    }
+
+    return 'WHERE ' . implode(' AND ', $conditions);
+}
+
+function crm_program_contacts(int $courseId, array $dateFilter, string $activity): array
+{
+    $allowedActivities = ['', 'all', 'attended_classes', 'started_classes', 'not_attended', 'downloaded_certificate'];
+    if (!in_array($activity, $allowedActivities, true)) {
+        $activity = '';
+    }
+
+    $params = [];
+    $where = crm_contact_filter_where($courseId, $dateFilter, $activity, $params);
     $stmt = db()->prepare(
         "SELECT e.id AS enrollment_id,
                 e.status,
@@ -1051,12 +1129,10 @@ function crm_program_contacts(int $courseId): array
          FROM enrollments e
          JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
-         WHERE e.course_id = ?
-           AND COALESCE(u.phone, '') != ''
-           AND e.status != 'cancelled'
+         {$where}
          ORDER BY e.created_at DESC"
     );
-    $stmt->execute([$courseId]);
+    $stmt->execute($params);
 
     $contacts = [];
     foreach ($stmt->fetchAll() as $row) {
@@ -1092,7 +1168,7 @@ function crm_import_contacts(string $subgroupId, array $contacts): array
     ]);
 }
 
-function crm_sync_program_contacts(int $courseId, string $parentGroupId, string $subgroupName): array
+function crm_sync_program_contacts(int $courseId, string $parentGroupId, string $subgroupName, array $dateFilter, string $activity): array
 {
     $parentGroupId = trim($parentGroupId);
     if ($parentGroupId === '') {
@@ -1105,7 +1181,7 @@ function crm_sync_program_contacts(int $courseId, string $parentGroupId, string 
         throw new RuntimeException('CRM created the subgroup request, but did not return a subgroup ID.');
     }
 
-    $contacts = crm_program_contacts($courseId);
+    $contacts = crm_program_contacts($courseId, $dateFilter, $activity);
     $importResponse = crm_import_contacts($subgroupId, $contacts);
 
     $settings = crm_settings();
@@ -1116,6 +1192,11 @@ function crm_sync_program_contacts(int $courseId, string $parentGroupId, string 
         'parent_group_id' => $parentGroupId,
         'subgroup_id' => $subgroupId,
         'contacts_prepared' => count($contacts),
+        'course_id' => $courseId,
+        'activity' => $activity === '' ? 'all' : $activity,
+        'date_range' => $dateFilter['range'] ?? 'all',
+        'date_from' => $dateFilter['from'] ?? '',
+        'date_to' => $dateFilter['to'] ?? '',
         'subgroup_response' => $subgroupResponse,
         'import_response' => $importResponse,
     ];

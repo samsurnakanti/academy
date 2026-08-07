@@ -7,6 +7,13 @@ ensure_crm_settings_table();
 
 $lastResponse = null;
 $groupsResponse = null;
+$syncDateFilter = crm_date_filter_from_data($_POST ?: []);
+$selectedCourseId = max(0, (int) ($_POST['course_id'] ?? 0));
+$selectedActivity = (string) ($_POST['activity'] ?? 'all');
+$allowedSyncActivities = ['all', 'attended_classes', 'not_attended', 'downloaded_certificate'];
+if (!in_array($selectedActivity, $allowedSyncActivities, true)) {
+    $selectedActivity = 'all';
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
@@ -39,10 +46,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($action === 'sync_program') {
+            $syncDateFilter = crm_date_filter_from_data($_POST);
+            $selectedCourseId = max(0, (int) ($_POST['course_id'] ?? 0));
+            $selectedActivity = (string) ($_POST['activity'] ?? 'all');
+            if (!in_array($selectedActivity, $allowedSyncActivities, true)) {
+                $selectedActivity = 'all';
+            }
+
             $lastResponse = crm_sync_program_contacts(
-                (int) ($_POST['course_id'] ?? 0),
+                $selectedCourseId,
                 trim((string) ($_POST['parent_group_id'] ?? '')),
-                trim((string) ($_POST['subgroup_name'] ?? ''))
+                trim((string) ($_POST['subgroup_name'] ?? '')),
+                $syncDateFilter,
+                $selectedActivity
             );
             flash('success', 'Programme contacts synced to CRM.');
         }
@@ -132,13 +148,42 @@ require __DIR__ . '/_admin_header.php';
         <input type="hidden" name="action" value="sync_program">
         <h2>Step 3: Programme Sync</h2>
         <label>Programme
-            <select name="course_id" required>
-                <option value="">Choose programme</option>
+            <select name="course_id">
+                <option value="0" <?= $selectedCourseId === 0 ? 'selected' : '' ?>>All programmes</option>
                 <?php foreach ($courses as $course): ?>
-                    <option value="<?= (int) $course['id'] ?>"><?= e($course['title']) ?></option>
+                    <option value="<?= (int) $course['id'] ?>" <?= $selectedCourseId === (int) $course['id'] ? 'selected' : '' ?>>
+                        <?= e($course['title']) ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
         </label>
+        <label>Enrollment option
+            <select name="activity">
+                <option value="all" <?= $selectedActivity === 'all' ? 'selected' : '' ?>>All enrollments</option>
+                <option value="downloaded_certificate" <?= $selectedActivity === 'downloaded_certificate' ? 'selected' : '' ?>>Downloaded certificates</option>
+                <option value="not_attended" <?= $selectedActivity === 'not_attended' ? 'selected' : '' ?>>Not attended classes</option>
+                <option value="attended_classes" <?= $selectedActivity === 'attended_classes' ? 'selected' : '' ?>>Attended classes</option>
+            </select>
+        </label>
+        <fieldset>
+            <legend>Date wise</legend>
+            <label>Range
+                <select name="range">
+                    <option value="all" <?= $syncDateFilter['range'] === 'all' ? 'selected' : '' ?>>All time</option>
+                    <option value="today" <?= $syncDateFilter['range'] === 'today' ? 'selected' : '' ?>>Today</option>
+                    <option value="yesterday" <?= $syncDateFilter['range'] === 'yesterday' ? 'selected' : '' ?>>Yesterday</option>
+                    <option value="this_week" <?= $syncDateFilter['range'] === 'this_week' ? 'selected' : '' ?>>This week</option>
+                    <option value="this_month" <?= $syncDateFilter['range'] === 'this_month' ? 'selected' : '' ?>>This month</option>
+                    <option value="custom" <?= $syncDateFilter['range'] === 'custom' ? 'selected' : '' ?>>Custom dates</option>
+                </select>
+            </label>
+            <label>From
+                <input type="date" name="from" value="<?= e($syncDateFilter['from']) ?>">
+            </label>
+            <label>To
+                <input type="date" name="to" value="<?= e($syncDateFilter['to']) ?>">
+            </label>
+        </fieldset>
         <label>Parent group
             <select name="parent_group_id" required>
                 <?php if (!$parentGroups && $settings['default_parent_group_id'] === ''): ?>
@@ -174,7 +219,11 @@ require __DIR__ . '/_admin_header.php';
         </div>
         <div class="material-item">
             <strong>Contacts included</strong>
-            <p>Active programme enrollments with phone numbers. Cancelled enrollments and missing phone numbers are skipped.</p>
+            <p>Enrollments matching the selected date, programme, and option. Cancelled enrollments and missing phone numbers are skipped.</p>
+        </div>
+        <div class="material-item">
+            <strong>Enrollment options</strong>
+            <p>All, downloaded certificates, attended classes, and not attended classes use the same activity checks as the enrollment report.</p>
         </div>
         <div class="material-item">
             <strong>CRM fields</strong>
