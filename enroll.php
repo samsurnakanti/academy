@@ -14,7 +14,8 @@ if (!$course) {
     exit('Program not found.');
 }
 
-$isFreeProgram = course_fee_amount($course) <= 0;
+$requiresProgramPayment = course_requires_payment($course);
+$isFreeProgram = !$requiresProgramPayment;
 $showFeeDetails = course_should_show_fee_details($course);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

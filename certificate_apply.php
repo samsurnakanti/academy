@@ -6,7 +6,7 @@ ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? $_POST['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
+    "SELECT e.*, c.title, c.fee, c.discount_fee, c.payment_required, c.certification_fee, c.certificate_discount_fee
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -22,7 +22,7 @@ if (!$enrollment) {
 $existingStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollment_id = ?');
 $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
-$programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
+$programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment);
 $certificateAmount = certificate_fee_amount($enrollment);
 $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 

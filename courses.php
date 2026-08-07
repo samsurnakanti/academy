@@ -16,7 +16,7 @@ require __DIR__ . '/includes/header.php';
         <?php foreach ($courses as $course): ?>
             <?php
             $showFeeDetails = course_should_show_fee_details($course);
-            $isFreeProgram = course_fee_amount($course) <= 0;
+            $isFreeProgram = !course_requires_payment($course);
             $regularFee = max(0, (float) ($course['fee'] ?? 0));
             $hasCourseDiscount = $showFeeDetails && $regularFee > 0 && course_fee_amount($course) < $regularFee;
             ?>

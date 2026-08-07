@@ -22,7 +22,7 @@ if (!$certificate) {
     exit('Certificate not found.');
 }
 
-if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_fee_amount($certificate) > 0) {
+if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_requires_payment($certificate)) {
     http_response_code(403);
     exit('Please complete program payment before downloading your certificate.');
 }

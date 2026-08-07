@@ -85,7 +85,7 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="course-grid">
         <?php foreach ($courses as $course): ?>
-            <?php $isFreeProgram = course_fee_amount($course) <= 0; ?>
+            <?php $isFreeProgram = !course_requires_payment($course); ?>
             <article class="course-card <?= $isFreeProgram ? 'is-free' : 'is-paid' ?>">
                 <div class="course-topline">
                     <span><?= e($course['duration']) ?></span>

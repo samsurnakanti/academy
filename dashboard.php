@@ -18,7 +18,7 @@ $stmt->execute([$user['id']]);
 $enrollments = $stmt->fetchAll();
 
 foreach ($enrollments as &$enrollmentRow) {
-    $programPaid = in_array($enrollmentRow['status'], ['paid', 'completed'], true) || course_fee_amount($enrollmentRow) <= 0;
+    $programPaid = in_array($enrollmentRow['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollmentRow);
     $certificateFeeDue = certificate_fee_amount($enrollmentRow) > 0;
     $certificatePaid = !$certificateFeeDue || trim((string) ($enrollmentRow['certificate_payment_note'] ?? '')) !== '';
 
@@ -98,7 +98,7 @@ require __DIR__ . '/includes/header.php';
                     $isLiveSession = ($row['delivery_type'] ?? 'video') === 'live_session';
                     $courseTypeLabel = $isLiveSession ? 'Live Sessions' : 'Videos';
                     $courseTypeClass = $isLiveSession ? 'live-session' : 'video';
-                    $programPaid = in_array($row['status'], ['paid', 'completed'], true) || course_fee_amount($row) <= 0;
+                    $programPaid = in_array($row['status'], ['paid', 'completed'], true) || !course_requires_payment($row);
                     $certificateFeeDue = certificate_fee_amount($row) > 0;
                     $certificatePaid = !$certificateFeeDue || trim((string) ($row['certificate_payment_note'] ?? '')) !== '';
                     ?>
@@ -152,7 +152,7 @@ require __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td data-label="Payment">
-                            <?php if (course_fee_amount($row) <= 0): ?>
+                            <?php if (!course_requires_payment($row)): ?>
                                 Included
                             <?php elseif (in_array($row['status'], ['paid', 'completed'], true)): ?>
                                 Paid

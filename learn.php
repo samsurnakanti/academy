@@ -22,7 +22,7 @@ if (!$enrollment) {
     exit('Learning access not found.');
 }
 
-$programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0;
+$programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment);
 $certificateFeeDue = certificate_fee_amount($enrollment) > 0;
 $hasFullAccess = $programPaid;
 $materialsStmt = db()->prepare(

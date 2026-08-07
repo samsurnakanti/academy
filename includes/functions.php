@@ -3197,7 +3197,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
         return $certificate ?: null;
     }
 
-    if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_fee_amount($certificate) > 0) {
+    if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) && course_requires_payment($certificate)) {
         return $certificate;
     }
 
@@ -3248,6 +3248,15 @@ function discounted_amount(array $row, string $regularKey, string $discountKey):
 function course_fee_amount(array $course): float
 {
     return discounted_amount($course, 'fee', 'discount_fee');
+}
+
+function course_requires_payment(array $course): bool
+{
+    if (array_key_exists('payment_required', $course)) {
+        return (int) ($course['payment_required'] ?? 0) === 1;
+    }
+
+    return course_fee_amount($course) > 0;
 }
 
 function certificate_fee_amount(array $course): float
@@ -4280,6 +4289,7 @@ function ensure_course_detail_columns(): void
         'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER fee',
         'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER certification_fee',
         'show_fee_details' => 'ADD COLUMN show_fee_details TINYINT(1) NOT NULL DEFAULT 1 AFTER certificate_discount_fee',
+        'payment_required' => 'ADD COLUMN payment_required TINYINT(1) NOT NULL DEFAULT 0 AFTER show_fee_details',
         'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
         'certificate_details' => 'ADD COLUMN certificate_details TEXT NULL AFTER delivery_type',
         'certificate_title' => 'ADD COLUMN certificate_title VARCHAR(220) NULL AFTER certificate_details',
@@ -4290,6 +4300,10 @@ function ensure_course_detail_columns(): void
         if (!isset($existing[$column])) {
             db()->exec("ALTER TABLE courses {$definition}");
         }
+    }
+
+    if (!isset($existing['payment_required'])) {
+        db()->exec("UPDATE courses SET payment_required = 1 WHERE fee > 0 AND (discount_fee IS NULL OR discount_fee > 0)");
     }
 
     $nullableColumns = ['discount_fee', 'certificate_discount_fee'];

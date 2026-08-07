@@ -32,7 +32,7 @@ $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => (
 $resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
 $liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
 $showFeeDetails = course_should_show_fee_details($course);
-$isFreeProgram = course_fee_amount($course) <= 0;
+$isFreeProgram = !course_requires_payment($course);
 $isLiveSessionCourse = ($course['delivery_type'] ?? 'video') === 'live_session';
 $regularFee = max(0, (float) ($course['fee'] ?? 0));
 $hasCourseDiscount = $showFeeDetails && $regularFee > 0 && course_fee_amount($course) < $regularFee;

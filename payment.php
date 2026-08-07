@@ -28,7 +28,7 @@ $paymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id'];
         <p class="eyebrow">Final payment</p>
         <h1><?= e($enrollment['title']) ?></h1>
         <p class="price-line"><?= price_html($enrollment, 'fee', 'discount_fee') ?></p>
-        <?php if (course_fee_amount($enrollment) <= 0): ?>
+        <?php if (!course_requires_payment($enrollment)): ?>
             <p>This program is free. No program payment is required.</p>
         <?php else: ?>
             <p>Complete payment securely through Razorpay to unlock program videos, live sessions, and learning materials. Access updates automatically after successful payment verification.</p>

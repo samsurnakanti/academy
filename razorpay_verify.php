@@ -83,7 +83,7 @@ if ($type === 'certificate') {
         (int) $enrollment['course_id'],
         'Razorpay payment: ' . $paymentId,
     ]);
-    if (in_array($enrollment['status'], ['paid', 'completed'], true) || course_fee_amount($enrollment) <= 0) {
+    if (in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment)) {
         ensure_instant_certificate_for_enrollment($id);
     }
 

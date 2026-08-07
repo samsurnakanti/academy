@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'issue_certificate') {
         $dashboardUrl = normalize_elldy_dashboard_url((string) ($request['dashboard_url'] ?? ''));
-        $programPaid = in_array($request['enrollment_status'], ['paid', 'completed'], true) || course_fee_amount($request) <= 0;
+        $programPaid = in_array($request['enrollment_status'], ['paid', 'completed'], true) || !course_requires_payment($request);
         $certificatePaid = certificate_fee_amount($request) <= 0 || trim((string) ($request['payment_note'] ?? '')) !== '';
 
         if ($dashboardUrl === '' || !is_elldy_dashboard_url($dashboardUrl)) {

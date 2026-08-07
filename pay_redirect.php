@@ -23,7 +23,7 @@ if ($type === 'program') {
         exit('Payment not found.');
     }
 
-    if (course_fee_amount($row) <= 0) {
+    if (!course_requires_payment($row)) {
         redirect('dashboard.php');
     }
 
@@ -61,7 +61,7 @@ if ($type === 'certificate') {
     ]);
 
     if (certificate_fee_amount($row) <= 0) {
-        if (!in_array($row['status'], ['paid', 'completed'], true) && course_fee_amount($row) > 0) {
+        if (!in_array($row['status'], ['paid', 'completed'], true) && course_requires_payment($row)) {
             redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
         }
 
