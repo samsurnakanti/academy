@@ -259,33 +259,20 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="certificate-action">
             <h2>Certificate</h2>
-            <div class="certificate-lock-preview is-blurred" data-certificate-preview>
-                <div>
-                    <span>Certificate of Completion</span>
-                    <strong><?= e($enrollment['title']) ?></strong>
-                    <small><?= e($user['name']) ?></small>
-                </div>
-                <button class="button tiny" type="button" data-certificate-toggle>Show</button>
-            </div>
             <?php if ($certificateFeeDue && !$certificatePaid): ?>
-                <p>Pay the certification charge before admin can issue your downloadable certificate.</p>
                 <a class="button primary" href="pay_redirect.php?type=certificate&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
             <?php elseif (!$programPaid): ?>
-                <p>Complete the program payment to unlock your certificate download.</p>
                 <a class="button primary" href="pay_redirect.php?type=program&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
             <?php elseif (!$certificate || !certificate_dashboard_is_approved($certificate)): ?>
-                <p>Submit your public Elldy dashboard link for academy review before downloading your certificate.</p>
                 <?php if ($certificate): ?>
                     <p>Status: <?= e(dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted')) ?></p>
                 <?php endif; ?>
                 <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Submit Dashboard Link</a>
             <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
-                <p>Your certificate is ready.</p>
                 <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
             <?php elseif ($certificate): ?>
                 <p>Status: <?= e(certificate_badge($certificate['status'])) ?></p>
             <?php else: ?>
-                <p>Submit your dashboard link after payment confirmation so admin can review and issue your certificate.</p>
                 <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Certificate Details</a>
             <?php endif; ?>
         </div>
