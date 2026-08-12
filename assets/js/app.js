@@ -85,6 +85,34 @@ if (siteHeader && menuToggle && mainNav) {
     });
 }
 
+const learningMenuToggle = document.querySelector('[data-learning-menu-toggle]');
+const learningMenuCloseControls = document.querySelectorAll('[data-learning-menu-close]');
+
+if (learningMenuToggle) {
+    const setLearningMenuOpen = (isOpen) => {
+        document.body.classList.toggle('learning-menu-open', isOpen);
+        learningMenuToggle.setAttribute('aria-expanded', String(isOpen));
+    };
+
+    learningMenuToggle.addEventListener('click', () => {
+        setLearningMenuOpen(!document.body.classList.contains('learning-menu-open'));
+    });
+
+    learningMenuCloseControls.forEach((control) => {
+        control.addEventListener('click', () => setLearningMenuOpen(false));
+    });
+
+    document.querySelectorAll('.lesson-list a').forEach((link) => {
+        link.addEventListener('click', () => setLearningMenuOpen(false));
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setLearningMenuOpen(false);
+        }
+    });
+}
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         const serviceWorkerUrl = document.body.dataset.serviceWorkerUrl;

@@ -1750,9 +1750,12 @@ tbody tr:hover {
 
 .learning-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.38fr);
-    gap: 34px;
-    padding: clamp(28px, 5vw, 64px) clamp(18px, 5vw, 64px);
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    gap: 28px;
+    width: min(100%, 1680px);
+    margin: 0 auto;
+    padding: clamp(18px, 3vw, 34px) clamp(16px, 3vw, 40px) clamp(34px, 5vw, 70px);
+    align-items: start;
 }
 
 .video-panel,
@@ -1765,18 +1768,22 @@ tbody tr:hover {
 }
 
 .video-panel {
-    padding: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .video-frame {
     position: relative;
     width: 100%;
-    margin: 22px 0;
+    margin: 16px 0 18px;
     overflow: hidden;
-    border: 1px solid var(--line);
+    border: 0;
     border-radius: 8px;
     background: #0f172a;
     aspect-ratio: 16 / 9;
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.22);
 }
 
 .video-frame iframe,
@@ -2105,6 +2112,53 @@ tbody tr:hover {
     margin-top: 18px;
 }
 
+.learning-menu-toggle,
+.learning-menu-backdrop,
+.lesson-list-close {
+    display: none;
+}
+
+.course-overview {
+    display: grid;
+    gap: 12px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.course-overview h2,
+.course-overview h3 {
+    margin: 0;
+}
+
+.course-overview h2 {
+    font-size: clamp(24px, 2.5vw, 34px);
+}
+
+.course-overview h3 {
+    font-size: 20px;
+}
+
+.overview-lead {
+    max-width: 900px;
+    color: var(--ink);
+    font-size: 18px;
+    line-height: 1.7;
+}
+
+.overview-copy {
+    max-width: 920px;
+    color: var(--muted);
+    line-height: 1.75;
+}
+
+.overview-plan {
+    display: grid;
+    gap: 12px;
+    max-width: 920px;
+    margin-top: 4px;
+}
+
 .elldy-promo {
     display: flex;
     align-items: center;
@@ -2167,7 +2221,23 @@ tbody tr:hover {
 }
 
 .lesson-list {
+    position: sticky;
+    top: 96px;
+    max-height: calc(100vh - 116px);
+    overflow: auto;
     padding: 22px;
+}
+
+.lesson-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.lesson-list-header h2 {
+    margin: 0;
+    font-size: 24px;
 }
 
 .lesson-item {
@@ -2877,6 +2947,161 @@ tbody tr:hover {
     .cert-grid,
     .learning-layout {
         grid-template-columns: 1fr;
+    }
+
+    .learning-menu-toggle {
+        position: sticky;
+        top: 76px;
+        z-index: 35;
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin: 12px 14px 2px;
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--brand-dark);
+        font-size: 13px;
+        font-weight: 800;
+        box-shadow: 0 10px 26px rgba(16, 24, 40, 0.12);
+        backdrop-filter: blur(12px);
+    }
+
+    .learning-menu-toggle > span:first-child {
+        position: relative;
+        display: block;
+        width: 16px;
+        height: 12px;
+        border-top: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+    }
+
+    .learning-menu-toggle > span:first-child::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 0;
+        width: 16px;
+        height: 2px;
+        background: currentColor;
+    }
+
+    .learning-menu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: block;
+        pointer-events: none;
+        background: rgba(15, 23, 42, 0);
+        transition: background 180ms ease;
+    }
+
+    body.learning-menu-open .learning-menu-backdrop {
+        pointer-events: auto;
+        background: rgba(15, 23, 42, 0.46);
+    }
+
+    body.learning-menu-open {
+        overflow: hidden;
+    }
+
+    .learning-layout {
+        display: block;
+        width: 100%;
+        padding: 8px 14px 28px;
+    }
+
+    .video-panel > .eyebrow {
+        margin-top: 4px;
+    }
+
+    .video-panel > h2 {
+        margin-bottom: 10px;
+        font-size: 24px;
+        line-height: 1.28;
+    }
+
+    .video-frame {
+        margin: 12px -14px 18px;
+        width: calc(100% + 28px);
+        border-radius: 0;
+    }
+
+    .course-overview {
+        margin-top: 22px;
+        padding-top: 20px;
+    }
+
+    .course-overview h2 {
+        font-size: 24px;
+    }
+
+    .overview-lead {
+        font-size: 16px;
+    }
+
+    .lesson-list {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 90;
+        width: min(86vw, 360px);
+        max-height: none;
+        padding: 18px;
+        overflow: auto;
+        border-radius: 0 8px 8px 0;
+        transform: translateX(-105%);
+        transition: transform 220ms ease;
+    }
+
+    body.learning-menu-open .lesson-list {
+        transform: translateX(0);
+    }
+
+    .lesson-list-header {
+        position: sticky;
+        top: -18px;
+        z-index: 1;
+        margin: -18px -18px 8px;
+        padding: 18px;
+        border-bottom: 1px solid var(--line);
+        background: #ffffff;
+    }
+
+    .lesson-list-header h2 {
+        font-size: 20px;
+    }
+
+    .lesson-list-close {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+    }
+
+    .lesson-list-close::before,
+    .lesson-list-close::after {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--ink);
+    }
+
+    .lesson-list-close::before {
+        transform: rotate(45deg);
+    }
+
+    .lesson-list-close::after {
+        transform: rotate(-45deg);
     }
 
     .enroll-intro {

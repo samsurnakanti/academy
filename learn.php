@@ -9,7 +9,7 @@ $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type
+    "SELECT e.*, c.title, c.short_description, c.description, c.learning_plan, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type
      FROM enrollments e
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
@@ -90,11 +90,11 @@ if (
 $title = 'Learn | ' . $enrollment['title'] . ' | Elldy Academy';
 require __DIR__ . '/includes/header.php';
 ?>
-<section class="page-title">
-    <p class="eyebrow">Learning workspace</p>
-    <h1><?= e($enrollment['title']) ?></h1>
-    <p><?= $primaryType === 'live_session' ? 'Join live sessions, watch session videos, and open supporting materials after program payment.' : 'Watch course videos one by one and open supporting materials after program payment.' ?></p>
-</section>
+<button class="learning-menu-toggle" type="button" data-learning-menu-toggle aria-expanded="false" aria-controls="learning-sidebar">
+    <span></span>
+    <span>Course Menu</span>
+</button>
+<div class="learning-menu-backdrop" data-learning-menu-close></div>
 
 <section class="learning-layout">
     <div class="video-panel">
@@ -189,6 +189,22 @@ require __DIR__ . '/includes/header.php';
             <?php if (($materialType !== 'live_session' || $isVideoPlayback) && !empty($activeMaterial['file_url']) && (!$isVideoPlayback || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
             <?php endif; ?>
+            <section class="course-overview">
+                <p class="eyebrow">Course overview</p>
+                <h2><?= e($enrollment['title']) ?></h2>
+                <?php if (!empty($enrollment['short_description'])): ?>
+                    <p class="overview-lead"><?= e($enrollment['short_description']) ?></p>
+                <?php endif; ?>
+                <?php if (!empty($enrollment['description'])): ?>
+                    <div class="overview-copy"><?= text_with_links($enrollment['description']) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($enrollment['learning_plan'])): ?>
+                    <div class="overview-plan">
+                        <h3>What you will learn</h3>
+                        <?= detail_points($enrollment['learning_plan']) ?>
+                    </div>
+                <?php endif; ?>
+            </section>
         <?php else: ?>
             <div class="empty-state">
                 <h2>No video selected</h2>
@@ -197,8 +213,11 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 
-    <aside class="lesson-list">
-        <h2>Program Modules</h2>
+    <aside class="lesson-list" id="learning-sidebar" aria-label="Course modules">
+        <div class="lesson-list-header">
+            <h2>Program Modules</h2>
+            <button class="lesson-list-close" type="button" data-learning-menu-close aria-label="Close course menu"></button>
+        </div>
         <?php $itemIndex = 0; ?>
         <?php foreach ($materialGroups as $module): ?>
             <section class="lesson-module">
