@@ -3,7 +3,7 @@ require_once __DIR__ . '/includes/functions.php';
 $user = require_user();
 ensure_certificate_requests_table();
 ensure_course_detail_columns();
-ensure_material_columns();
+ensure_course_structure_tables();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
@@ -25,14 +25,8 @@ if (!$enrollment) {
 $programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment);
 $certificateFeeDue = certificate_fee_amount($enrollment) > 0;
 $hasFullAccess = $programPaid;
-$materialsStmt = db()->prepare(
-    "SELECT *
-     FROM materials
-     WHERE course_id = ?
-     ORDER BY sort_order ASC, created_at ASC, id ASC"
-);
-$materialsStmt->execute([(int) $enrollment['course_id']]);
-$materials = $materialsStmt->fetchAll();
+$materials = course_material_rows((int) $enrollment['course_id']);
+$materialGroups = course_material_groups($materials);
 $progressByMaterial = learning_progress_for_enrollment((int) $enrollment['id']);
 $primaryType = ($enrollment['delivery_type'] ?? 'video') === 'live_session' ? 'live_session' : 'video';
 
@@ -204,30 +198,42 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <aside class="lesson-list">
-        <h2>Program Learning Items</h2>
-        <?php foreach ($materials as $index => $material): ?>
-            <?php $isAccessible = $canAccessMaterial($material); ?>
-            <?php if ($isAccessible): ?>
-                <a class="lesson-item <?= $activeMaterial && (int) $activeMaterial['id'] === (int) $material['id'] ? 'active' : '' ?>" href="learn.php?enrollment_id=<?= (int) $enrollment['id'] ?>&material_id=<?= (int) $material['id'] ?>">
-            <?php else: ?>
-                <div class="lesson-item locked">
-            <?php endif; ?>
-                    <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
-                    <div>
-                        <strong><?= e($material['title']) ?></strong>
-                        <?php $itemProgress = $progressByMaterial[(int) $material['id']] ?? null; ?>
-                        <?php $itemType = $material['material_type'] ?? 'video'; ?>
-                        <?php $itemIsVideoPlayback = $itemType === 'video' || ($itemType === 'live_session' && is_playable_video_url((string) ($material['file_url'] ?? ''))); ?>
-                        <small>
-                            <?= e($itemIsVideoPlayback ? 'Video' : ucwords(str_replace('_', ' ', $itemType))) ?><?= !$isAccessible ? ' - Locked until payment' : '' ?>
-                            <?php if ($isAccessible && $itemIsVideoPlayback && $itemProgress): ?>
-                                <span class="progress-chip <?= (int) $itemProgress['is_completed'] === 1 ? 'complete' : '' ?>">
-                                    <?= (int) $itemProgress['is_completed'] === 1 ? 'Completed' : (int) round((float) $itemProgress['progress_percent']) . '%' ?>
-                                </span>
+        <h2>Program Modules</h2>
+        <?php $itemIndex = 0; ?>
+        <?php foreach ($materialGroups as $module): ?>
+            <section class="lesson-module">
+                <h3><?= e($module['title']) ?></h3>
+                <?php foreach ($module['topics'] as $topic): ?>
+                    <div class="lesson-topic">
+                        <strong><?= e($topic['title']) ?></strong>
+                        <?php foreach ($topic['materials'] as $material): ?>
+                            <?php $itemIndex++; ?>
+                            <?php $isAccessible = $canAccessMaterial($material); ?>
+                            <?php if ($isAccessible): ?>
+                                <a class="lesson-item <?= $activeMaterial && (int) $activeMaterial['id'] === (int) $material['id'] ? 'active' : '' ?>" href="learn.php?enrollment_id=<?= (int) $enrollment['id'] ?>&material_id=<?= (int) $material['id'] ?>">
+                            <?php else: ?>
+                                <div class="lesson-item locked">
                             <?php endif; ?>
-                        </small>
+                                    <span><?= str_pad((string) $itemIndex, 2, '0', STR_PAD_LEFT) ?></span>
+                                    <div>
+                                        <strong><?= e($material['title']) ?></strong>
+                                        <?php $itemProgress = $progressByMaterial[(int) $material['id']] ?? null; ?>
+                                        <?php $itemType = $material['material_type'] ?? 'video'; ?>
+                                        <?php $itemIsVideoPlayback = $itemType === 'video' || ($itemType === 'live_session' && is_playable_video_url((string) ($material['file_url'] ?? ''))); ?>
+                                        <small>
+                                            <?= e($itemIsVideoPlayback ? 'Video' : ucwords(str_replace('_', ' ', $itemType))) ?><?= !$isAccessible ? ' - Locked until payment' : '' ?>
+                                            <?php if ($isAccessible && $itemIsVideoPlayback && $itemProgress): ?>
+                                                <span class="progress-chip <?= (int) $itemProgress['is_completed'] === 1 ? 'complete' : '' ?>">
+                                                    <?= (int) $itemProgress['is_completed'] === 1 ? 'Completed' : (int) round((float) $itemProgress['progress_percent']) . '%' ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                            <?= $isAccessible ? '</a>' : '</div>' ?>
+                        <?php endforeach; ?>
                     </div>
-            <?= $isAccessible ? '</a>' : '</div>' ?>
+                <?php endforeach; ?>
+            </section>
         <?php endforeach; ?>
         <?php if (!$materials): ?>
             <p class="empty">No session videos or materials published yet.</p>

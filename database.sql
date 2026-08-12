@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS courses (
 CREATE TABLE IF NOT EXISTS materials (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     course_id INT UNSIGNED NOT NULL,
+    topic_id INT UNSIGNED NULL,
     title VARCHAR(190) NOT NULL,
     description TEXT NULL,
     material_type ENUM('video', 'live_session', 'material') NOT NULL DEFAULT 'video',
@@ -55,6 +56,29 @@ CREATE TABLE IF NOT EXISTS materials (
     sort_order INT UNSIGNED NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_material_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS course_modules (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    course_id INT UNSIGNED NOT NULL,
+    title VARCHAR(190) NOT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_course_modules_course (course_id),
+    CONSTRAINT fk_course_module_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS course_topics (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    course_id INT UNSIGNED NOT NULL,
+    module_id INT UNSIGNED NOT NULL,
+    title VARCHAR(190) NOT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_course_topics_course (course_id),
+    INDEX idx_course_topics_module (module_id),
+    CONSTRAINT fk_course_topic_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    CONSTRAINT fk_course_topic_module FOREIGN KEY (module_id) REFERENCES course_modules(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS enrollments (

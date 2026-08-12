@@ -24,10 +24,9 @@ if ($slug === '' && !empty($course['slug'])) {
     redirect(program_url($course));
 }
 
-ensure_material_columns();
-$materials = db()->prepare('SELECT * FROM materials WHERE course_id = ? ORDER BY sort_order ASC, created_at ASC, id ASC');
-$materials->execute([(int) $course['id']]);
-$materialRows = $materials->fetchAll();
+ensure_course_structure_tables();
+$materialRows = course_material_rows((int) $course['id']);
+$materialGroups = course_material_groups($materialRows);
 $videoRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'video'));
 $resourceRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'material'));
 $liveSessionRows = array_values(array_filter($materialRows, fn (array $row): bool => ($row['material_type'] ?? 'video') === 'live_session'));
@@ -124,13 +123,26 @@ require __DIR__ . '/includes/header.php';
         <p class="share-status" id="share-status" hidden></p>
         <?php if ($videoRows): ?>
             <div class="info-block">
-                <h2>Course Videos</h2>
+                <h2>Course Modules</h2>
                 <div class="video-outline">
-                    <?php foreach ($videoRows as $index => $video): ?>
-                        <div>
-                            <span><?= str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT) ?></span>
-                            <strong><?= e($video['title']) ?></strong>
-                        </div>
+                    <?php $outlineIndex = 0; ?>
+                    <?php foreach ($materialGroups as $module): ?>
+                        <section class="outline-module">
+                            <h3><?= e($module['title']) ?></h3>
+                            <?php foreach ($module['topics'] as $topic): ?>
+                                <div class="outline-topic">
+                                    <strong><?= e($topic['title']) ?></strong>
+                                    <?php foreach ($topic['materials'] as $material): ?>
+                                        <?php if (($material['material_type'] ?? 'video') !== 'video') continue; ?>
+                                        <?php $outlineIndex++; ?>
+                                        <p>
+                                            <span><?= str_pad((string) $outlineIndex, 2, '0', STR_PAD_LEFT) ?></span>
+                                            <strong><?= e($material['title']) ?></strong>
+                                        </p>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </section>
                     <?php endforeach; ?>
                 </div>
             </div>

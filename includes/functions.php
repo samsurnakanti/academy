@@ -1440,6 +1440,65 @@ function primary_material_types_for_delivery(string $deliveryType): array
     return $deliveryType === 'live_session' ? ['live_session', 'video'] : ['video'];
 }
 
+function course_material_rows(int $courseId): array
+{
+    ensure_course_structure_tables();
+    $stmt = db()->prepare(
+        "SELECT m.*,
+            ct.title AS topic_title,
+            ct.sort_order AS topic_sort_order,
+            cm.id AS module_id,
+            cm.title AS module_title,
+            cm.sort_order AS module_sort_order
+         FROM materials m
+         LEFT JOIN course_topics ct ON ct.id = m.topic_id
+         LEFT JOIN course_modules cm ON cm.id = ct.module_id
+         WHERE m.course_id = ?
+         ORDER BY COALESCE(cm.sort_order, 0) ASC,
+            COALESCE(cm.id, 0) ASC,
+            COALESCE(ct.sort_order, 0) ASC,
+            COALESCE(ct.id, 0) ASC,
+            m.sort_order ASC,
+            m.created_at ASC,
+            m.id ASC"
+    );
+    $stmt->execute([$courseId]);
+
+    return $stmt->fetchAll();
+}
+
+function course_material_groups(array $materials): array
+{
+    $groups = [];
+
+    foreach ($materials as $material) {
+        $moduleId = (int) ($material['module_id'] ?? 0);
+        $topicId = (int) ($material['topic_id'] ?? 0);
+        $moduleKey = $moduleId > 0 ? (string) $moduleId : 'general';
+        $topicKey = $topicId > 0 ? (string) $topicId : 'general';
+
+        if (!isset($groups[$moduleKey])) {
+            $groups[$moduleKey] = [
+                'id' => $moduleId,
+                'title' => trim((string) ($material['module_title'] ?? '')) ?: 'General Module',
+                'topics' => [],
+            ];
+        }
+
+        if (!isset($groups[$moduleKey]['topics'][$topicKey])) {
+            $groups[$moduleKey]['topics'][$topicKey] = [
+                'id' => $topicId,
+                'title' => trim((string) ($material['topic_title'] ?? '')) ?: 'General Topic',
+                'materials' => [],
+            ];
+        }
+
+        $groups[$moduleKey]['topics'][$topicKey]['materials'][] = $material;
+    }
+
+    return $groups;
+}
+
 function is_allowed_material_mime(string $mime): bool
 {
     return str_starts_with($mime, 'video/')
@@ -2833,6 +2892,91 @@ function ensure_material_columns(): void
 
     if (!isset($existing['sort_order'])) {
         db()->exec("ALTER TABLE materials ADD COLUMN sort_order INT UNSIGNED NOT NULL DEFAULT 0 AFTER file_url");
+    }
+
+    if (!isset($existing['topic_id'])) {
+        db()->exec("ALTER TABLE materials ADD COLUMN topic_id INT UNSIGNED NULL AFTER course_id");
+        db()->exec("CREATE INDEX idx_material_topic ON materials (topic_id)");
+    }
+}
+
+function ensure_course_structure_tables(): void
+{
+    static $checked = false;
+
+    if ($checked) {
+        return;
+    }
+
+    $checked = true;
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS course_modules (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            course_id INT UNSIGNED NOT NULL,
+            title VARCHAR(190) NOT NULL,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_course_modules_course (course_id),
+            CONSTRAINT fk_course_module_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+        )"
+    );
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS course_topics (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            course_id INT UNSIGNED NOT NULL,
+            module_id INT UNSIGNED NOT NULL,
+            title VARCHAR(190) NOT NULL,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_course_topics_course (course_id),
+            INDEX idx_course_topics_module (module_id),
+            CONSTRAINT fk_course_topic_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+            CONSTRAINT fk_course_topic_module FOREIGN KEY (module_id) REFERENCES course_modules(id) ON DELETE CASCADE
+        )"
+    );
+    ensure_material_columns();
+    backfill_material_topics();
+}
+
+function default_topic_for_course(int $courseId): int
+{
+    ensure_course_structure_tables();
+    $moduleStmt = db()->prepare('SELECT id FROM course_modules WHERE course_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1');
+    $moduleStmt->execute([$courseId]);
+    $moduleId = (int) ($moduleStmt->fetchColumn() ?: 0);
+
+    if ($moduleId === 0) {
+        $insertModule = db()->prepare('INSERT INTO course_modules (course_id, title, sort_order) VALUES (?, ?, 0)');
+        $insertModule->execute([$courseId, 'General Module']);
+        $moduleId = (int) db()->lastInsertId();
+    }
+
+    $topicStmt = db()->prepare('SELECT id FROM course_topics WHERE course_id = ? AND module_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1');
+    $topicStmt->execute([$courseId, $moduleId]);
+    $topicId = (int) ($topicStmt->fetchColumn() ?: 0);
+
+    if ($topicId === 0) {
+        $insertTopic = db()->prepare('INSERT INTO course_topics (course_id, module_id, title, sort_order) VALUES (?, ?, ?, 0)');
+        $insertTopic->execute([$courseId, $moduleId, 'General Topic']);
+        $topicId = (int) db()->lastInsertId();
+    }
+
+    return $topicId;
+}
+
+function backfill_material_topics(): void
+{
+    $courseIds = db()->query('SELECT DISTINCT course_id FROM materials WHERE topic_id IS NULL')->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($courseIds as $courseId) {
+        $courseId = (int) $courseId;
+        if ($courseId <= 0) {
+            continue;
+        }
+
+        $topicId = default_topic_for_course($courseId);
+        $update = db()->prepare('UPDATE materials SET topic_id = ? WHERE course_id = ? AND topic_id IS NULL');
+        $update->execute([$topicId, $courseId]);
     }
 }
 

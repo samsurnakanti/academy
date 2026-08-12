@@ -32,16 +32,61 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
 
 $title = 'Materials';
 require __DIR__ . '/_admin_header.php';
-ensure_material_columns();
+ensure_course_structure_tables();
 ensure_s3_settings_table();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
+    $action = (string) ($_POST['action'] ?? 'save_material');
     $fileUrl = trim($_POST['file_url'] ?? '');
     $materialId = (int) ($_POST['material_id'] ?? 0);
     $courseId = (int) ($_POST['course_id'] ?? 0);
+    $moduleId = (int) ($_POST['module_id'] ?? 0);
+    $topicId = (int) ($_POST['topic_id'] ?? 0);
     $sortOrderInput = trim((string) ($_POST['sort_order'] ?? ''));
     $sortOrder = $sortOrderInput === '' ? null : max(0, (int) $sortOrderInput);
+
+    if ($action === 'save_module') {
+        $moduleTitle = trim((string) ($_POST['module_title'] ?? ''));
+        $moduleSortOrder = max(0, (int) ($_POST['module_sort_order'] ?? 0));
+
+        if ($courseId <= 0 || $moduleTitle === '') {
+            flash('error', 'Choose a program and enter a module name.');
+        } else {
+            $stmt = db()->prepare('INSERT INTO course_modules (course_id, title, sort_order) VALUES (?, ?, ?)');
+            $stmt->execute([$courseId, $moduleTitle, $moduleSortOrder]);
+            flash('success', 'Module added.');
+        }
+
+        redirect('materials.php');
+    }
+
+    if ($action === 'save_topic') {
+        $topicTitle = trim((string) ($_POST['topic_title'] ?? ''));
+        $topicSortOrder = max(0, (int) ($_POST['topic_sort_order'] ?? 0));
+        $moduleStmt = db()->prepare('SELECT course_id FROM course_modules WHERE id = ?');
+        $moduleStmt->execute([$moduleId]);
+        $moduleCourseId = (int) ($moduleStmt->fetchColumn() ?: 0);
+
+        if ($moduleCourseId <= 0 || $topicTitle === '') {
+            flash('error', 'Choose a module and enter a topic name.');
+        } else {
+            $stmt = db()->prepare('INSERT INTO course_topics (course_id, module_id, title, sort_order) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$moduleCourseId, $moduleId, $topicTitle, $topicSortOrder]);
+            flash('success', 'Topic added.');
+        }
+
+        redirect('materials.php');
+    }
+
+    if ($courseId <= 0) {
+        flash('error', 'Choose a program before publishing a learning item.');
+        redirect('materials.php');
+    }
+
+    if ($topicId <= 0) {
+        $topicId = default_topic_for_course($courseId);
+    }
 
     try {
         if (!empty($_FILES['material_file']['name'])) {
@@ -53,9 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($materialId > 0) {
-        $stmt = db()->prepare('UPDATE materials SET course_id = ?, title = ?, description = ?, material_type = ?, file_url = ?, sort_order = ? WHERE id = ?');
+        $stmt = db()->prepare('UPDATE materials SET course_id = ?, topic_id = ?, title = ?, description = ?, material_type = ?, file_url = ?, sort_order = ? WHERE id = ?');
         $stmt->execute([
             $courseId,
+            $topicId,
             trim($_POST['title'] ?? ''),
             trim($_POST['description'] ?? ''),
             $_POST['material_type'] ?? 'video',
@@ -71,9 +117,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sortOrder = (int) $nextOrderStmt->fetchColumn();
         }
 
-        $stmt = db()->prepare('INSERT INTO materials (course_id, title, description, material_type, file_url, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt = db()->prepare('INSERT INTO materials (course_id, topic_id, title, description, material_type, file_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             $courseId,
+            $topicId,
             trim($_POST['title'] ?? ''),
             trim($_POST['description'] ?? ''),
             $_POST['material_type'] ?? 'video',
@@ -93,16 +140,36 @@ if (isset($_GET['delete'])) {
 }
 
 $courses = db()->query('SELECT id, title FROM courses ORDER BY title')->fetchAll();
+$modules = db()->query(
+    "SELECT cm.*, c.title AS course_title
+     FROM course_modules cm
+     JOIN courses c ON c.id = cm.course_id
+     ORDER BY c.title ASC, cm.sort_order ASC, cm.id ASC"
+)->fetchAll();
+$topics = db()->query(
+    "SELECT ct.*, cm.title AS module_title, c.title AS course_title
+     FROM course_topics ct
+     JOIN course_modules cm ON cm.id = ct.module_id
+     JOIN courses c ON c.id = ct.course_id
+     ORDER BY c.title ASC, cm.sort_order ASC, cm.id ASC, ct.sort_order ASC, ct.id ASC"
+)->fetchAll();
 $materials = db()->query(
-    "SELECT m.*, c.title AS course_title
+    "SELECT m.*, c.title AS course_title, ct.title AS topic_title, cm.title AS module_title
      FROM materials m
      JOIN courses c ON c.id = m.course_id
-     ORDER BY c.title ASC, m.sort_order ASC, m.created_at ASC, m.id ASC"
+     LEFT JOIN course_topics ct ON ct.id = m.topic_id
+     LEFT JOIN course_modules cm ON cm.id = ct.module_id
+     ORDER BY c.title ASC, cm.sort_order ASC, cm.id ASC, ct.sort_order ASC, ct.id ASC, m.sort_order ASC, m.created_at ASC, m.id ASC"
 )->fetchAll();
 
 $editingMaterial = null;
 if (isset($_GET['edit'])) {
-    $stmt = db()->prepare('SELECT * FROM materials WHERE id = ?');
+    $stmt = db()->prepare(
+        "SELECT m.*, ct.module_id
+         FROM materials m
+         LEFT JOIN course_topics ct ON ct.id = m.topic_id
+         WHERE m.id = ?"
+    );
     $stmt->execute([(int) $_GET['edit']]);
     $editingMaterial = $stmt->fetch() ?: null;
 }
@@ -115,13 +182,15 @@ if (isset($_GET['edit'])) {
 <section class="materials-layout">
     <div class="table-wrap materials-table">
         <table>
-            <thead><tr><th>S.No</th><th>Order</th><th>Program</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
+            <thead><tr><th>S.No</th><th>Order</th><th>Program</th><th>Module</th><th>Topic</th><th>Type</th><th>Learning Item</th><th>URL</th><th>Action</th></tr></thead>
             <tbody>
                 <?php foreach ($materials as $index => $material): ?>
                     <tr>
                         <td><?= $index + 1 ?></td>
                         <td><?= (int) ($material['sort_order'] ?? 0) ?></td>
                         <td><?= e($material['course_title']) ?></td>
+                        <td><?= e($material['module_title'] ?: 'General Module') ?></td>
+                        <td><?= e($material['topic_title'] ?: 'General Topic') ?></td>
                         <td>
                             <?php
                             $materialType = $material['material_type'] ?? 'video';
@@ -142,8 +211,45 @@ if (isset($_GET['edit'])) {
     </div>
 
     <aside class="materials-sidebar">
+        <form method="post" class="form-card materials-form">
+            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="save_module">
+            <h2>Add Module</h2>
+            <fieldset>
+                <label>Program
+                    <select name="course_id" required>
+                        <?php foreach ($courses as $course): ?>
+                            <option value="<?= (int) $course['id'] ?>"><?= e($course['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Module name <input name="module_title" placeholder="Example: Module 1 - Excel Foundations" required></label>
+                <label>Module order <input type="number" name="module_sort_order" min="0" step="1" value="10"></label>
+            </fieldset>
+            <button class="button primary" type="submit">Add Module</button>
+        </form>
+
+        <form method="post" class="form-card materials-form" id="topic-form">
+            <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="save_topic">
+            <h2>Add Topic</h2>
+            <fieldset>
+                <label>Module
+                    <select name="module_id" id="topic-module-select" required>
+                        <?php foreach ($modules as $module): ?>
+                            <option value="<?= (int) $module['id'] ?>" data-course-id="<?= (int) $module['course_id'] ?>"><?= e($module['course_title'] . ' - ' . $module['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Topic name <input name="topic_title" placeholder="Example: Cleaning raw data" required></label>
+                <label>Topic order <input type="number" name="topic_sort_order" min="0" step="1" value="10"></label>
+            </fieldset>
+            <button class="button primary" type="submit">Add Topic</button>
+        </form>
+
         <form method="post" enctype="multipart/form-data" class="form-card materials-form" id="materials-form">
             <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="save_material">
             <input type="hidden" name="material_id" value="<?= (int) ($editingMaterial['id'] ?? 0) ?>">
             <h2><?= $editingMaterial ? 'Edit Learning Item' : 'Add Program Learning Item' ?></h2>
             <fieldset>
@@ -158,9 +264,23 @@ if (isset($_GET['edit'])) {
                 </span>
             </legend>
             <label>Program
-                <select name="course_id" required>
+                <select name="course_id" id="material-course-select" required>
                     <?php foreach ($courses as $course): ?>
                         <option value="<?= (int) $course['id'] ?>" <?= (int) ($editingMaterial['course_id'] ?? 0) === (int) $course['id'] ? 'selected' : '' ?>><?= e($course['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Module
+                <select name="module_id" id="material-module-select" required>
+                    <?php foreach ($modules as $module): ?>
+                        <option value="<?= (int) $module['id'] ?>" data-course-id="<?= (int) $module['course_id'] ?>" <?= (int) ($editingMaterial['module_id'] ?? 0) === (int) $module['id'] ? 'selected' : '' ?>><?= e($module['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Topic
+                <select name="topic_id" id="material-topic-select" required>
+                    <?php foreach ($topics as $topic): ?>
+                        <option value="<?= (int) $topic['id'] ?>" data-course-id="<?= (int) $topic['course_id'] ?>" data-module-id="<?= (int) $topic['module_id'] ?>" <?= (int) ($editingMaterial['topic_id'] ?? 0) === (int) $topic['id'] ? 'selected' : '' ?>><?= e($topic['title']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
@@ -381,6 +501,56 @@ if (isset($_GET['edit'])) {
         select.value = 'live_session';
         syncBadge();
     });
+})();
+
+(() => {
+    const courseSelect = document.getElementById('material-course-select');
+    const moduleSelect = document.getElementById('material-module-select');
+    const topicSelect = document.getElementById('material-topic-select');
+
+    if (!courseSelect || !moduleSelect || !topicSelect) {
+        return;
+    }
+
+    const syncStructureSelects = () => {
+        const courseId = courseSelect.value;
+        let selectedModuleVisible = false;
+
+        Array.from(moduleSelect.options).forEach((option) => {
+            const visible = option.dataset.courseId === courseId;
+            option.hidden = !visible;
+            option.disabled = !visible;
+            selectedModuleVisible = selectedModuleVisible || (visible && option.selected);
+        });
+
+        if (!selectedModuleVisible) {
+            const firstModule = Array.from(moduleSelect.options).find((option) => !option.disabled);
+            if (firstModule) {
+                firstModule.selected = true;
+            }
+        }
+
+        const moduleId = moduleSelect.value;
+        let selectedTopicVisible = false;
+
+        Array.from(topicSelect.options).forEach((option) => {
+            const visible = option.dataset.courseId === courseId && option.dataset.moduleId === moduleId;
+            option.hidden = !visible;
+            option.disabled = !visible;
+            selectedTopicVisible = selectedTopicVisible || (visible && option.selected);
+        });
+
+        if (!selectedTopicVisible) {
+            const firstTopic = Array.from(topicSelect.options).find((option) => !option.disabled);
+            if (firstTopic) {
+                firstTopic.selected = true;
+            }
+        }
+    };
+
+    courseSelect.addEventListener('change', syncStructureSelects);
+    moduleSelect.addEventListener('change', syncStructureSelects);
+    syncStructureSelects();
 })();
 </script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>
