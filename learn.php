@@ -166,6 +166,42 @@ $socialLinksFromText = static function (string $text) use ($socialLinkLabel): ar
     return array_values($links);
 };
 
+$learningDescriptionHtml = static function (string $text, string $materialTitle = ''): string {
+    $text = trim(str_replace(["\r\n", "\r"], "\n", $text));
+
+    if ($text === '') {
+        return '';
+    }
+
+    $text = preg_replace('~\s*#{1,6}\s*Stay Connected\b.*$~isu', '', $text) ?? $text;
+    $text = preg_replace('~\s*\bStay Connected\b.*$~isu', '', $text) ?? $text;
+    $text = trim($text);
+
+    if ($materialTitle !== '') {
+        $quotedTitle = preg_quote(trim($materialTitle), '~');
+        $text = preg_replace('~^\s*' . $quotedTitle . '\s*(?:\n+|$)~iu', '', $text) ?? $text;
+        $text = trim($text);
+    }
+
+    $paragraphs = preg_split('~\n{2,}~', $text) ?: [];
+    $html = [];
+
+    foreach ($paragraphs as $paragraph) {
+        $paragraph = trim(preg_replace('~\n+~', ' ', $paragraph) ?? $paragraph);
+        $paragraph = preg_replace('~^\s*#{1,6}\s*~', '', $paragraph) ?? $paragraph;
+
+        if ($paragraph === '') {
+            continue;
+        }
+
+        $paragraphHtml = text_with_links($paragraph);
+        $paragraphHtml = preg_replace('~\*([^*]+)\*~', '<strong>$1</strong>', $paragraphHtml) ?? $paragraphHtml;
+        $html[] = '<p>' . $paragraphHtml . '</p>';
+    }
+
+    return implode("\n", $html);
+};
+
 if (
     $activeMaterial &&
     ($activeMaterial['material_type'] ?? 'video') === 'live_session' &&
@@ -280,10 +316,13 @@ require __DIR__ . '/includes/header.php';
             <?php endif; ?>
             <?php if (!empty($activeMaterial['description'])): ?>
                 <?php $materialSocialLinks = $socialLinksFromText((string) $activeMaterial['description']); ?>
-                <div class="material-description" data-read-more>
-                    <div class="material-description-copy" data-read-more-content><?= text_with_links($activeMaterial['description']) ?></div>
-                    <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
-                </div>
+                <?php $materialDescriptionHtml = $learningDescriptionHtml((string) $activeMaterial['description'], (string) $activeMaterial['title']); ?>
+                <?php if ($materialDescriptionHtml !== ''): ?>
+                    <div class="material-description" data-read-more>
+                        <div class="material-description-copy" data-read-more-content><?= $materialDescriptionHtml ?></div>
+                        <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
+                    </div>
+                <?php endif; ?>
                 <?php if ($materialSocialLinks): ?>
                     <div class="video-social-links" aria-label="Social media links">
                         <?php foreach ($materialSocialLinks as $socialLink): ?>

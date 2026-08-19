@@ -1972,8 +1972,16 @@ tbody tr:hover {
     line-height: 1.75;
 }
 
+.material-description p {
+    margin: 0;
+}
+
+.material-description p + p {
+    margin-top: 12px;
+}
+
 .material-description-copy {
-    max-height: 96px;
+    max-height: 124px;
     overflow: hidden;
 }
 
