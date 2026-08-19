@@ -55,28 +55,6 @@ $admin = current_admin();
     src="https://www.facebook.com/tr?id=3066061163585047&ev=PageView&noscript=1"
     alt=""
 ></noscript>
-<script>
-if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-    document.body.classList.add('is-installed-app-launch');
-}
-</script>
-<div class="app-splash" id="app-splash" role="status" aria-live="polite">
-    <div class="app-splash-card">
-        <div class="app-splash-icon">
-            <img src="<?= e(public_url('assets/favicon.svg')) ?>" alt="Elldy">
-        </div>
-        <div class="app-splash-visual" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-        <p class="eyebrow">Elldy Academy</p>
-        <h1>AI Powered Data Intelligence Platform</h1>
-        <p>Learn data analytics and business analytics. Become an advanced master analyst in data.</p>
-        <div class="app-splash-loader" aria-hidden="true"></div>
-    </div>
-</div>
 <header class="site-header">
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Open menu">
         <span></span>

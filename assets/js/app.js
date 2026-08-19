@@ -16,31 +16,12 @@ const brandPhrases = [
     'Business Intelligence (BI)',
     'Data Analytics',
 ];
-const appSplash = document.getElementById('app-splash');
 const isInstalledApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const appAnalyticsUrl = document.body.dataset.appAnalyticsUrl;
 const appAnalyticsToken = document.body.dataset.appAnalyticsToken;
 
 if (isInstalledApp) {
-    document.body.classList.add('is-installed-app-launch');
     document.body.classList.add('is-installed-app');
-} else {
-    document.body.classList.remove('is-installed-app-launch');
-}
-
-if (appSplash && isInstalledApp) {
-    const hideSplash = () => {
-        appSplash.classList.add('is-hidden');
-        window.setTimeout(() => appSplash.remove(), 460);
-    };
-
-    window.addEventListener('load', () => {
-        window.setTimeout(hideSplash, 850);
-    });
-
-    window.setTimeout(hideSplash, 2600);
-} else if (appSplash) {
-    appSplash.remove();
 }
 
 if (siteHeader) {
