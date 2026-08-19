@@ -1,6 +1,35 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'presign-upload') {
+    require_admin();
+    header('Content-Type: application/json');
+    verify_csrf();
+
+    $settings = s3_settings();
+    $fileName = trim((string) ($_POST['file_name'] ?? ''));
+    $contentType = trim((string) ($_POST['content_type'] ?? ''));
+
+    if ($settings['access_key_id'] === '' || $settings['secret_access_key'] === '' || $settings['bucket_name'] === '') {
+        http_response_code(422);
+        echo json_encode(['error' => 'S3 settings are incomplete.']);
+        exit;
+    }
+
+    if ($fileName === '' || !is_allowed_image_mime($contentType)) {
+        http_response_code(422);
+        echo json_encode(['error' => 'Please select a valid blog image.']);
+        exit;
+    }
+
+    $objectKey = s3_new_material_object_key($fileName);
+    echo json_encode([
+        'upload_url' => s3_presigned_put_url($objectKey, $contentType),
+        'file_url' => s3_object_url($settings, $objectKey),
+    ]);
+    exit;
+}
+
 $title = 'Blog Manager';
 require_admin();
 ensure_blog_posts_table();
@@ -85,7 +114,7 @@ require __DIR__ . '/_admin_header.php';
 </section>
 
 <section class="admin-grid">
-    <form method="post" enctype="multipart/form-data" class="form-card">
+    <form method="post" enctype="multipart/form-data" class="form-card" id="blog-form">
         <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
         <input type="hidden" name="action" value="save">
         <input type="hidden" name="id" value="<?= (int) ($edit['id'] ?? 0) ?>">
@@ -110,11 +139,18 @@ require __DIR__ . '/_admin_header.php';
         <fieldset>
             <legend>Publishing</legend>
             <label>Featured image URL
-                <input name="featured_image_url" value="<?= e($edit['featured_image_url'] ?? '') ?>" placeholder="https://...">
+                <input name="featured_image_url" id="featured-image-url" value="<?= e($edit['featured_image_url'] ?? '') ?>" placeholder="https://...">
             </label>
             <label>Or upload featured image to S3
-                <input type="file" name="featured_image_file" accept="image/*">
+                <input type="file" name="featured_image_file" id="featured-image-file" accept="image/*">
             </label>
+            <div class="upload-status" id="blog-upload-status" hidden>
+                <div class="upload-status-row">
+                    <strong id="blog-upload-status-text">Preparing upload...</strong>
+                    <span id="blog-upload-percent">0%</span>
+                </div>
+                <progress id="blog-upload-progress" max="100" value="0"></progress>
+            </div>
             <label>Author
                 <input name="author_name" value="<?= e($edit['author_name'] ?? 'Elldy Academy') ?>">
             </label>
@@ -139,7 +175,7 @@ require __DIR__ . '/_admin_header.php';
             </label>
         </fieldset>
 
-        <button class="button primary" type="submit"><?= $edit ? 'Update Post' : 'Create Post' ?></button>
+        <button class="button primary" id="blog-submit" type="submit"><?= $edit ? 'Update Post' : 'Create Post' ?></button>
         <?php if ($edit): ?>
             <a class="button secondary" href="blog.php">Cancel Edit</a>
         <?php endif; ?>
@@ -179,4 +215,112 @@ require __DIR__ . '/_admin_header.php';
         </table>
     </div>
 </section>
+<script>
+(() => {
+    const form = document.getElementById('blog-form');
+    const fileInput = document.getElementById('featured-image-file');
+    const fileUrlInput = document.getElementById('featured-image-url');
+    const statusBox = document.getElementById('blog-upload-status');
+    const statusText = document.getElementById('blog-upload-status-text');
+    const percentText = document.getElementById('blog-upload-percent');
+    const progress = document.getElementById('blog-upload-progress');
+    const submit = document.getElementById('blog-submit');
+    let uploadInProgress = false;
+    let uploadComplete = false;
+
+    if (!form || !fileInput || !fileUrlInput || !statusBox) {
+        return;
+    }
+
+    const setUploadState = (text, percent = 0) => {
+        statusBox.hidden = false;
+        statusText.textContent = text;
+        percentText.textContent = percent + '%';
+        progress.value = percent;
+    };
+
+    const setBusy = (busy) => {
+        if (submit) {
+            submit.disabled = busy;
+        }
+    };
+
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        uploadComplete = false;
+
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            setUploadState('Please choose a valid blog image.', 0);
+            return;
+        }
+
+        uploadInProgress = true;
+        setBusy(true);
+        setUploadState('Preparing blog image upload...', 0);
+
+        const body = new FormData();
+        body.append('csrf_token', form.querySelector('[name="csrf_token"]').value);
+        body.append('file_name', file.name);
+        body.append('content_type', file.type);
+
+        try {
+            const response = await fetch('blog.php?ajax=presign-upload', { method: 'POST', body });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.error || 'Unable to prepare upload.');
+            }
+
+            await new Promise((resolve, reject) => {
+                const request = new XMLHttpRequest();
+                request.open('PUT', payload.upload_url);
+                request.setRequestHeader('Content-Type', file.type);
+                request.upload.addEventListener('progress', (event) => {
+                    if (!event.lengthComputable) {
+                        return;
+                    }
+
+                    setUploadState('Uploading blog image to S3...', Math.round((event.loaded / event.total) * 100));
+                });
+                request.addEventListener('load', () => {
+                    if (request.status >= 200 && request.status < 300) {
+                        resolve();
+                    } else {
+                        reject(new Error('S3 upload failed with status ' + request.status + '.'));
+                    }
+                });
+                request.addEventListener('error', () => reject(new Error('Browser could not reach S3. Check your S3 CORS PUT settings.')));
+                request.send(file);
+            });
+
+            fileUrlInput.value = payload.file_url;
+            fileInput.value = '';
+            uploadComplete = true;
+            setUploadState('Upload complete. Ready to publish.', 100);
+        } catch (error) {
+            setUploadState(error.message || 'Upload failed.', 0);
+        } finally {
+            uploadInProgress = false;
+            setBusy(false);
+        }
+    });
+
+    form.addEventListener('submit', (event) => {
+        if (uploadInProgress) {
+            event.preventDefault();
+            setUploadState('Please wait for the image upload to finish.', progress.value || 0);
+            return;
+        }
+
+        if (fileInput.files.length > 0 && !uploadComplete) {
+            event.preventDefault();
+            setUploadState('The selected image has not finished uploading yet.', progress.value || 0);
+        }
+    });
+})();
+</script>
 <?php require __DIR__ . '/_admin_footer.php'; ?>
