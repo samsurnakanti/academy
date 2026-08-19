@@ -72,6 +72,46 @@ foreach ($materials as $material) {
     }
 }
 
+$videoPlaylist = [];
+$playlistIndex = 0;
+$currentPlaylistIndex = null;
+$nextVideoItem = null;
+
+foreach ($materialGroups as $module) {
+    foreach ($module['topics'] as $topic) {
+        foreach ($topic['materials'] as $material) {
+            $itemType = $material['material_type'] ?? 'video';
+            $itemUrl = trim((string) ($material['file_url'] ?? ''));
+            $itemIsVideoPlayback = $itemUrl !== '' && (
+                $itemType === 'video' ||
+                ($itemType === 'live_session' && is_playable_video_url($itemUrl))
+            );
+
+            if (!$canAccessMaterial($material) || !$itemIsVideoPlayback) {
+                continue;
+            }
+
+            $playlistIndex++;
+            $playlistItem = [
+                'index' => $playlistIndex,
+                'material' => $material,
+                'module_title' => (string) ($module['title'] ?? 'General Module'),
+                'topic_title' => (string) ($topic['title'] ?? 'General Topic'),
+                'url' => 'learn.php?enrollment_id=' . (int) $enrollment['id'] . '&material_id=' . (int) $material['id'],
+            ];
+            $videoPlaylist[] = $playlistItem;
+
+            if ($activeMaterial && (int) $activeMaterial['id'] === (int) $material['id']) {
+                $currentPlaylistIndex = count($videoPlaylist) - 1;
+            }
+        }
+    }
+}
+
+if ($currentPlaylistIndex !== null && isset($videoPlaylist[$currentPlaylistIndex + 1])) {
+    $nextVideoItem = $videoPlaylist[$currentPlaylistIndex + 1];
+}
+
 if (
     $activeMaterial &&
     ($activeMaterial['material_type'] ?? 'video') === 'live_session' &&
@@ -157,6 +197,7 @@ require __DIR__ . '/includes/header.php';
                             data-csrf-token="<?= e(csrf_token()) ?>"
                             data-enrollment-id="<?= (int) $enrollment['id'] ?>"
                             data-material-id="<?= (int) $activeMaterial['id'] ?>"
+                            data-next-url="<?= $nextVideoItem ? e(public_url($nextVideoItem['url'])) : '' ?>"
                             data-start-seconds="<?= e((string) min((float) ($activeProgress['watched_seconds'] ?? 0), max(0, (float) ($activeProgress['duration_seconds'] ?? 0) - 5))) ?>"
                         >
                             <source src="<?= e($playbackUrl) ?>">
@@ -184,10 +225,47 @@ require __DIR__ . '/includes/header.php';
                 </div>
             <?php endif; ?>
             <?php if (!empty($activeMaterial['description'])): ?>
-                <p class="material-description"><?= text_with_links($activeMaterial['description']) ?></p>
+                <div class="material-description" data-read-more>
+                    <div class="material-description-copy" data-read-more-content><?= text_with_links($activeMaterial['description']) ?></div>
+                    <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
+                </div>
             <?php endif; ?>
             <?php if (($materialType !== 'live_session' || $isVideoPlayback) && !empty($activeMaterial['file_url']) && (!$isVideoPlayback || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
+            <?php endif; ?>
+            <?php if ($videoPlaylist): ?>
+                <section class="up-next-list" aria-label="Course videos">
+                    <div class="up-next-header">
+                        <div>
+                            <p class="eyebrow">Course videos</p>
+                            <h2><?= $nextVideoItem ? 'Up next' : 'End of playlist' ?></h2>
+                        </div>
+                        <?php if ($nextVideoItem): ?>
+                            <a class="button small" href="<?= e($nextVideoItem['url']) ?>">Play Next</a>
+                        <?php endif; ?>
+                    </div>
+                    <div class="up-next-items">
+                        <?php foreach ($videoPlaylist as $playlistItem): ?>
+                            <?php
+                                $playlistMaterial = $playlistItem['material'];
+                                $playlistProgress = $progressByMaterial[(int) $playlistMaterial['id']] ?? null;
+                                $isCurrentPlaylistItem = $activeMaterial && (int) $activeMaterial['id'] === (int) $playlistMaterial['id'];
+                            ?>
+                            <a class="up-next-item <?= $isCurrentPlaylistItem ? 'active' : '' ?>" href="<?= e($playlistItem['url']) ?>">
+                                <span class="up-next-number"><?= str_pad((string) $playlistItem['index'], 2, '0', STR_PAD_LEFT) ?></span>
+                                <span class="up-next-copy">
+                                    <strong><?= e($playlistMaterial['title']) ?></strong>
+                                    <small><?= e($playlistItem['module_title']) ?> / <?= e($playlistItem['topic_title']) ?></small>
+                                </span>
+                                <?php if ($playlistProgress): ?>
+                                    <span class="progress-chip <?= (int) $playlistProgress['is_completed'] === 1 ? 'complete' : '' ?>">
+                                        <?= (int) $playlistProgress['is_completed'] === 1 ? 'Completed' : (int) round((float) $playlistProgress['progress_percent']) . '%' ?>
+                                    </span>
+                                <?php endif; ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
             <?php endif; ?>
             <section class="course-overview">
                 <p class="eyebrow">Course overview</p>

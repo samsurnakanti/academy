@@ -253,6 +253,31 @@ document.querySelectorAll('[data-certificate-preview]').forEach((preview) => {
     });
 });
 
+document.querySelectorAll('[data-read-more]').forEach((container) => {
+    const content = container.querySelector('[data-read-more-content]');
+    const toggle = container.querySelector('[data-read-more-toggle]');
+
+    if (!content || !toggle) {
+        return;
+    }
+
+    const syncReadMore = () => {
+        const needsToggle = content.scrollHeight > content.clientHeight + 4 || container.classList.contains('is-expanded');
+        container.classList.toggle('has-overflow', needsToggle);
+        toggle.hidden = !needsToggle;
+    };
+
+    toggle.addEventListener('click', () => {
+        const isExpanded = container.classList.toggle('is-expanded');
+        toggle.textContent = isExpanded ? 'Show less' : 'Read more';
+        toggle.setAttribute('aria-expanded', String(isExpanded));
+        syncReadMore();
+    });
+
+    syncReadMore();
+    window.addEventListener('resize', syncReadMore, { passive: true });
+});
+
 document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const video = frame.querySelector('.academy-video');
     const toggle = frame.querySelector('.video-toggle');
@@ -297,20 +322,21 @@ document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     const csrfToken = video.dataset.csrfToken;
     const enrollmentId = video.dataset.enrollmentId;
     const materialId = video.dataset.materialId;
+    const nextUrl = video.dataset.nextUrl;
     const startSeconds = Number.parseFloat(video.dataset.startSeconds || '0');
     let lastSavedAt = 0;
     let hasRestoredPosition = false;
 
     const saveProgress = (force = false) => {
         if (!progressUrl || !csrfToken || !enrollmentId || !materialId || !Number.isFinite(video.duration) || video.duration <= 0) {
-            return;
+            return Promise.resolve(null);
         }
 
         const now = Date.now();
         const isComplete = video.ended || ((video.currentTime / video.duration) >= 0.9);
 
         if (!force && !isComplete && now - lastSavedAt < 10000) {
-            return;
+            return Promise.resolve(null);
         }
 
         lastSavedAt = now;
@@ -321,7 +347,7 @@ document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
         formData.append('watched_seconds', String(Math.max(0, video.currentTime)));
         formData.append('duration_seconds', String(Math.max(0, video.duration)));
 
-        window.fetch(progressUrl, {
+        return window.fetch(progressUrl, {
             method: 'POST',
             body: formData,
             credentials: 'same-origin',
@@ -343,6 +369,12 @@ document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
 
     video.addEventListener('timeupdate', () => saveProgress(false));
     video.addEventListener('pause', () => saveProgress(true));
-    video.addEventListener('ended', () => saveProgress(true));
+    video.addEventListener('ended', () => {
+        saveProgress(true).finally(() => {
+            if (nextUrl) {
+                window.location.href = nextUrl;
+            }
+        });
+    });
     window.addEventListener('beforeunload', () => saveProgress(true));
 });
