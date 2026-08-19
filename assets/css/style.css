@@ -1997,6 +1997,33 @@ tbody tr:hover {
     font-weight: 800;
 }
 
+.video-social-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.video-social-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 9px 14px;
+    border: 1px solid rgba(37, 99, 235, 0.16);
+    border-radius: 8px;
+    background: #ffffff;
+    color: var(--brand-dark);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.video-social-link:hover {
+    border-color: rgba(37, 99, 235, 0.34);
+    background: #f8fbff;
+    transform: translateY(-1px);
+}
+
 .up-next-list {
     display: grid;
     gap: 14px;

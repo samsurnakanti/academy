@@ -112,6 +112,60 @@ if ($currentPlaylistIndex !== null && isset($videoPlaylist[$currentPlaylistIndex
     $nextVideoItem = $videoPlaylist[$currentPlaylistIndex + 1];
 }
 
+$socialLinkLabel = static function (string $url): string {
+    $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    $host = preg_replace('/^www\./', '', $host) ?: '';
+
+    return match (true) {
+        str_contains($host, 'facebook.com') || str_contains($host, 'fb.com') => 'Facebook',
+        str_contains($host, 'instagram.com') => 'Instagram',
+        str_contains($host, 'linkedin.com') => 'LinkedIn',
+        str_contains($host, 'youtube.com') || str_contains($host, 'youtu.be') => 'YouTube',
+        str_contains($host, 'x.com') || str_contains($host, 'twitter.com') => 'X',
+        str_contains($host, 'wa.me') || str_contains($host, 'whatsapp.com') => 'WhatsApp',
+        str_contains($host, 'telegram.me') || str_contains($host, 't.me') => 'Telegram',
+        default => 'Website',
+    };
+};
+
+$socialLinksFromText = static function (string $text) use ($socialLinkLabel): array {
+    preg_match_all('~https?://[^\s<>"\']+~i', $text, $matches);
+    $links = [];
+
+    foreach ($matches[0] ?? [] as $url) {
+        $url = rtrim($url, ".,);]");
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        if ($host === '') {
+            continue;
+        }
+
+        $isSocial = str_contains($host, 'facebook.com') ||
+            str_contains($host, 'fb.com') ||
+            str_contains($host, 'instagram.com') ||
+            str_contains($host, 'linkedin.com') ||
+            str_contains($host, 'youtube.com') ||
+            str_contains($host, 'youtu.be') ||
+            str_contains($host, 'x.com') ||
+            str_contains($host, 'twitter.com') ||
+            str_contains($host, 'wa.me') ||
+            str_contains($host, 'whatsapp.com') ||
+            str_contains($host, 'telegram.me') ||
+            str_contains($host, 't.me');
+
+        if (!$isSocial || isset($links[$url])) {
+            continue;
+        }
+
+        $links[$url] = [
+            'url' => $url,
+            'label' => $socialLinkLabel($url),
+        ];
+    }
+
+    return array_values($links);
+};
+
 if (
     $activeMaterial &&
     ($activeMaterial['material_type'] ?? 'video') === 'live_session' &&
@@ -225,10 +279,20 @@ require __DIR__ . '/includes/header.php';
                 </div>
             <?php endif; ?>
             <?php if (!empty($activeMaterial['description'])): ?>
+                <?php $materialSocialLinks = $socialLinksFromText((string) $activeMaterial['description']); ?>
                 <div class="material-description" data-read-more>
                     <div class="material-description-copy" data-read-more-content><?= text_with_links($activeMaterial['description']) ?></div>
                     <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
                 </div>
+                <?php if ($materialSocialLinks): ?>
+                    <div class="video-social-links" aria-label="Social media links">
+                        <?php foreach ($materialSocialLinks as $socialLink): ?>
+                            <a class="video-social-link <?= e(strtolower($socialLink['label'])) ?>" href="<?= e($socialLink['url']) ?>" target="_blank" rel="noopener">
+                                <?= e($socialLink['label']) ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
             <?php if (($materialType !== 'live_session' || $isVideoPlayback) && !empty($activeMaterial['file_url']) && (!$isVideoPlayback || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
