@@ -425,11 +425,11 @@ require __DIR__ . '/includes/header.php';
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
             <?php endif; ?>
             <?php if ($videoPlaylist): ?>
-                <section class="up-next-list" aria-label="Course videos">
+                <section class="up-next-list" aria-label="All course videos">
                     <div class="up-next-header">
                         <div>
                             <p class="eyebrow">Course videos</p>
-                            <h2><?= $nextVideoItem ? 'Up next' : 'End of playlist' ?></h2>
+                            <h2>All videos</h2>
                         </div>
                     </div>
                     <div class="up-next-items">
