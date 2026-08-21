@@ -118,44 +118,53 @@ if ($certificateFeeDue && !$certificatePaid) {
         'label' => 'Pay Certification Charge',
         'url' => 'pay_redirect.php?type=certificate&id=' . (int) $enrollment['id'],
         'external' => true,
-        'note' => '',
+        'note' => 'Complete certificate payment to continue.',
     ];
 } elseif (!$programPaid) {
     $certificateAction = [
         'label' => 'Pay Program Fee',
         'url' => 'pay_redirect.php?type=program&id=' . (int) $enrollment['id'],
         'external' => true,
-        'note' => '',
-    ];
-} elseif (!$certificate || !certificate_dashboard_is_approved($certificate)) {
-    $certificateAction = [
-        'label' => 'Submit Dashboard Link',
-        'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
-        'external' => false,
-        'note' => $certificate ? 'Status: ' . dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted') : '',
+        'note' => 'Program payment is required before certificate download.',
     ];
 } elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']) {
     $certificateAction = [
         'label' => 'Download Certificate',
         'url' => (string) $certificate['certificate_url'],
         'external' => true,
-        'note' => '',
+        'note' => 'Your dashboard is approved and certificate is ready.',
+    ];
+} elseif (!$certificate || in_array(($certificate['dashboard_review_status'] ?? 'not_submitted'), ['not_submitted', 'rejected'], true)) {
+    $certificateAction = [
+        'label' => 'Submit Dashboard Link',
+        'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
+        'external' => false,
+        'note' => $certificate && ($certificate['dashboard_review_status'] ?? '') === 'rejected'
+            ? 'Dashboard needs changes. Submit the corrected dashboard link.'
+            : 'Submit your public Elldy dashboard link for review.',
     ];
 } elseif ($certificate) {
     $certificateAction = [
-        'label' => '',
-        'url' => '',
+        'label' => 'View Certificate Status',
+        'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
         'external' => false,
-        'note' => 'Status: ' . certificate_badge($certificate['status']),
+        'note' => 'Dashboard submitted. ' . dashboard_review_badge($certificate['dashboard_review_status'] ?? 'pending') . '.',
     ];
 } else {
     $certificateAction = [
         'label' => 'Certificate Details',
         'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
         'external' => false,
-        'note' => '',
+        'note' => 'Open certificate details and submit your dashboard link.',
     ];
 }
+
+$certificatePromptTitle = match ($certificateAction['label'] ?? '') {
+    'Download Certificate' => 'Download your certificate',
+    'Pay Certification Charge', 'Pay Program Fee' => 'Complete payment',
+    'View Certificate Status' => 'Dashboard submitted',
+    default => 'Submit your dashboard',
+};
 
 $socialLinkLabel = static function (string $url): string {
     $host = strtolower((string) parse_url($url, PHP_URL_HOST));
@@ -288,16 +297,6 @@ require __DIR__ . '/includes/header.php';
                     <p class="eyebrow">Now viewing</p>
                     <h2><?= e($activeMaterial['title']) ?></h2>
                 </div>
-                <?php if ($certificateAction && ($certificateAction['label'] !== '' || $certificateAction['note'] !== '')): ?>
-                    <div class="learning-certificate-action">
-                        <?php if ($certificateAction['label'] !== ''): ?>
-                            <a class="button small" href="<?= e($certificateAction['url']) ?>" <?= $certificateAction['external'] ? 'target="_blank" rel="noopener"' : '' ?>><?= e($certificateAction['label']) ?></a>
-                        <?php endif; ?>
-                        <?php if ($certificateAction['note'] !== ''): ?>
-                            <small><?= e($certificateAction['note']) ?></small>
-                        <?php endif; ?>
-                    </div>
-                <?php endif; ?>
             </div>
             <?php $materialDescriptionHtml = ''; ?>
             <?php $materialSocialLinks = []; ?>
@@ -379,9 +378,9 @@ require __DIR__ . '/includes/header.php';
                     <p><?= $materialType === 'live_session' ? 'Open this session link in a new tab when you are ready.' : 'This file type opens best in a new tab.' ?></p>
                 </div>
             <?php endif; ?>
-            <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks || $nextVideoItem): ?>
+            <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks || $certificateAction || $nextVideoItem): ?>
                 <div class="lesson-followup">
-                    <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks): ?>
+                    <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks || $certificateAction): ?>
                         <div>
                             <?php if ($materialDescriptionHtml !== ''): ?>
                                 <div class="material-description" data-read-more>
@@ -396,6 +395,20 @@ require __DIR__ . '/includes/header.php';
                                             <?= e($socialLink['label']) ?>
                                         </a>
                                     <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($certificateAction): ?>
+                                <div class="lesson-certificate-prompt">
+                                    <div>
+                                        <p class="eyebrow">Need certificate?</p>
+                                        <h3><?= e($certificatePromptTitle) ?></h3>
+                                        <?php if ($certificateAction['note'] !== ''): ?>
+                                            <p><?= e($certificateAction['note']) ?></p>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($certificateAction['label'] !== ''): ?>
+                                        <a class="button small" href="<?= e($certificateAction['url']) ?>" <?= $certificateAction['external'] ? 'target="_blank" rel="noopener"' : '' ?>><?= e($certificateAction['label']) ?></a>
+                                    <?php endif; ?>
                                 </div>
                             <?php endif; ?>
                         </div>

@@ -1644,21 +1644,6 @@ tbody tr:hover {
     margin: 0;
 }
 
-.learning-certificate-action {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    max-width: 260px;
-}
-
-.learning-certificate-action small {
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-    text-align: right;
-}
-
 .video-frame {
     position: relative;
     width: 100%;
@@ -2034,6 +2019,43 @@ tbody tr:hover {
 
 .lesson-followup {
     margin-top: 18px;
+}
+
+.lesson-certificate-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+    padding: 16px;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 12px 26px rgba(16, 24, 40, 0.07);
+}
+
+.lesson-certificate-prompt h3,
+.lesson-certificate-prompt p {
+    margin: 0;
+}
+
+.lesson-certificate-prompt h3 {
+    font-size: 18px;
+}
+
+.lesson-certificate-prompt > div {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.lesson-certificate-prompt > div > p:not(.eyebrow) {
+    color: var(--muted);
+    line-height: 1.5;
+}
+
+.lesson-certificate-prompt .button {
+    flex: 0 0 auto;
 }
 
 .up-next-button {
@@ -3165,15 +3187,6 @@ tbody tr:hover {
         gap: 12px;
     }
 
-    .learning-certificate-action {
-        align-items: flex-start;
-        max-width: none;
-    }
-
-    .learning-certificate-action small {
-        text-align: left;
-    }
-
     .video-frame {
         margin: 12px -14px 18px;
         width: calc(100% + 28px);
@@ -3183,6 +3196,11 @@ tbody tr:hover {
     .up-next-button {
         width: 100%;
         min-height: 74px;
+    }
+
+    .lesson-certificate-prompt {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .up-next-header {

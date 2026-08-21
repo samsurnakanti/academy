@@ -2,7 +2,7 @@
 require_once __DIR__ . '/includes/functions.php';
 
 $title = 'Connect | Elldy Academy';
-$canonicalUrl = public_url('connect');
+$canonicalUrl = public_url('connect.php');
 $connectLinks = connect_links(true);
 require __DIR__ . '/includes/header.php';
 ?>

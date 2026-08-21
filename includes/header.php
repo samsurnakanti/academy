@@ -72,7 +72,7 @@ $admin = current_admin();
         <a href="<?= e(public_url('programs')) ?>">Programs</a>
         <a href="<?= e(public_url('blog.php')) ?>">Blog</a>
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
-        <a href="<?= e(public_url('connect')) ?>">Support</a>
+        <a href="<?= e(public_url('connect.php')) ?>">Support</a>
         <?php if ($user): ?>
             <a href="<?= e(public_url('dashboard.php')) ?>">My Sessions</a>
             <a href="<?= e(public_url('profile.php')) ?>">Profile</a>
