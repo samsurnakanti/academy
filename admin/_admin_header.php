@@ -61,6 +61,7 @@ $admin = require_admin();
                 <a href="razorpay.php">Razorpay</a>
                 <a href="whatsapp.php">WhatsApp</a>
                 <a href="whatsapp_bulk.php">Bulk Invites</a>
+                <a href="connect.php">Connect Links</a>
             </span>
         </span>
         <a href="../index.php">Website</a>

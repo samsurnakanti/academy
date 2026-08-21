@@ -211,6 +211,18 @@ CREATE TABLE IF NOT EXISTS blog_posts (
     INDEX idx_blog_status_published (status, published_at)
 );
 
+CREATE TABLE IF NOT EXISTS connect_links (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(160) NOT NULL,
+    link_url VARCHAR(500) NOT NULL,
+    image_url VARCHAR(500) NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_connect_links_active_order (is_active, sort_order)
+);
+
 CREATE TABLE IF NOT EXISTS whatsapp_settings (
     id TINYINT UNSIGNED PRIMARY KEY,
     business_account_id VARCHAR(80) NULL,

@@ -263,6 +263,48 @@ function save_s3_settings(array $data): void
     ]);
 }
 
+function ensure_connect_links_table(): void
+{
+    db()->exec(
+        "CREATE TABLE IF NOT EXISTS connect_links (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(160) NOT NULL,
+            link_url VARCHAR(500) NOT NULL,
+            image_url VARCHAR(500) NULL,
+            sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_connect_links_active_order (is_active, sort_order)
+        )"
+    );
+
+    $count = (int) db()->query('SELECT COUNT(*) FROM connect_links')->fetchColumn();
+    if ($count > 0) {
+        return;
+    }
+
+    $stmt = db()->prepare(
+        "INSERT INTO connect_links (title, link_url, image_url, sort_order, is_active)
+         VALUES (?, ?, ?, ?, 1)"
+    );
+    $stmt->execute(['WhatsApp Support', 'https://wa.me/919490238737?text=Hi%20Elldy%20Academy%2C%20I%20need%20support%20regarding%20my%20course.', '', 1]);
+    $stmt->execute(['Email Support', 'mailto:Info@arklytics.in', '', 2]);
+}
+
+function connect_links(bool $activeOnly = true): array
+{
+    ensure_connect_links_table();
+    $where = $activeOnly ? 'WHERE is_active = 1' : '';
+
+    return db()->query(
+        "SELECT *
+         FROM connect_links
+         {$where}
+         ORDER BY sort_order ASC, id ASC"
+    )->fetchAll();
+}
+
 function ensure_zoom_settings_table(): void
 {
     static $checked = false;

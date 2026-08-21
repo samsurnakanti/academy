@@ -112,6 +112,51 @@ if ($currentPlaylistIndex !== null && isset($videoPlaylist[$currentPlaylistIndex
     $nextVideoItem = $videoPlaylist[$currentPlaylistIndex + 1];
 }
 
+$certificateAction = null;
+if ($certificateFeeDue && !$certificatePaid) {
+    $certificateAction = [
+        'label' => 'Pay Certification Charge',
+        'url' => 'pay_redirect.php?type=certificate&id=' . (int) $enrollment['id'],
+        'external' => true,
+        'note' => '',
+    ];
+} elseif (!$programPaid) {
+    $certificateAction = [
+        'label' => 'Pay Program Fee',
+        'url' => 'pay_redirect.php?type=program&id=' . (int) $enrollment['id'],
+        'external' => true,
+        'note' => '',
+    ];
+} elseif (!$certificate || !certificate_dashboard_is_approved($certificate)) {
+    $certificateAction = [
+        'label' => 'Submit Dashboard Link',
+        'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
+        'external' => false,
+        'note' => $certificate ? 'Status: ' . dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted') : '',
+    ];
+} elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']) {
+    $certificateAction = [
+        'label' => 'Download Certificate',
+        'url' => (string) $certificate['certificate_url'],
+        'external' => true,
+        'note' => '',
+    ];
+} elseif ($certificate) {
+    $certificateAction = [
+        'label' => '',
+        'url' => '',
+        'external' => false,
+        'note' => 'Status: ' . certificate_badge($certificate['status']),
+    ];
+} else {
+    $certificateAction = [
+        'label' => 'Certificate Details',
+        'url' => 'certificate_apply.php?enrollment_id=' . (int) $enrollment['id'],
+        'external' => false,
+        'note' => '',
+    ];
+}
+
 $socialLinkLabel = static function (string $url): string {
     $host = strtolower((string) parse_url($url, PHP_URL_HOST));
     $host = preg_replace('/^www\./', '', $host) ?: '';
@@ -238,8 +283,28 @@ require __DIR__ . '/includes/header.php';
             <?php $playbackUrl = playback_video_url($activeMaterial['file_url']); ?>
             <?php $materialType = $activeMaterial['material_type'] ?? 'video'; ?>
             <?php $isVideoPlayback = $materialType === 'video' || ($materialType === 'live_session' && is_playable_video_url((string) ($activeMaterial['file_url'] ?? ''))); ?>
-            <p class="eyebrow">Now viewing</p>
-            <h2><?= e($activeMaterial['title']) ?></h2>
+            <div class="learning-titlebar">
+                <div>
+                    <p class="eyebrow">Now viewing</p>
+                    <h2><?= e($activeMaterial['title']) ?></h2>
+                </div>
+                <?php if ($certificateAction && ($certificateAction['label'] !== '' || $certificateAction['note'] !== '')): ?>
+                    <div class="learning-certificate-action">
+                        <?php if ($certificateAction['label'] !== ''): ?>
+                            <a class="button small" href="<?= e($certificateAction['url']) ?>" <?= $certificateAction['external'] ? 'target="_blank" rel="noopener"' : '' ?>><?= e($certificateAction['label']) ?></a>
+                        <?php endif; ?>
+                        <?php if ($certificateAction['note'] !== ''): ?>
+                            <small><?= e($certificateAction['note']) ?></small>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php $materialDescriptionHtml = ''; ?>
+            <?php $materialSocialLinks = []; ?>
+            <?php if (!empty($activeMaterial['description'])): ?>
+                <?php $materialSocialLinks = $socialLinksFromText((string) $activeMaterial['description']); ?>
+                <?php $materialDescriptionHtml = $learningDescriptionHtml((string) $activeMaterial['description'], (string) $activeMaterial['title']); ?>
+            <?php endif; ?>
             <?php if ($materialType === 'live_session' && !$isVideoPlayback): ?>
                 <?php $configuredLiveUrl = trim((string) ($activeMaterial['file_url'] ?? '')); ?>
                 <?php if (live_session_is_external_url($configuredLiveUrl)): ?>
@@ -314,24 +379,34 @@ require __DIR__ . '/includes/header.php';
                     <p><?= $materialType === 'live_session' ? 'Open this session link in a new tab when you are ready.' : 'This file type opens best in a new tab.' ?></p>
                 </div>
             <?php endif; ?>
-            <?php if (!empty($activeMaterial['description'])): ?>
-                <?php $materialSocialLinks = $socialLinksFromText((string) $activeMaterial['description']); ?>
-                <?php $materialDescriptionHtml = $learningDescriptionHtml((string) $activeMaterial['description'], (string) $activeMaterial['title']); ?>
-                <?php if ($materialDescriptionHtml !== ''): ?>
-                    <div class="material-description" data-read-more>
-                        <div class="material-description-copy" data-read-more-content><?= $materialDescriptionHtml ?></div>
-                        <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
-                    </div>
-                <?php endif; ?>
-                <?php if ($materialSocialLinks): ?>
-                    <div class="video-social-links" aria-label="Social media links">
-                        <?php foreach ($materialSocialLinks as $socialLink): ?>
-                            <a class="video-social-link <?= e(strtolower($socialLink['label'])) ?>" href="<?= e($socialLink['url']) ?>" target="_blank" rel="noopener">
-                                <?= e($socialLink['label']) ?>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+            <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks || $nextVideoItem): ?>
+                <div class="lesson-followup">
+                    <?php if ($materialDescriptionHtml !== '' || $materialSocialLinks): ?>
+                        <div>
+                            <?php if ($materialDescriptionHtml !== ''): ?>
+                                <div class="material-description" data-read-more>
+                                    <div class="material-description-copy" data-read-more-content><?= $materialDescriptionHtml ?></div>
+                                    <button class="read-more-toggle" type="button" data-read-more-toggle aria-expanded="false">Read more</button>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($materialSocialLinks): ?>
+                                <div class="video-social-links" aria-label="Social media links">
+                                    <?php foreach ($materialSocialLinks as $socialLink): ?>
+                                        <a class="video-social-link <?= e(strtolower($socialLink['label'])) ?>" href="<?= e($socialLink['url']) ?>" target="_blank" rel="noopener">
+                                            <?= e($socialLink['label']) ?>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($nextVideoItem): ?>
+                        <a class="up-next-button" href="<?= e($nextVideoItem['url']) ?>">
+                            <span>Up next</span>
+                            <strong><?= e($nextVideoItem['material']['title']) ?></strong>
+                        </a>
+                    <?php endif; ?>
+                </div>
             <?php endif; ?>
             <?php if (($materialType !== 'live_session' || $isVideoPlayback) && !empty($activeMaterial['file_url']) && (!$isVideoPlayback || !should_use_native_video_player($activeMaterial['file_url']))): ?>
                 <a class="button small" href="<?= e($playbackUrl) ?>" target="_blank" rel="noopener">Open original link</a>
@@ -343,9 +418,6 @@ require __DIR__ . '/includes/header.php';
                             <p class="eyebrow">Course videos</p>
                             <h2><?= $nextVideoItem ? 'Up next' : 'End of playlist' ?></h2>
                         </div>
-                        <?php if ($nextVideoItem): ?>
-                            <a class="button small" href="<?= e($nextVideoItem['url']) ?>">Play Next</a>
-                        <?php endif; ?>
                     </div>
                     <div class="up-next-items">
                         <?php foreach ($videoPlaylist as $playlistItem): ?>
@@ -440,21 +512,13 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
         <div class="certificate-action">
             <h2>Certificate</h2>
-            <?php if ($certificateFeeDue && !$certificatePaid): ?>
-                <a class="button primary" href="pay_redirect.php?type=certificate&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Certification Charge</a>
-            <?php elseif (!$programPaid): ?>
-                <a class="button primary" href="pay_redirect.php?type=program&id=<?= (int) $enrollment['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
-            <?php elseif (!$certificate || !certificate_dashboard_is_approved($certificate)): ?>
-                <?php if ($certificate): ?>
-                    <p>Status: <?= e(dashboard_review_badge($certificate['dashboard_review_status'] ?? 'not_submitted')) ?></p>
+            <?php if ($certificateAction): ?>
+                <?php if ($certificateAction['note'] !== ''): ?>
+                    <p><?= e($certificateAction['note']) ?></p>
                 <?php endif; ?>
-                <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Submit Dashboard Link</a>
-            <?php elseif ($certificatePaid && $programPaid && $certificate && $certificate['status'] === 'issued' && $certificate['certificate_url']): ?>
-                <a class="button primary" href="<?= e($certificate['certificate_url']) ?>" target="_blank" rel="noopener">Download Certificate</a>
-            <?php elseif ($certificate): ?>
-                <p>Status: <?= e(certificate_badge($certificate['status'])) ?></p>
-            <?php else: ?>
-                <a class="button primary" href="certificate_apply.php?enrollment_id=<?= (int) $enrollment['id'] ?>">Certificate Details</a>
+                <?php if ($certificateAction['label'] !== ''): ?>
+                    <a class="button primary" href="<?= e($certificateAction['url']) ?>" <?= $certificateAction['external'] ? 'target="_blank" rel="noopener"' : '' ?>><?= e($certificateAction['label']) ?></a>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </aside>
