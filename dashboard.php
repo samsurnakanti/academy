@@ -135,6 +135,8 @@ require __DIR__ . '/includes/header.php';
                                 -
                             <?php elseif ($certificateFeeDue && !$certificatePaid): ?>
                                 <a class="button tiny" href="pay_redirect.php?type=certificate&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Certificate Fee</a>
+                            <?php elseif (!$certificateFeeDue && !$programPaid): ?>
+                                Included
                             <?php elseif (!$programPaid): ?>
                                 <a class="button tiny" href="pay_redirect.php?type=program&id=<?= (int) $row['id'] ?>" target="_blank" rel="noopener">Pay Program Fee</a>
                             <?php elseif (($row['dashboard_review_status'] ?? 'not_submitted') !== 'approved'): ?>
