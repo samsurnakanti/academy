@@ -3432,6 +3432,21 @@ function supported_payment_currencies(): array
     ];
 }
 
+function currency_region_codes(string $currency): array
+{
+    return match (normalize_payment_currency($currency, 'USD')) {
+        'INR' => ['IN'],
+        'USD' => ['US'],
+        'EUR' => ['AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PT', 'SI', 'SK'],
+        'GBP' => ['GB'],
+        'AED' => ['AE'],
+        'SGD' => ['SG'],
+        'AUD' => ['AU'],
+        'CAD' => ['CA'],
+        default => [],
+    };
+}
+
 function normalize_payment_currency(?string $currency, string $fallback = 'USD'): string
 {
     $currency = strtoupper(trim((string) $currency));
@@ -3462,6 +3477,13 @@ function money_in_currency(float|int|string $value, string $currency = 'INR'): s
     ];
 
     return ($prefixes[$currency] ?? ($currency . ' ')) . number_format((float) $value, 2);
+}
+
+function configured_amount_exists(array $row, string $regularKey, string $discountKey): bool
+{
+    $regular = max(0, (float) ($row[$regularKey] ?? 0));
+
+    return $regular > 0 || (array_key_exists($discountKey, $row) && $row[$discountKey] !== null && $row[$discountKey] !== '');
 }
 
 function discounted_amount(array $row, string $regularKey, string $discountKey): float
@@ -3534,14 +3556,18 @@ function payment_amount(array $row, string $type): float
     $currency = payment_currency_for_row($row);
 
     if ($type === 'certificate') {
-        $amount = $currency === 'INR' ? certificate_fee_amount($row) : international_certificate_fee_amount($row);
+        if ($currency !== 'INR' && configured_amount_exists($row, 'international_certification_fee', 'international_certificate_discount_fee')) {
+            return international_certificate_fee_amount($row);
+        }
 
-        return $amount > 0 ? $amount : certificate_fee_amount($row);
+        return certificate_fee_amount($row);
     }
 
-    $amount = $currency === 'INR' ? course_fee_amount($row) : international_course_fee_amount($row);
+    if ($currency !== 'INR' && configured_amount_exists($row, 'international_fee', 'international_discount_fee')) {
+        return international_course_fee_amount($row);
+    }
 
-    return $amount > 0 ? $amount : course_fee_amount($row);
+    return course_fee_amount($row);
 }
 
 function payment_currency_for_amount(array $row, string $type): string
@@ -3552,11 +3578,11 @@ function payment_currency_for_amount(array $row, string $type): string
         return 'INR';
     }
 
-    $internationalAmount = $type === 'certificate'
-        ? international_certificate_fee_amount($row)
-        : international_course_fee_amount($row);
+    $hasInternationalAmount = $type === 'certificate'
+        ? configured_amount_exists($row, 'international_certification_fee', 'international_certificate_discount_fee')
+        : configured_amount_exists($row, 'international_fee', 'international_discount_fee');
 
-    return $internationalAmount > 0 ? $currency : 'INR';
+    return $hasInternationalAmount ? $currency : 'INR';
 }
 
 function course_should_show_fee_details(array $course): bool
@@ -3588,7 +3614,7 @@ function localized_price_html(array $row, string $type = 'program'): string
     $regular = max(0, (float) ($row[$regularKey] ?? 0));
     $amount = discounted_amount($row, $regularKey, $discountKey);
 
-    if ($currency !== 'INR' && $amount <= 0) {
+    if ($currency !== 'INR' && !configured_amount_exists($row, $regularKey, $discountKey)) {
         $currency = 'INR';
         $regularKey = $type === 'certificate' ? 'certification_fee' : 'fee';
         $discountKey = $type === 'certificate' ? 'certificate_discount_fee' : 'discount_fee';
@@ -3614,15 +3640,21 @@ function public_price_html(array $row, string $type = 'program'): string
     $intlRegularKey = $type === 'certificate' ? 'international_certification_fee' : 'international_fee';
     $intlDiscountKey = $type === 'certificate' ? 'international_certificate_discount_fee' : 'international_discount_fee';
     $inr = price_html($row, $inrRegularKey, $inrDiscountKey);
-    $intlAmount = discounted_amount($row, $intlRegularKey, $intlDiscountKey);
+    $hasInternationalAmount = configured_amount_exists($row, $intlRegularKey, $intlDiscountKey);
 
-    if ($intlAmount <= 0) {
+    if (!$hasInternationalAmount) {
         return $inr;
     }
 
+    $intlCurrency = international_currency($row);
     $intl = localized_price_html(array_merge($row, ['phone' => '1']), $type);
+    $inrRegions = implode(' ', currency_region_codes('INR'));
+    $intlRegions = implode(' ', currency_region_codes($intlCurrency));
 
-    return '<span class="price-stack multi-currency"><strong>India: ' . $inr . '</strong><small>International: ' . $intl . '</small></span>';
+    return '<span class="price-stack multi-currency" data-local-price data-default-currency="' . e($intlCurrency) . '">'
+        . '<span data-price-option data-currency="INR" data-regions="' . e($inrRegions) . '">' . $inr . '</span>'
+        . '<span data-price-option data-currency="' . e($intlCurrency) . '" data-regions="' . e($intlRegions) . '">' . $intl . '</span>'
+        . '</span>';
 }
 
 function csrf_token(): string

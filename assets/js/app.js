@@ -66,6 +66,49 @@ if (siteHeader && menuToggle && mainNav) {
     });
 }
 
+const visitorRegion = (() => {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const language = navigator.language || '';
+    const regionMatch = language.match(/-([A-Z]{2})\b/i);
+    const timeZoneRegions = {
+        'Asia/Kolkata': 'IN',
+        'Asia/Calcutta': 'IN',
+        'Asia/Dubai': 'AE',
+        'America/New_York': 'US',
+        'America/Chicago': 'US',
+        'America/Denver': 'US',
+        'America/Los_Angeles': 'US',
+        'America/Phoenix': 'US',
+        'America/Anchorage': 'US',
+        'Pacific/Honolulu': 'US',
+        'Europe/London': 'GB',
+        'Asia/Singapore': 'SG',
+        'Australia/Sydney': 'AU',
+        'Australia/Melbourne': 'AU',
+        'America/Toronto': 'CA',
+        'America/Vancouver': 'CA',
+    };
+
+    return (regionMatch ? regionMatch[1].toUpperCase() : '') || timeZoneRegions[timeZone] || '';
+})();
+
+document.querySelectorAll('[data-local-price]').forEach((price) => {
+    const options = Array.from(price.querySelectorAll('[data-price-option]'));
+    const defaultCurrency = price.dataset.defaultCurrency || '';
+    let selected = options.find((option) => {
+        const regions = (option.dataset.regions || '').split(/\s+/).filter(Boolean);
+        return visitorRegion && regions.includes(visitorRegion);
+    });
+
+    if (!selected) {
+        selected = options.find((option) => option.dataset.currency === defaultCurrency) || options[0];
+    }
+
+    options.forEach((option) => {
+        option.hidden = option !== selected;
+    });
+});
+
 const learningMenuToggle = document.querySelector('[data-learning-menu-toggle]');
 const learningMenuCloseControls = document.querySelectorAll('[data-learning-menu-close]');
 
