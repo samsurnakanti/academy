@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $promoVideoUrl = trim((string) ($_POST['promo_video_url'] ?? ''));
     $showFeeDetails = ($_POST['show_fee_details'] ?? '1') === '1' ? 1 : 0;
     $paymentRequired = ($_POST['payment_required'] ?? '0') === '1' ? 1 : 0;
-    $internationalCurrency = normalize_payment_currency((string) ($_POST['international_currency'] ?? 'USD'));
+    $internationalCurrency = 'USD';
 
     if ($action === 'deactivate' && $id > 0) {
         $stmt = db()->prepare('UPDATE courses SET is_active = 0 WHERE id = ?');
@@ -219,14 +219,8 @@ require __DIR__ . '/_admin_header.php';
             <label>Duration <input name="duration" value="<?= e($edit['duration'] ?? '') ?>" placeholder="6 weeks" required></label>
             <label>India program fee (INR) <input type="number" step="0.01" name="fee" value="<?= e((string) ($edit['fee'] ?? '0')) ?>"></label>
             <label>India discounted program fee (INR) <input type="number" step="0.01" name="discount_fee" value="<?= e($edit && $edit['discount_fee'] !== null ? (string) $edit['discount_fee'] : '') ?>" placeholder="Blank = no discount, 0 = free"></label>
-            <label>International currency
-                <select name="international_currency">
-                    <?php $editInternationalCurrency = international_currency($edit ?? []); ?>
-                    <?php foreach (supported_payment_currencies() as $currencyCode => $currencyLabel): ?>
-                        <option value="<?= e($currencyCode) ?>" <?= $editInternationalCurrency === $currencyCode ? 'selected' : '' ?>><?= e($currencyLabel) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+            <label>International base currency <input value="USD - US Dollar" disabled></label>
+            <input type="hidden" name="international_currency" value="USD">
             <label>International program fee <input type="number" step="0.01" name="international_fee" value="<?= e((string) ($edit['international_fee'] ?? '0')) ?>"></label>
             <label>International discounted program fee <input type="number" step="0.01" name="international_discount_fee" value="<?= e($edit && $edit['international_discount_fee'] !== null ? (string) $edit['international_discount_fee'] : '') ?>" placeholder="Blank = no discount, 0 = free"></label>
             <label>India certification charge (INR) <input type="number" step="0.01" name="certification_fee" value="<?= e((string) ($edit['certification_fee'] ?? '0')) ?>"></label>

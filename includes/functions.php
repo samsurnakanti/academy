@@ -3520,7 +3520,7 @@ function certificate_fee_amount(array $course): float
 
 function international_currency(array $course): string
 {
-    return normalize_payment_currency((string) ($course['international_currency'] ?? 'USD'));
+    return 'USD';
 }
 
 function international_course_fee_amount(array $course): float
@@ -3595,11 +3595,15 @@ function price_html(array $row, string $regularKey, string $discountKey): string
     $regular = max(0, (float) ($row[$regularKey] ?? 0));
     $amount = discounted_amount($row, $regularKey, $discountKey);
 
-    if ($regular > 0 && $amount < $regular) {
-        if ($amount <= 0) {
+    if ($amount <= 0) {
+        if ($regular > 0) {
             return '<span class="price-stack"><del>' . e(money($regular)) . '</del><strong>Free</strong></span>';
         }
 
+        return '<strong>Free</strong>';
+    }
+
+    if ($regular > 0 && $amount < $regular) {
         return '<span class="price-stack"><del>' . e(money($regular)) . '</del><strong>' . e(money($amount)) . '</strong></span>';
     }
 
@@ -3622,11 +3626,15 @@ function localized_price_html(array $row, string $type = 'program'): string
         $amount = discounted_amount($row, $regularKey, $discountKey);
     }
 
-    if ($regular > 0 && $amount < $regular) {
-        if ($amount <= 0) {
+    if ($amount <= 0) {
+        if ($regular > 0) {
             return '<span class="price-stack"><del>' . e(money_in_currency($regular, $currency)) . '</del><strong>Free</strong></span>';
         }
 
+        return '<strong>Free</strong>';
+    }
+
+    if ($regular > 0 && $amount < $regular) {
         return '<span class="price-stack"><del>' . e(money_in_currency($regular, $currency)) . '</del><strong>' . e(money_in_currency($amount, $currency)) . '</strong></span>';
     }
 
@@ -3653,7 +3661,7 @@ function public_price_html(array $row, string $type = 'program'): string
 
     return '<span class="price-stack multi-currency" data-local-price data-default-currency="' . e($intlCurrency) . '">'
         . '<span data-price-option data-currency="INR" data-regions="' . e($inrRegions) . '">' . $inr . '</span>'
-        . '<span data-price-option data-currency="' . e($intlCurrency) . '" data-regions="' . e($intlRegions) . '">' . $intl . '</span>'
+        . '<span data-price-option data-currency="' . e($intlCurrency) . '" data-regions="' . e($intlRegions) . '" data-base-currency="' . e($intlCurrency) . '" data-regular-amount="' . e((string) max(0, (float) ($row[$intlRegularKey] ?? 0))) . '" data-payable-amount="' . e((string) discounted_amount($row, $intlRegularKey, $intlDiscountKey)) . '">' . $intl . '</span>'
         . '</span>';
 }
 

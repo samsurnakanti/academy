@@ -89,16 +89,54 @@ const visitorRegion = (() => {
         'America/Vancouver': 'CA',
     };
 
-    return (regionMatch ? regionMatch[1].toUpperCase() : '') || timeZoneRegions[timeZone] || '';
+    return timeZoneRegions[timeZone] || (regionMatch ? regionMatch[1].toUpperCase() : '') || '';
 })();
 
 document.querySelectorAll('[data-local-price]').forEach((price) => {
     const options = Array.from(price.querySelectorAll('[data-price-option]'));
     const defaultCurrency = price.dataset.defaultCurrency || '';
-    let selected = options.find((option) => {
-        const regions = (option.dataset.regions || '').split(/\s+/).filter(Boolean);
-        return visitorRegion && regions.includes(visitorRegion);
-    });
+    const regionCurrencies = {
+        IN: 'INR',
+        AE: 'AED',
+        US: 'USD',
+        GB: 'GBP',
+        SG: 'SGD',
+        AU: 'AUD',
+        CA: 'CAD',
+        AT: 'EUR',
+        BE: 'EUR',
+        CY: 'EUR',
+        DE: 'EUR',
+        EE: 'EUR',
+        ES: 'EUR',
+        FI: 'EUR',
+        FR: 'EUR',
+        GR: 'EUR',
+        HR: 'EUR',
+        IE: 'EUR',
+        IT: 'EUR',
+        LT: 'EUR',
+        LU: 'EUR',
+        LV: 'EUR',
+        MT: 'EUR',
+        NL: 'EUR',
+        PT: 'EUR',
+        SI: 'EUR',
+        SK: 'EUR',
+    };
+    const fallbackRates = {
+        USD: 1,
+        AED: 3.6725,
+        EUR: 0.86,
+        GBP: 0.74,
+        SGD: 1.28,
+        AUD: 1.52,
+        CAD: 1.38,
+    };
+    const targetCurrency = regionCurrencies[visitorRegion] || defaultCurrency || 'USD';
+    let selected = targetCurrency === 'INR'
+        ? options.find((option) => option.dataset.currency === 'INR')
+        : options.find((option) => option.dataset.currency !== 'INR');
 
     if (!selected) {
         selected = options.find((option) => option.dataset.currency === defaultCurrency) || options[0];
@@ -107,6 +145,75 @@ document.querySelectorAll('[data-local-price]').forEach((price) => {
     options.forEach((option) => {
         option.hidden = option !== selected;
     });
+
+    const formatAmount = (amount, currency) => {
+        try {
+            return new Intl.NumberFormat(undefined, {
+                style: 'currency',
+                currency,
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }).format(amount);
+        } catch (error) {
+            return currency + ' ' + amount.toFixed(2);
+        }
+    };
+
+    const convertAmount = (amount, fromCurrency, toCurrency, rates) => {
+        if (!Number.isFinite(amount) || amount <= 0 || fromCurrency === toCurrency) {
+            return amount;
+        }
+
+        const fromRate = rates[fromCurrency];
+        const toRate = rates[toCurrency];
+
+        if (!fromRate || !toRate) {
+            return amount;
+        }
+
+        return (amount / fromRate) * toRate;
+    };
+
+    const renderConvertedPrice = (rates) => {
+        if (!selected || selected.dataset.currency === 'INR' || !selected.dataset.payableAmount) {
+            return;
+        }
+
+        const baseCurrency = selected.dataset.baseCurrency || selected.dataset.currency || 'USD';
+        const displayCurrency = targetCurrency === 'INR' ? baseCurrency : targetCurrency;
+        const regular = Number.parseFloat(selected.dataset.regularAmount || '0');
+        const payable = Number.parseFloat(selected.dataset.payableAmount || '0');
+        const convertedRegular = convertAmount(regular, baseCurrency, displayCurrency, rates);
+        const convertedPayable = convertAmount(payable, baseCurrency, displayCurrency, rates);
+
+        selected.dataset.currency = displayCurrency;
+
+        if (convertedPayable <= 0) {
+            selected.innerHTML = convertedRegular > 0
+                ? '<span class="price-stack"><del>' + formatAmount(convertedRegular, displayCurrency) + '</del><strong>Free</strong></span>'
+                : '<strong>Free</strong>';
+            return;
+        }
+
+        selected.innerHTML = convertedRegular > 0 && convertedPayable < convertedRegular
+            ? '<span class="price-stack"><del>' + formatAmount(convertedRegular, displayCurrency) + '</del><strong>' + formatAmount(convertedPayable, displayCurrency) + '</strong></span>'
+            : formatAmount(convertedPayable, displayCurrency);
+    };
+
+    renderConvertedPrice(fallbackRates);
+
+    if (targetCurrency !== 'INR' && targetCurrency !== defaultCurrency) {
+        window.fetch('https://api.frankfurter.app/latest?from=USD')
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (!data || !data.rates) {
+                    return;
+                }
+
+                renderConvertedPrice({ ...fallbackRates, USD: 1, ...data.rates });
+            })
+            .catch(() => {});
+    }
 });
 
 const learningMenuToggle = document.querySelector('[data-learning-menu-toggle]');
