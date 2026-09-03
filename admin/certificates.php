@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt = db()->prepare(
-        "SELECT cr.*, e.status AS enrollment_status, u.name, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
+        "SELECT cr.*, e.status AS enrollment_status, u.name, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.certificate_title, c.certificate_details
          FROM certificate_requests cr
          JOIN enrollments e ON e.id = cr.enrollment_id
          JOIN users u ON u.id = cr.user_id
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'issue_certificate') {
         $dashboardUrl = normalize_elldy_dashboard_url((string) ($request['dashboard_url'] ?? ''));
         $programPaid = in_array($request['enrollment_status'], ['paid', 'completed'], true) || !course_requires_payment($request);
-        $certificatePaid = certificate_fee_amount($request) <= 0 || trim((string) ($request['payment_note'] ?? '')) !== '';
+        $certificatePaid = payment_amount($request, 'certificate') <= 0 || trim((string) ($request['payment_note'] ?? '')) !== '';
 
         if ($dashboardUrl === '' || !is_elldy_dashboard_url($dashboardUrl)) {
             flash('error', 'Only public Elldy dashboard links from elldy.com can be issued.');
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $where = certificate_list_filter_where($selectedList);
 $rows = db()->query(
-    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details, e.status AS enrollment_status
+    "SELECT cr.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.certificate_title, c.certificate_details, e.status AS enrollment_status
      FROM certificate_requests cr
      JOIN users u ON u.id = cr.user_id
      JOIN courses c ON c.id = cr.course_id
@@ -165,7 +165,7 @@ require __DIR__ . '/_admin_header.php';
                                 </form>
                             <?php endif; ?>
                         </td>
-                        <td><?= certificate_fee_amount($row) > 0 ? price_html($row, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></td>
+                        <td><?= payment_amount($row, 'certificate') > 0 ? localized_price_html($row, 'certificate') : 'Included' ?></td>
                         <td><?= e(enrollment_badge($row['enrollment_status'])) ?></td>
                         <td><?= nl2br(e($row['payment_note'] ?: '-')) ?></td>
                         <td>

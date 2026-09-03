@@ -6,8 +6,9 @@ ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? $_POST['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.fee, c.discount_fee, c.payment_required, c.certification_fee, c.certificate_discount_fee
+    "SELECT e.*, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.payment_required, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee
      FROM enrollments e
+     JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
 );
@@ -23,7 +24,7 @@ $existingStmt = db()->prepare('SELECT * FROM certificate_requests WHERE enrollme
 $existingStmt->execute([$enrollmentId]);
 $certificate = $existingStmt->fetch();
 $programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment);
-$certificateAmount = certificate_fee_amount($enrollment);
+$certificateAmount = payment_amount($enrollment, 'certificate');
 $certificatePaid = $certificateAmount <= 0 || trim((string) ($certificate['payment_note'] ?? '')) !== '';
 
 if (!$certificate) {
@@ -93,7 +94,7 @@ $programPaymentUrl = 'pay_redirect.php?type=program&id=' . (int) $enrollment['id
     <div class="form-card">
         <p class="eyebrow">Certification</p>
         <h1><?= e($enrollment['title']) ?></h1>
-        <p class="price-line"><?= $certificateAmount > 0 ? price_html($enrollment, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></p>
+            <p class="price-line"><?= $certificateAmount > 0 ? localized_price_html($enrollment, 'certificate') : 'Included' ?></p>
         <div class="certificate-lock-preview is-blurred" data-certificate-preview>
             <div>
                 <span>Certificate of Completion</span>

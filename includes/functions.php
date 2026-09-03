@@ -1714,13 +1714,14 @@ function save_razorpay_settings(array $data): void
     $stmt->execute([
         trim((string) ($data['key_id'] ?? '')),
         trim((string) ($data['key_secret'] ?? '')),
-        trim((string) ($data['currency'] ?? 'INR')) ?: 'INR',
+        normalize_payment_currency((string) ($data['currency'] ?? 'INR'), 'INR'),
     ]);
 }
 
-function create_razorpay_order(int $amountRupees, string $receipt): array
+function create_razorpay_order(float|int $amount, string $receipt, ?string $currency = null): array
 {
     $settings = razorpay_settings();
+    $currency = normalize_payment_currency($currency ?: $settings['currency'], 'INR');
 
     if ($settings['key_id'] === '' || $settings['key_secret'] === '') {
         throw new RuntimeException('Razorpay keys are not configured.');
@@ -1731,8 +1732,8 @@ function create_razorpay_order(int $amountRupees, string $receipt): array
     }
 
     $payload = json_encode([
-        'amount' => $amountRupees * 100,
-        'currency' => $settings['currency'],
+        'amount' => (int) round(((float) $amount) * 100),
+        'currency' => $currency,
         'receipt' => $receipt,
     ]);
 
@@ -3368,8 +3369,8 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
     ensure_certificate_requests_table();
 
     $stmt = db()->prepare(
-        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name,
-                c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
+        "SELECT cr.*, e.id AS enrollment_id, e.status AS enrollment_status, u.name, u.phone,
+                c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.certificate_title, c.certificate_details
          FROM certificate_requests cr
          JOIN enrollments e ON e.id = cr.enrollment_id
          JOIN users u ON u.id = cr.user_id
@@ -3387,7 +3388,7 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
         return $certificate;
     }
 
-    if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
+    if (payment_amount($certificate, 'certificate') > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
         return $certificate;
     }
 
@@ -3416,6 +3417,51 @@ function ensure_instant_certificate_for_enrollment(int $enrollmentId): ?array
 function money(float|int|string $value): string
 {
     return '₹' . number_format((float) $value, 2);
+}
+
+function supported_payment_currencies(): array
+{
+    return [
+        'USD' => 'USD - US Dollar',
+        'EUR' => 'EUR - Euro',
+        'GBP' => 'GBP - British Pound',
+        'AED' => 'AED - UAE Dirham',
+        'SGD' => 'SGD - Singapore Dollar',
+        'AUD' => 'AUD - Australian Dollar',
+        'CAD' => 'CAD - Canadian Dollar',
+    ];
+}
+
+function normalize_payment_currency(?string $currency, string $fallback = 'USD'): string
+{
+    $currency = strtoupper(trim((string) $currency));
+
+    if ($currency === 'INR') {
+        return 'INR';
+    }
+
+    return array_key_exists($currency, supported_payment_currencies()) ? $currency : $fallback;
+}
+
+function money_in_currency(float|int|string $value, string $currency = 'INR'): string
+{
+    $currency = normalize_payment_currency($currency, 'INR');
+
+    if ($currency === 'INR') {
+        return money($value);
+    }
+
+    $prefixes = [
+        'USD' => '$',
+        'EUR' => 'EUR ',
+        'GBP' => 'GBP ',
+        'AED' => 'AED ',
+        'SGD' => 'SGD ',
+        'AUD' => 'AUD ',
+        'CAD' => 'CAD ',
+    ];
+
+    return ($prefixes[$currency] ?? ($currency . ' ')) . number_format((float) $value, 2);
 }
 
 function discounted_amount(array $row, string $regularKey, string $discountKey): float
@@ -3450,6 +3496,69 @@ function certificate_fee_amount(array $course): float
     return discounted_amount($course, 'certification_fee', 'certificate_discount_fee');
 }
 
+function international_currency(array $course): string
+{
+    return normalize_payment_currency((string) ($course['international_currency'] ?? 'USD'));
+}
+
+function international_course_fee_amount(array $course): float
+{
+    return discounted_amount($course, 'international_fee', 'international_discount_fee');
+}
+
+function international_certificate_fee_amount(array $course): float
+{
+    return discounted_amount($course, 'international_certification_fee', 'international_certificate_discount_fee');
+}
+
+function is_indian_phone(?string $phone): bool
+{
+    $phone = normalize_whatsapp_number((string) $phone);
+
+    return strlen($phone) === 12 && str_starts_with($phone, '91');
+}
+
+function payment_currency_for_row(array $row): string
+{
+    $phone = (string) ($row['phone'] ?? $row['user_phone'] ?? '');
+
+    if ($phone !== '' && is_indian_phone($phone)) {
+        return 'INR';
+    }
+
+    return international_currency($row);
+}
+
+function payment_amount(array $row, string $type): float
+{
+    $currency = payment_currency_for_row($row);
+
+    if ($type === 'certificate') {
+        $amount = $currency === 'INR' ? certificate_fee_amount($row) : international_certificate_fee_amount($row);
+
+        return $amount > 0 ? $amount : certificate_fee_amount($row);
+    }
+
+    $amount = $currency === 'INR' ? course_fee_amount($row) : international_course_fee_amount($row);
+
+    return $amount > 0 ? $amount : course_fee_amount($row);
+}
+
+function payment_currency_for_amount(array $row, string $type): string
+{
+    $currency = payment_currency_for_row($row);
+
+    if ($currency === 'INR') {
+        return 'INR';
+    }
+
+    $internationalAmount = $type === 'certificate'
+        ? international_certificate_fee_amount($row)
+        : international_course_fee_amount($row);
+
+    return $internationalAmount > 0 ? $currency : 'INR';
+}
+
 function course_should_show_fee_details(array $course): bool
 {
     return (int) ($course['show_fee_details'] ?? 1) === 1;
@@ -3469,6 +3578,51 @@ function price_html(array $row, string $regularKey, string $discountKey): string
     }
 
     return e(money($amount));
+}
+
+function localized_price_html(array $row, string $type = 'program'): string
+{
+    $currency = payment_currency_for_row($row);
+    $regularKey = $type === 'certificate' && $currency !== 'INR' ? 'international_certification_fee' : ($type === 'certificate' ? 'certification_fee' : ($currency !== 'INR' ? 'international_fee' : 'fee'));
+    $discountKey = $type === 'certificate' && $currency !== 'INR' ? 'international_certificate_discount_fee' : ($type === 'certificate' ? 'certificate_discount_fee' : ($currency !== 'INR' ? 'international_discount_fee' : 'discount_fee'));
+    $regular = max(0, (float) ($row[$regularKey] ?? 0));
+    $amount = discounted_amount($row, $regularKey, $discountKey);
+
+    if ($currency !== 'INR' && $amount <= 0) {
+        $currency = 'INR';
+        $regularKey = $type === 'certificate' ? 'certification_fee' : 'fee';
+        $discountKey = $type === 'certificate' ? 'certificate_discount_fee' : 'discount_fee';
+        $regular = max(0, (float) ($row[$regularKey] ?? 0));
+        $amount = discounted_amount($row, $regularKey, $discountKey);
+    }
+
+    if ($regular > 0 && $amount < $regular) {
+        if ($amount <= 0) {
+            return '<span class="price-stack"><del>' . e(money_in_currency($regular, $currency)) . '</del><strong>Free</strong></span>';
+        }
+
+        return '<span class="price-stack"><del>' . e(money_in_currency($regular, $currency)) . '</del><strong>' . e(money_in_currency($amount, $currency)) . '</strong></span>';
+    }
+
+    return e(money_in_currency($amount, $currency));
+}
+
+function public_price_html(array $row, string $type = 'program'): string
+{
+    $inrRegularKey = $type === 'certificate' ? 'certification_fee' : 'fee';
+    $inrDiscountKey = $type === 'certificate' ? 'certificate_discount_fee' : 'discount_fee';
+    $intlRegularKey = $type === 'certificate' ? 'international_certification_fee' : 'international_fee';
+    $intlDiscountKey = $type === 'certificate' ? 'international_certificate_discount_fee' : 'international_discount_fee';
+    $inr = price_html($row, $inrRegularKey, $inrDiscountKey);
+    $intlAmount = discounted_amount($row, $intlRegularKey, $intlDiscountKey);
+
+    if ($intlAmount <= 0) {
+        return $inr;
+    }
+
+    $intl = localized_price_html(array_merge($row, ['phone' => '1']), $type);
+
+    return '<span class="price-stack multi-currency"><strong>India: ' . $inr . '</strong><small>International: ' . $intl . '</small></span>';
 }
 
 function csrf_token(): string
@@ -4473,7 +4627,12 @@ function ensure_course_detail_columns(): void
         'promo_video_url' => 'ADD COLUMN promo_video_url TEXT NULL AFTER expert_photo',
         'certification_fee' => 'ADD COLUMN certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER fee',
         'discount_fee' => 'ADD COLUMN discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER fee',
+        'international_currency' => "ADD COLUMN international_currency VARCHAR(10) NOT NULL DEFAULT 'USD' AFTER discount_fee",
+        'international_fee' => 'ADD COLUMN international_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER international_currency',
+        'international_discount_fee' => 'ADD COLUMN international_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER international_fee',
         'certificate_discount_fee' => 'ADD COLUMN certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER certification_fee',
+        'international_certification_fee' => 'ADD COLUMN international_certification_fee DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER certificate_discount_fee',
+        'international_certificate_discount_fee' => 'ADD COLUMN international_certificate_discount_fee DECIMAL(10,2) NULL DEFAULT NULL AFTER international_certification_fee',
         'show_fee_details' => 'ADD COLUMN show_fee_details TINYINT(1) NOT NULL DEFAULT 1 AFTER certificate_discount_fee',
         'payment_required' => 'ADD COLUMN payment_required TINYINT(1) NOT NULL DEFAULT 0 AFTER show_fee_details',
         'delivery_type' => "ADD COLUMN delivery_type ENUM('video', 'live_session') NOT NULL DEFAULT 'video' AFTER certificate_discount_fee",
@@ -4492,11 +4651,11 @@ function ensure_course_detail_columns(): void
         db()->exec("UPDATE courses SET payment_required = 1 WHERE fee > 0 AND (discount_fee IS NULL OR discount_fee > 0)");
     }
 
-    $nullableColumns = ['discount_fee', 'certificate_discount_fee'];
+    $nullableColumns = ['discount_fee', 'certificate_discount_fee', 'international_discount_fee', 'international_certificate_discount_fee'];
     $columnDetails = db()->prepare(
         "SELECT COLUMN_NAME, IS_NULLABLE
          FROM INFORMATION_SCHEMA.COLUMNS
-         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'courses' AND COLUMN_NAME IN ('discount_fee', 'certificate_discount_fee')"
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'courses' AND COLUMN_NAME IN ('discount_fee', 'certificate_discount_fee', 'international_discount_fee', 'international_certificate_discount_fee')"
     );
     $columnDetails->execute([$database]);
     $details = [];

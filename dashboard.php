@@ -5,10 +5,11 @@ ensure_certificate_requests_table();
 ensure_course_detail_columns();
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type,
+    "SELECT e.*, u.phone, c.title, c.duration, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.delivery_type,
             cr.status AS certificate_status, cr.certificate_url, cr.payment_note AS certificate_payment_note,
             cr.dashboard_url, cr.dashboard_review_status
      FROM enrollments e
+     JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
      LEFT JOIN certificate_requests cr ON cr.enrollment_id = e.id
      WHERE e.user_id = ?
@@ -19,7 +20,7 @@ $enrollments = $stmt->fetchAll();
 
 foreach ($enrollments as &$enrollmentRow) {
     $programPaid = in_array($enrollmentRow['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollmentRow);
-    $certificateFeeDue = certificate_fee_amount($enrollmentRow) > 0;
+    $certificateFeeDue = payment_amount($enrollmentRow, 'certificate') > 0;
     $certificatePaid = !$certificateFeeDue || trim((string) ($enrollmentRow['certificate_payment_note'] ?? '')) !== '';
 
     if (($enrollmentRow['certificate_status'] ?? '') === 'issued') {
@@ -99,7 +100,7 @@ require __DIR__ . '/includes/header.php';
                     $courseTypeLabel = $isLiveSession ? 'Live Sessions' : 'Videos';
                     $courseTypeClass = $isLiveSession ? 'live-session' : 'video';
                     $programPaid = in_array($row['status'], ['paid', 'completed'], true) || !course_requires_payment($row);
-                    $certificateFeeDue = certificate_fee_amount($row) > 0;
+                    $certificateFeeDue = payment_amount($row, 'certificate') > 0;
                     $certificatePaid = !$certificateFeeDue || trim((string) ($row['certificate_payment_note'] ?? '')) !== '';
                     ?>
                     <tr>
@@ -108,8 +109,8 @@ require __DIR__ . '/includes/header.php';
                             <span class="type-badge <?= e($courseTypeClass) ?>"><?= e($courseTypeLabel) ?></span>
                         </td>
                         <td data-label="Duration"><?= e($row['duration']) ?></td>
-                        <td data-label="Fee"><?= price_html($row, 'fee', 'discount_fee') ?></td>
-                        <td data-label="Certification"><?= certificate_fee_amount($row) > 0 ? price_html($row, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></td>
+                        <td data-label="Fee"><?= localized_price_html($row, 'program') ?></td>
+                        <td data-label="Certification"><?= payment_amount($row, 'certificate') > 0 ? localized_price_html($row, 'certificate') : 'Included' ?></td>
                         <td data-label="Status">
                             <span class="status">
                                 <?php if ($row['status'] === 'free_access'): ?>
@@ -154,7 +155,7 @@ require __DIR__ . '/includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td data-label="Payment">
-                            <?php if (!course_requires_payment($row)): ?>
+                            <?php if (payment_amount($row, 'program') <= 0): ?>
                                 Included
                             <?php elseif (in_array($row['status'], ['paid', 'completed'], true)): ?>
                                 Paid

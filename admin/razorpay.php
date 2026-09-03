@@ -26,7 +26,14 @@ $maskedSecret = $settings['key_secret'] !== '' ? str_repeat('•', 18) . substr(
             <legend>API Credentials</legend>
             <label>Key ID <input name="key_id" value="<?= e($settings['key_id']) ?>" required></label>
             <label>Key Secret <textarea name="key_secret" rows="4" required><?= e($settings['key_secret']) ?></textarea></label>
-            <label>Currency <input name="currency" value="<?= e($settings['currency']) ?>" required></label>
+            <label>Default currency
+                <select name="currency" required>
+                    <option value="INR" <?= $settings['currency'] === 'INR' ? 'selected' : '' ?>>INR - Indian Rupee</option>
+                    <?php foreach (supported_payment_currencies() as $currencyCode => $currencyLabel): ?>
+                        <option value="<?= e($currencyCode) ?>" <?= $settings['currency'] === $currencyCode ? 'selected' : '' ?>><?= e($currencyLabel) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
         </fieldset>
         <button class="button primary" type="submit">Save Razorpay Settings</button>
     </form>

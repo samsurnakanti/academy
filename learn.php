@@ -9,8 +9,9 @@ $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $materialId = (int) ($_GET['material_id'] ?? 0);
 
 $stmt = db()->prepare(
-    "SELECT e.*, c.title, c.short_description, c.description, c.learning_plan, c.duration, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.delivery_type
+    "SELECT e.*, u.phone, c.title, c.short_description, c.description, c.learning_plan, c.duration, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.delivery_type
      FROM enrollments e
+     JOIN users u ON u.id = e.user_id
      JOIN courses c ON c.id = e.course_id
      WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
 );
@@ -23,7 +24,7 @@ if (!$enrollment) {
 }
 
 $programPaid = in_array($enrollment['status'], ['paid', 'completed'], true) || !course_requires_payment($enrollment);
-$certificateFeeDue = certificate_fee_amount($enrollment) > 0;
+$certificateFeeDue = payment_amount($enrollment, 'certificate') > 0;
 $hasFullAccess = $programPaid;
 $materials = course_material_rows((int) $enrollment['course_id']);
 $materialGroups = course_material_groups($materials);

@@ -24,7 +24,7 @@ require __DIR__ . '/includes/header.php';
                 <div class="course-topline">
                     <span><?= e($course['duration']) ?></span>
                     <?php if ($showFeeDetails): ?>
-                        <?= price_html($course, 'fee', 'discount_fee') ?>
+                        <?= public_price_html($course, 'program') ?>
                     <?php endif; ?>
                 </div>
                 <div class="course-badges">

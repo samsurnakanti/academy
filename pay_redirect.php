@@ -10,8 +10,9 @@ $id = (int) ($_GET['id'] ?? 0);
 
 if ($type === 'program') {
     $stmt = db()->prepare(
-        "SELECT e.id, c.fee, c.discount_fee
+        "SELECT e.id, u.phone, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee
          FROM enrollments e
+         JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
@@ -23,7 +24,7 @@ if ($type === 'program') {
         exit('Payment not found.');
     }
 
-    if (!course_requires_payment($row)) {
+    if (payment_amount($row, 'program') <= 0) {
         redirect('dashboard.php');
     }
 
@@ -35,8 +36,9 @@ if ($type === 'program') {
 
 if ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, e.course_id, e.status, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
+        "SELECT e.id, e.course_id, e.status, u.phone, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee
          FROM enrollments e
+         JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
@@ -57,11 +59,11 @@ if ($type === 'certificate') {
         (int) $row['id'],
         (int) $user['id'],
         (int) $row['course_id'],
-        certificate_fee_amount($row) > 0 ? 'payment_pending' : 'requested',
+        payment_amount($row, 'certificate') > 0 ? 'payment_pending' : 'requested',
     ]);
 
-    if (certificate_fee_amount($row) <= 0) {
-        if (!in_array($row['status'], ['paid', 'completed'], true) && course_requires_payment($row)) {
+    if (payment_amount($row, 'certificate') <= 0) {
+        if (!in_array($row['status'], ['paid', 'completed'], true) && payment_amount($row, 'program') > 0) {
             redirect('pay_redirect.php?type=program&id=' . (int) $row['id']);
         }
 

@@ -156,8 +156,13 @@ if (($_GET['export'] ?? '') === 'csv') {
             c.delivery_type,
             c.fee AS programme_fee,
             c.discount_fee AS programme_discount_fee,
+            c.international_currency,
+            c.international_fee,
+            c.international_discount_fee,
             c.certification_fee,
             c.certificate_discount_fee,
+            c.international_certification_fee,
+            c.international_certificate_discount_fee,
             cr.status AS certificate_status,
             cr.payment_note AS certificate_payment_note,
             cr.dashboard_url,
@@ -246,9 +251,16 @@ if (($_GET['export'] ?? '') === 'csv') {
         'Programme Fee',
         'Programme Discount Fee',
         'Effective Programme Fee',
+        'International Currency',
+        'International Programme Fee',
+        'International Programme Discount Fee',
+        'Effective Payment Amount',
         'Certification Fee',
         'Certificate Discount Fee',
         'Effective Certificate Fee',
+        'International Certification Fee',
+        'International Certificate Discount Fee',
+        'Effective Certificate Payment Amount',
         'Student Background',
         'Learning Goals',
         'Completion Expectation',
@@ -295,9 +307,20 @@ if (($_GET['export'] ?? '') === 'csv') {
             $row['programme_fee'],
             $row['programme_discount_fee'],
             course_fee_amount(['fee' => $row['programme_fee'], 'discount_fee' => $row['programme_discount_fee']]),
+            $row['international_currency'],
+            $row['international_fee'],
+            $row['international_discount_fee'],
+            payment_amount(array_merge($row, [
+                'phone' => $row['candidate_phone'],
+                'fee' => $row['programme_fee'],
+                'discount_fee' => $row['programme_discount_fee'],
+            ]), 'program'),
             $row['certification_fee'],
             $row['certificate_discount_fee'],
             certificate_fee_amount(['certification_fee' => $row['certification_fee'], 'certificate_discount_fee' => $row['certificate_discount_fee']]),
+            $row['international_certification_fee'],
+            $row['international_certificate_discount_fee'],
+            payment_amount(array_merge($row, ['phone' => $row['candidate_phone']]), 'certificate'),
             $row['student_background'],
             $row['learning_goals'],
             $row['completion_expectation'],
@@ -530,7 +553,7 @@ require __DIR__ . '/_admin_header.php';
 $params = [];
 $where = enrollment_filter_where($dateFilter, $selectedCourseId, $selectedActivity, $searchTerm, $params);
 $stmt = db()->prepare(
-    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee,
+    "SELECT e.*, u.name, u.email, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee,
             cr.status AS certificate_status,
             cr.applied_at AS certificate_applied_at,
             cr.requested_at AS certificate_requested_at,
@@ -688,7 +711,7 @@ $whatsappSettings = whatsapp_settings();
             <tbody>
                 <?php foreach ($rows as $index => $row): ?>
                     <?php
-                    $coursePaid = in_array($row['status'], ['paid', 'completed'], true) || course_fee_amount($row) <= 0;
+                    $coursePaid = in_array($row['status'], ['paid', 'completed'], true) || payment_amount($row, 'program') <= 0;
                     $courseAttempted = trim((string) ($row['program_payment_attempted_at'] ?? '')) !== '';
                     $certificateApplied = trim((string) ($row['certificate_applied_at'] ?? '')) !== '';
                     $certificateDownloaded = (int) ($row['certificate_download_count'] ?? 0) > 0;
@@ -703,7 +726,7 @@ $whatsappSettings = whatsapp_settings();
                         <td><?= e($row['name']) ?><br><small><?= e($row['email']) ?> | <?= e($row['phone']) ?></small></td>
                         <td><?= nl2br(e($row['student_background'] ?: '-')) ?></td>
                         <td><?= e($row['title']) ?></td>
-                        <td><?= price_html($row, 'fee', 'discount_fee') ?></td>
+                        <td><?= localized_price_html($row, 'program') ?></td>
                         <td>
                             <?php if ((int) $row['live_sessions_attended'] > 0): ?>
                                 Attended <?= (int) $row['live_sessions_attended'] ?> live session(s)<br>
@@ -766,7 +789,7 @@ $whatsappSettings = whatsapp_settings();
                                     <button class="button tiny" type="submit">Send Today Reminder</button>
                                 </form>
                             <?php endif; ?>
-                            <?php if ($row['status'] === 'free_access' && course_fee_amount($row) > 0): ?>
+                            <?php if ($row['status'] === 'free_access' && payment_amount($row, 'program') > 0): ?>
                                 <form method="post" class="inline-action-form">
                                     <input type="hidden" name="csrf_token" value="<?= e(csrf_token()) ?>">
                                     <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">

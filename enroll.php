@@ -88,7 +88,7 @@ require __DIR__ . '/includes/header.php';
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
             <?php if ($showFeeDetails): ?>
-                <span><strong>Program fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
+                <span><strong>Program fee</strong><?= public_price_html($course, 'program') ?></span>
             <?php endif; ?>
             <?php if (!$showFeeDetails): ?>
                 <span><strong>Access</strong>Enrollment available</span>

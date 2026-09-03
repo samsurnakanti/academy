@@ -97,8 +97,8 @@ require __DIR__ . '/includes/header.php';
         <div class="stats-row">
             <span><strong>Duration</strong><?= e($course['duration']) ?></span>
             <?php if ($showFeeDetails): ?>
-                <span><strong>Fee</strong><?= price_html($course, 'fee', 'discount_fee') ?></span>
-                <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 ? price_html($course, 'certification_fee', 'certificate_discount_fee') : 'Included' ?></span>
+                <span><strong>Fee</strong><?= public_price_html($course, 'program') ?></span>
+                <span><strong>Certification</strong><?= certificate_fee_amount($course) > 0 || international_certificate_fee_amount($course) > 0 ? public_price_html($course, 'certificate') : 'Included' ?></span>
             <?php endif; ?>
             <?php if (!$showFeeDetails): ?>
                 <span><strong>Access</strong>Enrollment available</span>

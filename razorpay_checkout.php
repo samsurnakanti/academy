@@ -10,8 +10,9 @@ $id = (int) ($_GET['id'] ?? 0);
 
 if ($type === 'program') {
     $stmt = db()->prepare(
-        "SELECT e.id, e.status, c.title, c.fee, c.discount_fee
+        "SELECT e.id, e.status, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee
          FROM enrollments e
+         JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
@@ -26,13 +27,15 @@ if ($type === 'program') {
     }
     $attempt = db()->prepare('UPDATE enrollments SET program_payment_attempted_at = NOW() WHERE id = ? AND user_id = ?');
     $attempt->execute([(int) $row['id'], (int) $user['id']]);
-    $amount = (int) round(course_fee_amount($row));
+    $currency = payment_currency_for_amount($row, 'program');
+    $amount = payment_amount($row, 'program');
     $receipt = 'EA-PROGRAM-' . $id;
     $heading = 'Program Payment';
 } elseif ($type === 'certificate') {
     $stmt = db()->prepare(
-        "SELECT e.id, e.status, c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee
+        "SELECT e.id, e.status, u.phone, c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee
          FROM enrollments e
+         JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
          WHERE e.id = ? AND e.user_id = ? AND e.status != 'cancelled'"
     );
@@ -42,11 +45,13 @@ if ($type === 'program') {
         http_response_code(404);
         exit('Payment not found.');
     }
-    $amount = (int) round(certificate_fee_amount($row));
+    $currency = payment_currency_for_amount($row, 'certificate');
+    $amount = payment_amount($row, 'certificate');
     $receipt = 'EA-CERT-' . $id;
     $heading = 'Certificate Payment';
 } else {
     $row = null;
+    $currency = 'INR';
 }
 
 if ($amount <= 0) {
@@ -55,7 +60,7 @@ if ($amount <= 0) {
 }
 
 try {
-    $order = create_razorpay_order($amount, $receipt);
+    $order = create_razorpay_order($amount, $receipt, $currency);
 } catch (Throwable $e) {
     http_response_code(500);
     exit(e($e->getMessage()));
@@ -69,7 +74,7 @@ require __DIR__ . '/includes/header.php';
     <div class="form-card">
         <p class="eyebrow"><?= e($heading) ?></p>
         <h1><?= e($row['title']) ?></h1>
-        <p class="price-line"><?= money($amount) ?></p>
+        <p class="price-line"><?= e(money_in_currency($amount, $currency)) ?></p>
         <button id="pay-now" class="button primary" type="button">Pay Now</button>
     </div>
 </section>
@@ -78,7 +83,7 @@ require __DIR__ . '/includes/header.php';
 const options = {
     key: <?= json_encode($settings['key_id']) ?>,
     amount: <?= json_encode((int) $order['amount']) ?>,
-    currency: <?= json_encode($settings['currency']) ?>,
+    currency: <?= json_encode($currency) ?>,
     name: "Elldy Academy",
     description: <?= json_encode($heading) ?>,
     order_id: <?= json_encode($order['id']) ?>,

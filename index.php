@@ -89,7 +89,7 @@ require __DIR__ . '/includes/header.php';
             <article class="course-card <?= $isFreeProgram ? 'is-free' : 'is-paid' ?>">
                 <div class="course-topline">
                     <span><?= e($course['duration']) ?></span>
-                    <?= price_html($course, 'fee', 'discount_fee') ?>
+                    <?= public_price_html($course, 'program') ?>
                 </div>
                 <div class="course-badges">
                     <?php if ($isFreeProgram): ?>

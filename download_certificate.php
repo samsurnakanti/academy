@@ -6,8 +6,8 @@ ensure_course_detail_columns();
 
 $enrollmentId = (int) ($_GET['enrollment_id'] ?? 0);
 $stmt = db()->prepare(
-    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name,
-            c.title, c.fee, c.discount_fee, c.certification_fee, c.certificate_discount_fee, c.certificate_title, c.certificate_details
+    "SELECT cr.*, e.id AS enrollment_id, e.user_id, e.status AS enrollment_status, u.name, u.phone,
+            c.title, c.fee, c.discount_fee, c.international_currency, c.international_fee, c.international_discount_fee, c.certification_fee, c.certificate_discount_fee, c.international_certification_fee, c.international_certificate_discount_fee, c.payment_required, c.certificate_title, c.certificate_details
      FROM certificate_requests cr
      JOIN enrollments e ON e.id = cr.enrollment_id
      JOIN users u ON u.id = e.user_id
@@ -27,7 +27,7 @@ if (!in_array($certificate['enrollment_status'], ['paid', 'completed'], true) &&
     exit('Please complete program payment before downloading your certificate.');
 }
 
-if (certificate_fee_amount($certificate) > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
+if (payment_amount($certificate, 'certificate') > 0 && trim((string) ($certificate['payment_note'] ?? '')) === '') {
     http_response_code(403);
     exit('Please complete certificate payment before downloading your certificate.');
 }
