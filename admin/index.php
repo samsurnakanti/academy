@@ -55,6 +55,21 @@ $latest = db()->query(
     <a href="insights.php?view=return_users"><strong><?= (int) $stats['return_users'] ?></strong><span>Return users</span></a>
 </section>
 
+<section class="section" aria-labelledby="elldy-dashboard-heading">
+    <div class="section-heading">
+        <h2 id="elldy-dashboard-heading">Elldy Dashboard</h2>
+    </div>
+    <iframe
+        src="https://elldy.com/dashboard/embed/4b151a97-20d7-4f95-8652-8a08a30da545/"
+        width="100%"
+        height="800"
+        style="display:block;border:0"
+        title="Elldy Dashboard"
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+    ></iframe>
+</section>
+
 <section class="section">
     <div class="section-heading">
         <h2>Latest Enrollments</h2>
