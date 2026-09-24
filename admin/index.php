@@ -27,12 +27,15 @@ $latest = db()->query(
     <script>
     (() => {
         const status = document.getElementById('elldy-analytics-status');
+        let analytics = null;
+        let timer = null;
         const showError = () => {
             status.hidden = false;
             status.textContent = 'Analytics could not be loaded. Check the server configuration or try again later.';
         };
-        try {
-            window.ElldyEmbed.mount({
+        const mountAnalytics = () => {
+          try {
+            analytics = window.ElldyEmbed.mount({
                 container: '#elldy-analytics',
                 frameUrl: 'https://elldy.com/secure-embed/427b8160-df90-440b-980a-5ea89ec9184a/frame/',
                 width: '100%',
@@ -53,9 +56,31 @@ $latest = db()->query(
                 },
                 onError: showError
             });
-        } catch (error) {
+            timer = window.setInterval(async () => {
+                try {
+                    await analytics.refresh();
+                } catch (error) {
+                    showError();
+                }
+            }, 60000);
+          } catch (error) {
             showError();
-        }
+          }
+        };
+        window.addEventListener('pagehide', () => {
+            window.clearInterval(timer);
+            timer = null;
+            if (analytics) {
+                analytics.destroy();
+                analytics = null;
+            }
+        });
+        window.addEventListener('pageshow', event => {
+            if (event.persisted) {
+                mountAnalytics();
+            }
+        });
+        mountAnalytics();
     })();
     </script>
 </section>
