@@ -27,9 +27,16 @@ configuration outside this repository. PHP cURL with working HTTPS certificates
 is required.
 
 The browser calls `admin/elldy_token.php`, which requires an authenticated admin
-and a valid session CSRF token. It sends `subject: admin:<admin id>` and the
-verified admin ID as `attributes.user_id` to Elldy. Never put the server credential
-in JavaScript or commit it to this repository.
+and a valid session CSRF token. It sends `subject: admin:<admin id>` with empty
+attributes for admin-wide reporting, without a `user_id` row-filter attribute.
+The Elldy-side policy for this admin embed must permit all rows; omitting an
+attribute does not override a policy that requires it. Never put the server
+credential in JavaScript or commit it to this repository.
+
+For production Nginx with PHP-FPM, set
+`env[ELLDY_EMBED_SERVER_CREDENTIAL] = "your-credential"` in the PHP-FPM pool
+configuration serving this site, outside the repository. Test the FPM configuration
+and restart that PHP-FPM service after changing the credential.
 
 ## Database connection
 

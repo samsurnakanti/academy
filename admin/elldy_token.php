@@ -50,7 +50,9 @@ try {
         ],
         CURLOPT_POSTFIELDS => json_encode([
             'subject' => 'admin:' . $admin['id'],
-            'attributes' => ['user_id' => (string) $admin['id']],
+            // Admin-wide reporting: do not scope dataset rows to a user ID.
+            // The Elldy embed policy must also permit access to all rows.
+            'attributes' => (object) [],
         ], JSON_THROW_ON_ERROR),
     ]);
     $body = curl_exec($request);

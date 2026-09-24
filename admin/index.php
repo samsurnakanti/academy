@@ -44,7 +44,7 @@ $latest = db()->query(
     <p>Manage analytics programs, BI learning outcomes, materials, and trainee enrollments connected to the Elldy platform.</p>
 </section>
 
-<section class="admin-stats">
+<section class="admin-stats admin-dashboard-kpis" aria-label="Academy key performance indicators">
     <div><strong><?= (int) $stats['courses'] ?></strong><span>Total programs</span></div>
     <div><strong><?= (int) $stats['active_courses'] ?></strong><span>Active programs</span></div>
     <div><strong><?= (int) $stats['trainees'] ?></strong><span>Trainees</span></div>
