@@ -1,6 +1,5 @@
 (() => {
     const status = document.getElementById('elldy-analytics-status');
-    const columns = document.getElementById('elldy-columns');
     const refreshButton = document.getElementById('elldy-refresh');
     let analytics = null;
     let timer = null;
@@ -31,24 +30,17 @@
         if (analytics) return;
         ready = false;
         refreshing = false;
-        columns.disabled = true;
         refreshButton.disabled = true;
         setStatus('Loading analytics...');
         try {
             analytics = window.ElldyEmbed.mount({
                 container: '#elldy-analytics',
-                frameUrl: 'https://elldy.com/secure-embed/427b8160-df90-440b-980a-5ea89ec9184a/frame/',
-                title: 'Elldy Academy performance indicators',
+                frameUrl: 'https://elldy.com/secure-embed/a80836d0-fe92-41d4-a8ac-874f58a696df/frame/',
+                title: 'Elldy Academy analytics dashboard',
                 width: '100%',
-                height: 400,
+                height: 600,
                 autoHeight: true,
-                layout: {
-                    mode: 'grid',
-                    columns: columns.value === 'auto' ? 'auto' : Number(columns.value),
-                    minCardWidth: 220,
-                    gap: 16,
-                    cardHeight: 180
-                },
+                layout: { mode: 'saved' },
                 getToken: async () => {
                     const response = await fetch('elldy_token.php', {
                         method: 'POST',
@@ -61,7 +53,6 @@
                 onLoad: () => {
                     ready = true;
                     refreshing = false;
-                    columns.disabled = false;
                     refreshButton.disabled = false;
                     setStatus('');
                 },
@@ -75,17 +66,6 @@
         }
     };
 
-    columns.addEventListener('change', () => {
-        if (!analytics || !ready) return;
-        try {
-            analytics.setLayout({
-                mode: 'grid',
-                columns: columns.value === 'auto' ? 'auto' : Number(columns.value)
-            });
-        } catch (error) {
-            setStatus('The layout could not be changed. Reload the page and try again.');
-        }
-    });
     refreshButton.addEventListener('click', refresh);
     window.addEventListener('pagehide', () => {
         window.clearInterval(timer);

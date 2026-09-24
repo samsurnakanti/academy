@@ -22,18 +22,10 @@ $latest = db()->query(
         <div>
             <p class="eyebrow">Performance overview</p>
             <h2 id="elldy-dashboard-heading">Elldy Dashboard</h2>
-            <p class="admin-analytics-description">Key metrics at a glance. Values refresh every 60 seconds.</p>
+            <p class="admin-analytics-description">Explore your academy's metrics, charts, and trends. Refreshes every 60 seconds.</p>
         </div>
         <div class="admin-analytics-controls">
-            <label for="elldy-columns">Cards per row
-                <select id="elldy-columns" disabled>
-                    <option value="auto">Automatic</option>
-                    <option value="2">Two</option>
-                    <option value="3" selected>Three</option>
-                    <option value="4">Four</option>
-                </select>
-            </label>
-            <button id="elldy-refresh" type="button" disabled>Refresh values</button>
+            <button id="elldy-refresh" type="button" disabled>Refresh dashboard</button>
         </div>
     </div>
     <p id="elldy-analytics-status" class="admin-analytics-status" role="status" aria-live="polite">Loading analytics...</p>
