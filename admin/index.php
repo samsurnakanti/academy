@@ -1,5 +1,6 @@
 <?php
 $title = 'Dashboard';
+$elldyAnalytics = true;
 require __DIR__ . '/_admin_header.php';
 ensure_app_analytics_tables();
 
@@ -59,15 +60,43 @@ $latest = db()->query(
     <div class="section-heading">
         <h2 id="elldy-dashboard-heading">Elldy Dashboard</h2>
     </div>
-    <iframe
-        src="https://elldy.com/dashboard/embed/4b151a97-20d7-4f95-8652-8a08a30da545/"
-        width="100%"
-        height="800"
-        style="display:block;border:0"
-        title="Elldy Dashboard"
-        loading="lazy"
-        referrerpolicy="strict-origin-when-cross-origin"
-    ></iframe>
+    <p id="elldy-analytics-status" role="status">Loading analytics…</p>
+    <div id="elldy-analytics"></div>
+    <script src="https://elldy.com/static/myapp/js/elldy-embed-sdk.js"></script>
+    <script>
+    (() => {
+        const status = document.getElementById('elldy-analytics-status');
+        const showError = () => {
+            status.hidden = false;
+            status.textContent = 'Analytics could not be loaded. Check the server configuration or try again later.';
+        };
+        try {
+            window.ElldyEmbed.mount({
+                container: '#elldy-analytics',
+                frameUrl: 'https://elldy.com/secure-embed/2716092e-3b6d-4f26-a333-bc188a8f5cd1/frame/',
+                width: '100%',
+                height: 600,
+                getToken: async () => {
+                    const response = await fetch('elldy_token.php', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}
+                    });
+                    if (!response.ok) {
+                        showError();
+                        throw new Error('Dashboard access denied');
+                    }
+                    const token = await response.json();
+                    status.hidden = true;
+                    return token;
+                },
+                onError: showError
+            });
+        } catch (error) {
+            showError();
+        }
+    })();
+    </script>
 </section>
 
 <section class="section">

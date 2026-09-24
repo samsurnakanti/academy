@@ -7,6 +7,9 @@ $admin = require_admin();
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php if (!empty($elldyAnalytics)): ?>
+        <meta name="csrf-token" content="<?= e(csrf_token()) ?>">
+    <?php endif; ?>
     <title><?= e($title ?? 'Admin') ?> | Elldy Academy</title>
     <link rel="icon" type="image/svg+xml" href="<?= e(public_url('assets/favicon.svg')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">

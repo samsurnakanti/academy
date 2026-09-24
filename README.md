@@ -17,7 +17,21 @@ Professional PHP/MySQL website for Elldy's data analytics and BI learning platfo
 
 Change the admin password after first login for production use.
 
-## Database Config
+## Admin dashboard analytics
+
+The secure Elldy embed appears only on `admin/index.php`. Set the server environment
+variable `ELLDY_EMBED_SERVER_CREDENTIAL` to your Elldy server credential (without
+the `Bearer ` prefix), then restart Apache. For XAMPP, you can set it with
+`SetEnv ELLDY_EMBED_SERVER_CREDENTIAL "your-credential"` in the Apache virtual-host
+configuration outside this repository. PHP cURL with working HTTPS certificates
+is required.
+
+The browser calls `admin/elldy_token.php`, which requires an authenticated admin
+and a valid session CSRF token. It sends `subject: admin:<admin id>` and the
+verified admin ID as `attributes.user_id` to Elldy. Never put the server credential
+in JavaScript or commit it to this repository.
+
+## Database connection
 
 The database connection is in `config/database.php`.
 
