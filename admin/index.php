@@ -34,7 +34,7 @@ $latest = db()->query(
         try {
             window.ElldyEmbed.mount({
                 container: '#elldy-analytics',
-                frameUrl: 'https://elldy.com/secure-embed/2716092e-3b6d-4f26-a333-bc188a8f5cd1/frame/',
+                frameUrl: 'https://elldy.com/secure-embed/427b8160-df90-440b-980a-5ea89ec9184a/frame/',
                 width: '100%',
                 height: 600,
                 getToken: async () => {

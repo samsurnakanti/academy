@@ -36,7 +36,7 @@ try {
         elldy_token_error(503, 'Analytics is not configured');
     }
 
-    $request = curl_init('https://elldy.com/secure-embed/2716092e-3b6d-4f26-a333-bc188a8f5cd1/token/');
+    $request = curl_init('https://elldy.com/secure-embed/427b8160-df90-440b-980a-5ea89ec9184a/token/');
     curl_setopt_array($request, [
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
