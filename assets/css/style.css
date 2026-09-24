@@ -2634,6 +2634,91 @@ tbody tr:hover {
     font-weight: 700;
 }
 
+.admin-analytics-heading {
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+}
+
+.admin-analytics-heading h2 {
+    margin: 0;
+}
+
+.admin-analytics .admin-analytics-description {
+    margin: 8px 0 0;
+    color: #526278;
+    font-size: 14px;
+}
+
+.admin-analytics-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.admin-analytics-controls label {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    color: #172b45;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-analytics-controls select,
+.admin-analytics-controls button {
+    min-height: 42px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid #dfe5ed;
+    border-radius: 8px;
+    font: inherit;
+}
+
+.admin-analytics-controls select {
+    min-width: 140px;
+    background: #fff;
+}
+
+.admin-analytics-controls button {
+    background: #0b6bcb;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.admin-analytics-controls button:hover:not(:disabled) {
+    background: #0855a3;
+}
+
+.admin-analytics-controls :disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.admin-analytics-controls :focus-visible {
+    outline: 3px solid #0b6bcb;
+    outline-offset: 3px;
+}
+
+.admin-analytics-status {
+    padding: 12px 16px;
+    border-radius: 8px;
+    background: #eef4ff;
+    font-size: 14px;
+}
+
+#elldy-analytics {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #dfe5ed;
+    border-radius: 14px;
+    background: #f7f9fc;
+}
+
 .flash.error {
     background: #fff0ee;
     color: var(--danger);

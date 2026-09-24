@@ -17,72 +17,29 @@ $latest = db()->query(
     <p>Manage analytics programs, BI learning outcomes, materials, and trainee enrollments connected to the Elldy platform.</p>
 </section>
 
-<section class="section" aria-labelledby="elldy-dashboard-heading">
-    <div class="section-heading">
-        <h2 id="elldy-dashboard-heading">Elldy Dashboard</h2>
+<section class="section admin-analytics" aria-labelledby="elldy-dashboard-heading">
+    <div class="section-heading admin-analytics-heading">
+        <div>
+            <p class="eyebrow">Performance overview</p>
+            <h2 id="elldy-dashboard-heading">Elldy Dashboard</h2>
+            <p class="admin-analytics-description">Key metrics at a glance. Values refresh every 60 seconds.</p>
+        </div>
+        <div class="admin-analytics-controls">
+            <label for="elldy-columns">Cards per row
+                <select id="elldy-columns" disabled>
+                    <option value="auto">Automatic</option>
+                    <option value="2">Two</option>
+                    <option value="3" selected>Three</option>
+                    <option value="4">Four</option>
+                </select>
+            </label>
+            <button id="elldy-refresh" type="button" disabled>Refresh values</button>
+        </div>
     </div>
-    <p id="elldy-analytics-status" role="status">Loading analytics…</p>
+    <p id="elldy-analytics-status" class="admin-analytics-status" role="status" aria-live="polite">Loading analytics...</p>
     <div id="elldy-analytics"></div>
-    <script src="https://elldy.com/static/myapp/js/elldy-embed-sdk.js"></script>
-    <script>
-    (() => {
-        const status = document.getElementById('elldy-analytics-status');
-        let analytics = null;
-        let timer = null;
-        const showError = () => {
-            status.hidden = false;
-            status.textContent = 'Analytics could not be loaded. Check the server configuration or try again later.';
-        };
-        const mountAnalytics = () => {
-          try {
-            analytics = window.ElldyEmbed.mount({
-                container: '#elldy-analytics',
-                frameUrl: 'https://elldy.com/secure-embed/427b8160-df90-440b-980a-5ea89ec9184a/frame/',
-                width: '100%',
-                height: 600,
-                getToken: async () => {
-                    const response = await fetch('elldy_token.php', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content}
-                    });
-                    if (!response.ok) {
-                        showError();
-                        throw new Error('Dashboard access denied');
-                    }
-                    const token = await response.json();
-                    status.hidden = true;
-                    return token;
-                },
-                onError: showError
-            });
-            timer = window.setInterval(async () => {
-                try {
-                    await analytics.refresh();
-                } catch (error) {
-                    showError();
-                }
-            }, 60000);
-          } catch (error) {
-            showError();
-          }
-        };
-        window.addEventListener('pagehide', () => {
-            window.clearInterval(timer);
-            timer = null;
-            if (analytics) {
-                analytics.destroy();
-                analytics = null;
-            }
-        });
-        window.addEventListener('pageshow', event => {
-            if (event.persisted) {
-                mountAnalytics();
-            }
-        });
-        mountAnalytics();
-    })();
-    </script>
+    <script src="https://elldy.com/static/myapp/js/elldy-embed-sdk.js?v=1.1.0"></script>
+    <script src="<?= e(asset_url('assets/js/admin-analytics.js')) ?>"></script>
 </section>
 
 <section class="section">
