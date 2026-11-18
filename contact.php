@@ -8,14 +8,14 @@ require __DIR__ . '/includes/header.php';
 <section class="page-title">
     <p class="eyebrow">Contact</p>
     <h1>Speak with Elldy Academy</h1>
-    <p>Reach out for program guidance, certification questions, or learning support.</p>
+    <p>Reach out for Elldy course enrollment, Certified Solution Provider team training, certification questions, or platform learning support.</p>
 </section>
 
-<section class="section contact-grid">
+<section class="section contact-grid" id="csp-enquiries">
     <article class="contact-card">
         <strong>WhatsApp</strong>
         <a href="https://wa.me/919490238737" target="_blank" rel="noopener">+91 94902 38737</a>
-        <p>Best for quick learner support and program enquiries.</p>
+        <p>Ask about course enrollment or CSP team training. Share your team size, Elldy experience, and the analytics challenges you want to solve.</p>
     </article>
     <article class="contact-card">
         <strong>Email</strong>

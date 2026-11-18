@@ -6,16 +6,16 @@ $canonicalUrl = public_url('certification');
 require __DIR__ . '/includes/header.php';
 ?>
 <section class="page-title certification-hero">
-    <p class="eyebrow">Official BI Platform Certificate</p>
+    <p class="eyebrow">Elldy platform learning & certification</p>
     <h1>Certification from Arklytics Solutions and Innovations and Elldy Platform</h1>
-    <p>Elldy Academy helps you learn data analytics and business intelligence through real business cases, and successful trainees receive an official certificate connected to the Elldy BI platform ecosystem.</p>
+    <p>Learn using the Elldy Data Intelligence Platform. Explore course certificates for eligible programs and the Certified Solution Provider (CSP) training path for teams developing broader Elldy expertise.</p>
 </section>
 
 <section class="section certification-layout">
     <div class="certificate-preview">
         <p class="eyebrow">Career credential</p>
-        <h2>Elldy BI Platform Certificate</h2>
-        <p>Issued for your bright career in analytics, reporting, dashboards, and business intelligence.</p>
+        <h2>Elldy Platform Course Certificate</h2>
+        <p>Recognition of learning in your completed Elldy program, subject to its certification requirements.</p>
         <div class="certificate-stamp">
             <span>Official</span>
             <strong>Arklytics + Elldy</strong>
@@ -24,14 +24,14 @@ require __DIR__ . '/includes/header.php';
 
     <div class="certification-copy">
         <p class="eyebrow">Why this certificate matters</p>
-        <h2>Not just learning from an institution. Learning with a BI platform.</h2>
-        <p>Tools like Power BI and Tableau are platforms. They usually do not issue individual course certificates directly to learners. Training institutes teach those tools and issue their own certificates.</p>
-        <p>With Elldy Academy, you learn analytics through the Elldy BI platform approach, and the certificate is officially provided by <strong>Arklytics Solutions and Innovations</strong> and <strong>Elldy Platform</strong>.</p>
+        <h2>Recognise your learning on Elldy.</h2>
+        <p>Course certificates recognise learning in a specific Elldy program. Check the program details for eligibility, completion requirements, and any certificate fees.</p>
+        <p>With Elldy Academy, you learn analytics using the Elldy Data Intelligence Platform, and the certificate is officially provided by <strong>Arklytics Solutions and Innovations</strong> and <strong>Elldy Platform</strong>.</p>
 
         <div class="capability-grid cert-grid">
             <article>
                 <strong>Official platform connection</strong>
-                <p>Your certificate is associated with the Elldy BI platform learning ecosystem.</p>
+                <p>Your certificate is associated with the Elldy Data Intelligence Platform learning ecosystem.</p>
             </article>
             <article>
                 <strong>Business case proof</strong>
@@ -48,7 +48,8 @@ require __DIR__ . '/includes/header.php';
             <?= detail_points("Trainee name and completed analytics program\nIssued by Arklytics Solutions and Innovations\nElldy Platform recognition\nBI and data analytics learning completion\nCareer-focused credential for your portfolio") ?>
         </div>
 
-        <a class="button primary" href="<?= e(public_url('programs')) ?>">Start Free Analytics Session</a>
+        <a class="button primary" href="<?= e(public_url('programs')) ?>">Explore Elldy courses</a>
     </div>
 </section>
+<section class="academy-cta"><div><p class="eyebrow">CSP: CERTIFIED SOLUTION PROVIDER</p><h2>Build broader Elldy solution expertise.</h2><p>CSP training is a separate path for teams. A course certificate does not automatically grant CSP status. Speak with the Academy about CSP requirements.</p></div><a class="button primary" href="<?= e(public_url('csp.php')) ?>">CSP team training &rarr;</a></section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

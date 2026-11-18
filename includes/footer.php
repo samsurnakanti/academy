@@ -53,11 +53,12 @@
     <footer class="site-footer">
         <div class="footer-brand">
             <strong>Elldy Academy</strong>
-            <p>Practical data skills. Real business thinking. Learn to turn information into better decisions with the official learning initiative of the Elldy platform.</p>
+            <p>Learn and train on the Elldy Data Intelligence Platform. Explore courses and Certified Solution Provider team training in analytics, embedded analytics, and intelligent applications.</p>
         </div>
         <div class="footer-links">
             <strong>Explore</strong>
             <a href="<?= e(public_url('about')) ?>">About</a>
+            <a href="<?= e(public_url('csp.php')) ?>">CSP team training</a>
             <a href="<?= e(public_url('programs')) ?>">Programs</a>
             <a href="<?= e(public_url('blog.php')) ?>">Blog</a>
             <a href="<?= e(public_url('certification')) ?>">Certification Details</a>

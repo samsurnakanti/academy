@@ -71,8 +71,8 @@ $admin = current_admin();
     </a>
     <nav class="main-nav" id="main-navigation">
         <a href="<?= e(public_url()) ?>">Home</a>
-        <a href="<?= e(public_url('programs')) ?>">Programs</a>
-        <a href="<?= e(public_url('blog.php')) ?>">Blog</a>
+        <a href="<?= e(public_url('programs')) ?>">Courses</a>
+        <a href="<?= e(public_url('csp.php')) ?>">CSP training</a>
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
         <a href="<?= e(public_url('connect.php')) ?>">Support</a>
         <?php if ($user): ?>

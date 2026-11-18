@@ -141,6 +141,18 @@ function academy_faqs(): array
 {
     return [
         [
+            'question' => 'What does CSP mean?',
+            'answer' => 'CSP means Certified Solution Provider. An Elldy CSP is an expert with broad knowledge of the Elldy Data Intelligence Platform who can understand business requirements, solve data analytics issues, and deliver solutions using Elldy.',
+        ],
+        [
+            'question' => 'How can our team join CSP training?',
+            'answer' => 'Explore the CSP training page and contact Elldy Academy to discuss your team, platform experience, and training needs. The team can explain the training and certification requirements.',
+        ],
+        [
+            'question' => 'Is a course certificate the same as CSP certification?',
+            'answer' => 'Course certificates relate to the specific program completed. CSP is the Certified Solution Provider path for broader Elldy platform expertise. Contact the Academy for CSP requirements; enrolling in a course does not automatically grant CSP status.',
+        ],
+        [
             'question' => 'How do I continue my classes?',
             'answer' => 'Login to your Elldy Academy account, open your trainee dashboard, and click Watch Videos or Join Live Sessions beside your enrolled program. You can continue from your available course materials anytime.',
         ],
@@ -154,11 +166,11 @@ function academy_faqs(): array
         ],
         [
             'question' => 'What is Elldy?',
-            'answer' => 'Elldy is a growing Business Intelligence platform that helps businesses understand data, build dashboards, track performance, and make better decisions from real business information.',
+            'answer' => 'Elldy is a Data Intelligence Platform for data analytics, business intelligence, embedded analytics, and bringing intelligence into applications.',
         ],
         [
             'question' => 'What is Elldy Academy?',
-            'answer' => 'Elldy Academy is the official learning initiative of the Elldy BI platform, created for students, analysts, business owners, CEOs, and teams who want practical data analytics and BI skills.',
+            'answer' => 'Elldy Academy provides courses, enrollment, and team training focused on using the Elldy Data Intelligence Platform. Learn to work as a data analyst with Elldy, build analytics solutions, and embed intelligence into applications.',
         ],
         [
             'question' => 'Are these courses useful for my career?',
