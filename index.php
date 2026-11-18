@@ -15,7 +15,7 @@ require __DIR__ . '/includes/header.php';
         <p class="hero-lead">Elldy is a Data Intelligence Platform. At Elldy Academy, learn to use it for data analytics, dashboards, embedded analytics, and turning applications into intelligent experiences.</p>
         <div class="hero-actions">
             <a class="button primary" href="<?= e(public_url('programs')) ?>">Explore programs <span aria-hidden="true">&rarr;</span></a>
-            <a class="text-link" href="#learning-experience">How you'll learn <span aria-hidden="true">&rarr;</span></a>
+            <a class="text-link" href="#csp-training">Build a CSP business <span aria-hidden="true">&rarr;</span></a>
         </div>
         <div class="hero-assurances"><span>&#10003; Elldy courses</span><span>&#10003; CSP team training</span><span>&#10003; Practical solutions</span></div>
     </div>
@@ -30,6 +30,30 @@ require __DIR__ . '/includes/header.php';
     </div>
 </section>
 <div class="learning-pillars"><span>ALL LEARNING. ONE PLATFORM. ELLDY.</span><strong>Data analytics</strong><span class="pillar-divider">/</span><strong>Embedded analytics</strong><span class="pillar-divider">/</span><strong>Intelligent applications</strong></div>
+<section class="section csp-opportunity" id="csp-training" aria-labelledby="csp-opportunity-title">
+    <div class="section-heading">
+        <div><p class="eyebrow">TRAIN AS A CSP. BUILD YOUR NEXT OPPORTUNITY.</p><h2 id="csp-opportunity-title">Start an analytics business.<br>Or add a new service to yours.</h2><p>Become an Elldy Certified Solution Provider (CSP). Use your expertise in the Elldy Data Intelligence Platform to serve clients, pursue projects, and create new revenue opportunities.</p></div>
+    </div>
+    <div class="csp-paths">
+        <article class="csp-path">
+            <span class="csp-path-label">FOR COMPANIES &amp; SERVICE PROVIDERS</span>
+            <h3>Business CSP</h3>
+            <p class="csp-path-lead">Add analytics to the services your clients already trust you for.</p>
+            <p>For software companies, IT service providers, and vendors: train your team on Elldy and expand your client services with data analytics, analysis, embedded analytics, and application intelligence.</p>
+            <ul><li>Offer analytics and dashboard services to clients.</li><li>Embed Elldy analytics into existing software.</li><li>Bring data intelligence into client applications.</li><li>Create opportunities for a new service revenue stream.</li></ul>
+            <a class="button primary" href="<?= e(public_url('csp.php#business-csp')) ?>">Explore Business CSP <span aria-hidden="true">&rarr;</span></a>
+        </article>
+        <article class="csp-path">
+            <span class="csp-path-label">FOR INDIVIDUALS &amp; ASPIRING FOUNDERS</span>
+            <h3>Professional CSP</h3>
+            <p class="csp-path-lead">Turn your Elldy expertise into an independent service or startup.</p>
+            <p>Train as an Elldy technical expert. Build the skills to solve analytics problems, pursue client projects, and launch your own analytics startup or consulting service.</p>
+            <ul><li>Develop practical Elldy platform expertise.</li><li>Provide analytics and embedded analytics solutions.</li><li>Pursue paid projects and client engagements.</li><li>Build your own analytics service business.</li></ul>
+            <a class="button primary" href="<?= e(public_url('csp.php#professional-csp')) ?>">Explore Professional CSP <span aria-hidden="true">&rarr;</span></a>
+        </article>
+    </div>
+    <p class="csp-opportunity-note">One platform. Two CSP paths. Build the expertise to create value for your clients.</p>
+</section>
 <section class="section featured-programs">
     <div class="section-heading"><div><p class="eyebrow">FIND YOUR NEXT STEP</p><h2>Elldy courses. Practical expertise.</h2><p>Explore our launched courses, review the learning plan, and enroll to build your skills using Elldy.</p></div><a class="text-link" href="<?= e(public_url('programs')) ?>">All programs <span aria-hidden="true">&rarr;</span></a></div>
     <div class="course-grid">
@@ -42,19 +66,6 @@ require __DIR__ . '/includes/header.php';
 <section class="section experience-section" id="learning-experience">
     <div class="experience-intro"><p class="eyebrow">MORE THAN THEORY</p><h2>Learn the platform.<br>Solve the problem.</h2><p>Every learning path is built around the Elldy Data Intelligence Platform. Train as a data analyst using Elldy, work through analytics challenges, and learn to deliver solutions for businesses and applications.</p><a class="text-link" href="<?= e(public_url('about')) ?>">Get to know the Academy <span aria-hidden="true">&rarr;</span></a></div>
     <div class="journey-steps"><article><span>01</span><div><h3>Understand the question</h3><p>Understand the analytics needs of a business and plan how to address them using Elldy.</p></div></article><article><span>02</span><div><h3>Analyse data with Elldy</h3><p>Work with data, explore patterns, and create dashboards and insights within the Elldy platform.</p></div></article><article><span>03</span><div><h3>Bring intelligence into applications</h3><p>Learn embedded analytics with Elldy and bring data intelligence into the applications people use.</p></div></article></div>
-</section>
-<section class="section experience-section" id="csp-training">
-    <div class="experience-intro">
-        <p class="eyebrow">CERTIFIED SOLUTION PROVIDER</p>
-        <h2>Become the Elldy expert<br>businesses turn to.</h2>
-        <p>A CSP is an Elldy Certified Solution Provider: an expert with broad knowledge of the Elldy Data Intelligence Platform who can understand analytics challenges, resolve issues, and deliver practical solutions.</p>
-        <a class="button primary" href="<?= e(public_url('csp.php')) ?>">Explore CSP team training <span aria-hidden="true">&rarr;</span></a>
-    </div>
-    <div class="journey-steps">
-        <article><span>01</span><div><h3>Develop platform expertise</h3><p>Build a comprehensive understanding of Elldy and how to use it to meet business needs.</p></div></article>
-        <article><span>02</span><div><h3>Solve analytics challenges</h3><p>Train to investigate issues, understand data requirements, and build solutions using Elldy.</p></div></article>
-        <article><span>03</span><div><h3>Enable your whole team</h3><p>Prepare your team to deliver analytics, embed insights, and turn applications into intelligent experiences.</p></div></article>
-    </div>
 </section>
 <section class="section credential-section"><div class="credential-art" aria-hidden="true"><div class="credential-sheet"><span>ELLDY ACADEMY</span><div class="credential-seal">&#10023;</div><strong>Learning with<br>recognition.</strong><div class="credential-rule"></div><small>ARKLYTICS &times; ELLDY PLATFORM</small></div></div><div><p class="eyebrow">RECOGNISE YOUR PROGRESS</p><h2>Skills worth building.<br>Learning worth showing.</h2><p>Explore certification from Arklytics Solutions and Innovations and Elldy Platform, connecting your learning to the Elldy Data Intelligence Platform.</p><a class="button secondary" href="<?= e(public_url('certification')) ?>">Explore certification <span aria-hidden="true">&rarr;</span></a><small class="credential-disclaimer">View program details for certification requirements and fees.</small></div></section>
 <?php if ($blogPosts): ?>
@@ -106,5 +117,5 @@ require __DIR__ . '/includes/header.php';
     </div>
 </section>
 
-<section class="academy-cta"><div><p class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p><h2>Build your expertise with Elldy.</h2><p>Enroll in an Elldy course or explore CSP training for your team.</p></div><a class="button primary" href="<?= e(public_url('programs')) ?>">Find your program <span aria-hidden="true">&rarr;</span></a></section>
+<section class="academy-cta"><div><p class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</p><h2>Build your expertise with Elldy.</h2><p>Learn Elldy, train as a CSP, and explore opportunities to launch or expand your analytics services.</p></div><a class="button primary" href="<?= e(public_url('programs')) ?>">Find your program <span aria-hidden="true">&rarr;</span></a></section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
