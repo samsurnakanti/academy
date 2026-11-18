@@ -12,7 +12,7 @@
         [
             'label' => 'Programs',
             'url' => public_url('programs'),
-            'match' => ['programs.php'],
+            'match' => ['courses.php', 'course.php'],
             'icon' => '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Zm2.5-.5a.5.5 0 0 0-.5.5v12.55c.16-.03.33-.05.5-.05H18V5H6.5Z"/>',
         ],
         [
@@ -53,7 +53,7 @@
     <footer class="site-footer">
         <div class="footer-brand">
             <strong>Elldy Academy</strong>
-            <p>The official learning initiative of the Elldy platform, created to build awareness, educate learners in data analytics, and connect business-case thinking with practical BI learning.</p>
+            <p>Practical data skills. Real business thinking. Learn to turn information into better decisions with the official learning initiative of the Elldy platform.</p>
         </div>
         <div class="footer-links">
             <strong>Explore</strong>
@@ -74,6 +74,7 @@
             <p><span>WhatsApp</span><a href="https://wa.me/919490238737" target="_blank" rel="noopener">+91 94902 38737</a></p>
             <p><span>Email</span><a href="mailto:Info@arklytics.in">Info@arklytics.in</a></p>
         </div>
+        <div class="footer-bottom"><span>&copy; <?= date('Y') ?> Elldy Academy. All rights reserved.</span><span>Learn with purpose. Build with confidence.</span></div>
     </footer>
     <a
         class="support-whatsapp"

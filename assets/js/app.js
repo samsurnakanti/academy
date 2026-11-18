@@ -7,15 +7,8 @@ document.querySelectorAll('[data-confirm]').forEach((element) => {
 });
 
 const siteHeader = document.querySelector('.site-header');
-const brandLabel = document.querySelector('.brand-label');
 const menuToggle = document.querySelector('.menu-toggle');
 const mainNav = document.querySelector('.main-nav');
-const brandPhrases = [
-    'Academy',
-    'Data Intelligence',
-    'Business Intelligence (BI)',
-    'Data Analytics',
-];
 const isInstalledApp = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const appAnalyticsUrl = document.body.dataset.appAnalyticsUrl;
 const appAnalyticsToken = document.body.dataset.appAnalyticsToken;
@@ -34,20 +27,6 @@ if (siteHeader) {
     syncHeaderState();
     window.addEventListener('scroll', syncHeaderState, { passive: true });
     document.addEventListener('scroll', syncHeaderState, { passive: true });
-}
-
-if (brandLabel) {
-    let phraseIndex = 0;
-
-    window.setInterval(() => {
-        brandLabel.classList.add('is-changing');
-
-        window.setTimeout(() => {
-            phraseIndex = (phraseIndex + 1) % brandPhrases.length;
-            brandLabel.textContent = brandPhrases[phraseIndex];
-            brandLabel.classList.remove('is-changing');
-        }, 280);
-    }, 2400);
 }
 
 if (siteHeader && menuToggle && mainNav) {
@@ -509,3 +488,48 @@ document.querySelectorAll('.video-frame.native-player').forEach((frame) => {
     });
     window.addEventListener('beforeunload', () => saveProgress(true));
 });
+
+// Program discovery progressively enhances the server-rendered catalog.
+const programCatalog = document.querySelector('[data-program-catalog]');
+if (programCatalog) {
+    const cards = Array.from(programCatalog.querySelectorAll('[data-program-card]'));
+    const search = programCatalog.querySelector('[data-program-search]');
+    const filters = programCatalog.querySelectorAll('[data-program-filter]');
+    let format = 'all';
+    programCatalog.querySelector('.catalog-toolbar').hidden = false;
+    const updatePrograms = () => {
+        const query = search.value.trim().toLowerCase();
+        let count = 0;
+        cards.forEach((card) => {
+            const visible = (format === 'all' || card.dataset.format === format) && card.dataset.search.includes(query);
+            card.hidden = !visible;
+            if (visible) count += 1;
+        });
+        programCatalog.querySelector('[data-program-count]').textContent = `${count} program${count === 1 ? '' : 's'} to explore`;
+        programCatalog.querySelector('[data-program-empty]').hidden = count !== 0;
+    };
+    filters.forEach((button) => button.addEventListener('click', () => {
+        format = button.dataset.programFilter;
+        filters.forEach((item) => {
+            item.classList.toggle('is-active', item === button);
+            item.setAttribute('aria-pressed', String(item === button));
+        });
+        updatePrograms();
+    }));
+    search.addEventListener('input', updatePrograms);
+}
+if (mainNav) {
+    const currentPath = window.location.pathname.replace(/\/$/, '').replace(/\/index\.php$/, '');
+    mainNav.querySelectorAll('a').forEach((link) => {
+        const linkPath = new URL(link.href).pathname.replace(/\/$/, '');
+        if (linkPath === currentPath) link.setAttribute('aria-current', 'page');
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && siteHeader.classList.contains('menu-open')) {
+            siteHeader.classList.remove('menu-open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+            menuToggle.setAttribute('aria-label', 'Open menu');
+            menuToggle.focus();
+        }
+    });
+}

@@ -1,7 +1,8 @@
-const CACHE_NAME = 'elldy-academy-v3';
+const CACHE_NAME = 'elldy-academy-professional-v2';
 const STATIC_ASSETS = [
     './',
     './assets/css/style.css',
+    './assets/css/academy.css',
     './assets/js/app.js',
     './assets/elldy-logo.png',
     './assets/icons/app-icon-192.png',

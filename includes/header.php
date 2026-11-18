@@ -45,8 +45,9 @@ $admin = current_admin();
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#0b6bcb">
     <link rel="stylesheet" href="<?= e(asset_url('assets/css/style.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset_url('assets/css/academy.css')) ?>">
 </head>
-<body
+<body class="academy-site"
     data-service-worker-url="<?= e(public_url('service-worker.js')) ?>"
     data-app-analytics-url="<?= e(public_url('track_app.php')) ?>"
     data-app-analytics-token="<?= e(csrf_token()) ?>"
@@ -55,6 +56,7 @@ $admin = current_admin();
     src="https://www.facebook.com/tr?id=3066061163585047&ev=PageView&noscript=1"
     alt=""
 ></noscript>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-navigation" aria-label="Open menu">
         <span></span>
@@ -74,19 +76,19 @@ $admin = current_admin();
         <a href="<?= e(public_url('certification')) ?>">Certification</a>
         <a href="<?= e(public_url('connect.php')) ?>">Support</a>
         <?php if ($user): ?>
-            <a href="<?= e(public_url('dashboard.php')) ?>">My Sessions</a>
+            <a href="<?= e(public_url('dashboard.php')) ?>">My learning</a>
             <a href="<?= e(public_url('profile.php')) ?>">Profile</a>
             <a href="<?= e(public_url('logout.php')) ?>">Logout</a>
         <?php else: ?>
             <a href="<?= e(public_url('login.php')) ?>">Login</a>
-            <a class="nav-cta" href="<?= e(public_url('programs')) ?>">Free Analytics Session</a>
+            <a class="nav-cta" href="<?= e(public_url('programs')) ?>">Explore programs</a>
         <?php endif; ?>
         <?php if ($admin): ?>
             <a href="<?= e(public_url('admin/index.php')) ?>">Admin</a>
         <?php endif; ?>
     </nav>
 </header>
-<main>
+<main id="main-content">
 <?php foreach (flashes() as $item): ?>
     <div class="flash <?= e($item['type']) ?>"><?= e($item['message']) ?></div>
 <?php endforeach; ?>

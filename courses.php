@@ -5,54 +5,11 @@ $canonicalUrl = public_url('programs');
 $courses = active_courses(50);
 require __DIR__ . '/includes/header.php';
 ?>
-<section class="page-title">
-    <p class="eyebrow">Elldy Academy</p>
-    <h1>Analytics Programs</h1>
-    <p>Choose a BI, data analytics, or business case program and enroll without signup or login.</p>
-</section>
-
-<section class="section">
-    <div class="course-grid">
-        <?php foreach ($courses as $course): ?>
-            <?php
-            $showFeeDetails = course_should_show_fee_details($course);
-            $isFreeProgram = !course_requires_payment($course);
-            $regularFee = max(0, (float) ($course['fee'] ?? 0));
-            $hasCourseDiscount = $showFeeDetails && $regularFee > 0 && course_fee_amount($course) < $regularFee;
-            ?>
-            <article class="course-card <?= $showFeeDetails && $isFreeProgram ? 'is-free' : 'is-paid' ?> <?= $hasCourseDiscount ? 'is-discounted' : '' ?>">
-                <div class="course-topline">
-                    <span><?= e($course['duration']) ?></span>
-                    <?php if ($showFeeDetails): ?>
-                        <?= public_price_html($course, 'program') ?>
-                    <?php endif; ?>
-                </div>
-                <div class="course-badges">
-                    <?php if ($hasCourseDiscount): ?>
-                        <span class="course-badge offer">Limited Time Offer</span>
-                    <?php endif; ?>
-                    <?php if ($showFeeDetails && $isFreeProgram): ?>
-                        <span class="course-badge free">Free</span>
-                    <?php elseif (!$isFreeProgram): ?>
-                        <span class="course-badge certificate">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3 6 6v5c0 4.2 2.55 8.1 6 9.6 3.45-1.5 6-5.4 6-9.6V6l-6-3Zm0 2.2 4 2v3.8c0 3.1-1.7 6.06-4 7.45-2.3-1.39-4-4.35-4-7.45V7.2l4-2Zm-1 4.3v4l3.4 2 .8-1.38-2.7-1.57V9.5H11Z"/>
-                            </svg>
-                            Certificate
-                        </span>
-                        <span class="course-badge premium">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="m12 3 2.47 5.01L20 8.82l-4 3.9.94 5.51L12 15.63l-4.94 2.6L8 12.72l-4-3.9 5.53-.81L12 3Z"/>
-                            </svg>
-                            Elldy Premium Access
-                        </span>
-                    <?php endif; ?>
-                </div>
-                <h3><?= e($course['title']) ?></h3>
-                <p><?= e($course['short_description']) ?></p>
-                <a class="button small" href="<?= e(program_url($course)) ?>">View Program</a>
-            </article>
-        <?php endforeach; ?>
-    </div>
+<section class="page-title catalog-title"><p class="eyebrow">EXPLORE. LEARN. APPLY.</p><h1>Your next skill starts here.</h1><p>Discover practical programs in data analytics and business intelligence.<br>Choose your path and make your next move with confidence.</p></section>
+<section class="section program-catalog" data-program-catalog>
+    <div class="catalog-toolbar" hidden><div class="catalog-filters" role="group" aria-label="Program format"><button type="button" class="is-active" data-program-filter="all" aria-pressed="true">All programs</button><button type="button" data-program-filter="video" aria-pressed="false">Video learning</button><button type="button" data-program-filter="live" aria-pressed="false">Live sessions</button></div><label class="program-search"><span class="sr-only">Search programs</span><input type="search" placeholder="Search programs..." data-program-search></label></div>
+    <p class="catalog-count" aria-live="polite" data-program-count><?= count($courses) ?> programs to explore</p>
+    <div class="course-grid"><?php foreach ($courses as $course): ?><?php require __DIR__ . '/includes/program-card.php'; ?><?php endforeach; ?></div>
+    <div class="empty" data-program-empty <?= $courses ? 'hidden' : '' ?>><h2>No programs found</h2><p>Try a different search or contact us for upcoming learning opportunities.</p><a href="<?= e(public_url('contact')) ?>">Get program guidance &rarr;</a></div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
