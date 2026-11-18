@@ -291,6 +291,12 @@ function ensure_connect_links_table(): void
         )"
     );
 
+    // Update the previous default support address on existing installations.
+    $emailUpdate = db()->prepare(
+        'UPDATE connect_links SET link_url = ? WHERE LOWER(link_url) = ?'
+    );
+    $emailUpdate->execute(['mailto:info@arklyticslabs.com', 'mailto:info@arklytics.in']);
+
     $count = (int) db()->query('SELECT COUNT(*) FROM connect_links')->fetchColumn();
     if ($count > 0) {
         return;
@@ -301,7 +307,7 @@ function ensure_connect_links_table(): void
          VALUES (?, ?, ?, ?, 1)"
     );
     $stmt->execute(['WhatsApp Support', 'https://wa.me/919490238737?text=Hi%20Elldy%20Academy%2C%20I%20need%20support%20regarding%20my%20course.', '', 1]);
-    $stmt->execute(['Email Support', 'mailto:Info@arklytics.in', '', 2]);
+    $stmt->execute(['Email Support', 'mailto:info@arklyticslabs.com', '', 2]);
 }
 
 function connect_links(bool $activeOnly = true): array

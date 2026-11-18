@@ -19,6 +19,6 @@ require __DIR__ . '/includes/header.php';
     <h2>Data protection</h2>
     <p>We take reasonable measures to protect learner data and do not sell personal information to third parties.</p>
     <h2>Contact</h2>
-    <p>For privacy-related requests, contact <a href="mailto:Info@arklytics.in">Info@arklytics.in</a>.</p>
+    <p>For privacy-related requests, contact <a href="mailto:info@arklyticslabs.com">info@arklyticslabs.com</a>.</p>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

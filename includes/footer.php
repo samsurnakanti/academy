@@ -73,7 +73,7 @@
         <div class="footer-contact">
             <strong>Contact</strong>
             <p><span>WhatsApp</span><a href="https://wa.me/919490238737" target="_blank" rel="noopener">+91 94902 38737</a></p>
-            <p><span>Email</span><a href="mailto:Info@arklytics.in">Info@arklytics.in</a></p>
+            <p><span>Email</span><a href="mailto:info@arklyticslabs.com">info@arklyticslabs.com</a></p>
         </div>
         <div class="footer-bottom"><span>&copy; <?= date('Y') ?> Elldy Academy. All rights reserved.</span><span>Learn with purpose. Build with confidence.</span></div>
     </footer>

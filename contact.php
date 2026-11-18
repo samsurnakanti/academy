@@ -19,7 +19,7 @@ require __DIR__ . '/includes/header.php';
     </article>
     <article class="contact-card">
         <strong>Email</strong>
-        <a href="mailto:Info@arklytics.in">Info@arklytics.in</a>
+        <a href="mailto:info@arklyticslabs.com">info@arklyticslabs.com</a>
         <p>Use email for formal communication, partnerships, and certificates.</p>
     </article>
 </section>
